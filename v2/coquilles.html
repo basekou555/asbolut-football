@@ -29,11 +29,11 @@
   .nav button[aria-pressed="true"]{ color:#14150f; background:var(--cream); border-color:var(--cream); font-weight:600; }
 
   /* options */
-  .opt{ display:grid; grid-template-columns:44px 1fr; gap:12px; width:100%; text-align:left; font:inherit; color:var(--cream);
+  .opt{ display:grid; grid-template-columns:28px 1fr; gap:12px; width:100%; text-align:left; font:inherit; color:var(--cream);
     background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin:0 0 8px; cursor:pointer; align-items:start; }
   .opt:hover{ border-color:var(--gold-dim); background:#1d3227; }
   :root[data-mode="joueur"] .opt:hover{ background:#232a49; }
-  .opt .ico{ font-size:27px; line-height:1.05; text-align:center; }
+  .opt .ico{ font-size:17px; line-height:1.35; text-align:center; opacity:.9; }
   .opt b{ display:block; font-size:14.5px; margin-bottom:2px; }
   .pills{ display:flex; flex-wrap:wrap; gap:5px; margin-top:7px; }
   .pill{ font-size:11.5px; padding:2px 8px; border-radius:99px; border:1px solid transparent; white-space:nowrap; }
@@ -52,24 +52,24 @@
   /* gros chiffres */
   .stats{ display:grid; grid-template-columns:repeat(auto-fit,minmax(88px,1fr)); gap:8px; margin:10px 0 4px; }
   .stats div{ background:var(--panel-2); border:1px solid var(--line); border-radius:9px; padding:9px 10px; text-align:center; }
-  .stats .v{ font-family:var(--display); font-size:29px; line-height:1; color:var(--gold); }
+  .stats .v{ font-family:var(--display); font-size:23px; line-height:1; color:var(--gold); }
   .stats .k{ font-size:10.5px; color:var(--muted); letter-spacing:.04em; margin-top:2px; }
   .score{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
-  .score .big{ font-family:var(--display); font-size:52px; line-height:1; color:var(--gold); }
+  .score .big{ font-family:var(--display); font-size:38px; line-height:1; color:var(--gold); }
 
   /* liens & chantiers en lignes avec icône */
   .st{ display:grid; gap:5px; }
-  .st div{ display:grid; grid-template-columns:30px 118px 1fr; gap:8px; align-items:baseline; font-size:13px; }
-  .st .i{ font-size:17px; text-align:center; }
+  .st div{ display:grid; grid-template-columns:22px 118px 1fr; gap:8px; align-items:baseline; font-size:13px; }
+  .st .i{ font-size:14px; text-align:center; opacity:.85; }
   .st .n{ color:var(--muted); font-size:12px; }
   .st .arrow{ color:var(--sage); } .st .down{ color:var(--red); }
-  @media(max-width:560px){ .st div{ grid-template-columns:26px 1fr; } .st .n{ grid-column:2; } .st .w{ grid-column:2; } }
+  @media(max-width:560px){ .st div{ grid-template-columns:22px 1fr; } .st .n{ grid-column:2; } .st .w{ grid-column:2; } }
 
   /* boutique */
   .shop{ display:grid; gap:7px; }
-  .shop div{ display:grid; grid-template-columns:34px 1fr auto; gap:10px; align-items:center; font-size:13px;
+  .shop div{ display:grid; grid-template-columns:24px 1fr auto; gap:10px; align-items:center; font-size:13px;
     background:var(--panel-2); border:1px solid var(--line); border-radius:9px; padding:9px 11px; }
-  .shop .i{ font-size:20px; text-align:center; }
+  .shop .i{ font-size:15px; text-align:center; opacity:.85; }
   .shop i{ color:var(--muted); font-style:normal; font-size:11.5px; display:block; }
   .shop .p{ text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
   .shop .off{ opacity:.45; }
@@ -79,9 +79,9 @@
   .tabs button[aria-pressed="true"]{ background:var(--cream); color:#14150f; border-color:var(--cream); }
 
   /* bilan */
-  .bloc{ display:grid; grid-template-columns:40px 1fr; gap:12px; background:var(--panel-2); border:1px solid var(--line);
+  .bloc{ display:grid; grid-template-columns:22px 1fr; gap:12px; background:var(--panel-2); border:1px solid var(--line);
     border-radius:10px; padding:13px 15px; margin:0 0 9px; }
-  .bloc .i{ font-size:26px; text-align:center; line-height:1; }
+  .bloc .i{ font-size:15px; text-align:center; line-height:1.5; opacity:.85; }
   .bloc h4{ margin:0 0 4px; font-size:12.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--gold); }
   .bloc.perdu{ border-left:3px solid var(--red); } .bloc.perdu h4{ color:var(--red); }
   .bloc.gagne{ border-left:3px solid var(--sage); } .bloc.gagne h4{ color:var(--sage); }
@@ -90,9 +90,9 @@
   .trophies{ display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; }
   .trophies span{ font-size:12.5px; padding:4px 10px; border-radius:8px; background:var(--panel-2); border:1px solid var(--line); }
   .rank{ display:grid; gap:7px; }
-  .rank div{ display:grid; grid-template-columns:34px 1fr auto; gap:10px; align-items:center;
+  .rank div{ display:grid; grid-template-columns:22px 1fr auto; gap:10px; align-items:center;
     background:var(--panel-2); border:1px solid var(--line); border-radius:9px; padding:9px 11px; font-size:13px; }
-  .rank .m{ font-size:21px; text-align:center; }
+  .rank .m{ font-size:14px; text-align:center; font-variant-numeric:tabular-nums; color:var(--gold); font-weight:600; }
   .rank .tag{ font-size:11px; color:var(--muted); white-space:nowrap; }
   .jrn{ display:grid; gap:5px; font-size:12.5px; }
   .jrn div{ display:grid; grid-template-columns:70px 22px 1fr; gap:8px; align-items:baseline; }
@@ -102,6 +102,31 @@
   .row{ display:flex; flex-wrap:wrap; gap:8px; }
   .chip{ font-size:12px; padding:3px 9px; border-radius:99px; background:var(--panel-2); border:1px solid var(--line); }
   .chip.on{ border-color:var(--gold); color:var(--gold); }
+  /* fiche de données */
+  .sheet{ display:grid; gap:0; margin:10px 0 12px; }
+  .sheet div{ display:grid; grid-template-columns:1fr auto; gap:14px; padding:7px 0; border-bottom:1px solid var(--line); font-size:13.5px; align-items:baseline; }
+  .sheet div:last-child{ border-bottom:0; }
+  .sheet .l{ color:var(--muted); font-size:12.5px; }
+  .sheet .v{ text-align:right; font-variant-numeric:tabular-nums; }
+  .hdr{ border-bottom:1px solid var(--line); padding-bottom:10px; margin-bottom:4px; }
+  .hdr .t{ font-family:var(--display); font-size:clamp(24px,5vw,34px); line-height:1; letter-spacing:.02em; }
+  .hdr .m{ color:var(--muted); font-size:12.5px; margin-top:3px; }
+  .money{ font-variant-numeric:tabular-nums; }
+  .bar{ height:7px; border-radius:99px; background:var(--panel-2); overflow:hidden; margin:5px 0 2px; border:1px solid var(--line); }
+  .bar i{ display:block; height:100%; background:var(--gold-dim); }
+  .bar i.hot{ background:var(--red); }
+  .lack{ border:1px solid color-mix(in srgb, var(--red) 55%, transparent); background:color-mix(in srgb, var(--red) 10%, transparent);
+    border-radius:8px; padding:9px 12px; font-size:13px; margin:0 0 10px; }
+  .lack b{ color:var(--red); }
+  table.sq{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  table.sq th{ text-align:left; font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:600; padding:5px 6px; border-bottom:1px solid var(--line); }
+  table.sq td{ padding:6px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  table.sq td.r{ text-align:right; font-variant-numeric:tabular-nums; }
+  table.sq tr:last-child td{ border-bottom:0; }
+  .pos{ display:inline-block; width:19px; text-align:center; font-size:10px; font-weight:700; border-radius:4px; padding:2px 0; background:var(--panel-2); border:1px solid var(--line); }
+  .mini{ font:inherit; font-size:11px; padding:3px 9px; border-radius:6px; cursor:pointer; background:transparent; color:var(--muted); border:1px solid var(--line); }
+  .mini:hover{ color:var(--cream); border-color:var(--gold-dim); }
+  .scrollx{ overflow-x:auto; }
   .note{ border-top:1px dashed var(--line); margin-top:14px; padding-top:10px; font-size:12px; color:var(--muted); }
   .note b{ color:var(--gold-dim); }
   .step{ font-size:10.5px; letter-spacing:.11em; text-transform:uppercase; color:var(--muted); margin-bottom:9px; }
@@ -270,20 +295,23 @@ V.joueur.treve = `<div class="card"><div class="step">Trêve d'hiver · un des q
     <span class="pills"><i class="pill foot">🫁 tu reviens frais</i><i class="pill risk">🤝 l'agent t'a cherché</i></span></span></button>
   <div class="note"><b>Ce que ça prouve :</b> les quatre temps lents (mercato d'été, trêve, mercato d'hiver, intersaison) portent la vie. Un projet lancé ici <b>prélèvera sur tes semaines</b> jusqu'à ce qu'il aboutisse.</div></div>`;
 
-V.joueur.offre = `<div class="card"><div class="step">Mercato d'été · une proposition</div>
-  <h2>Standard de Liège</h2>
-  <p class="narr">Ton agent a décroché. « Ils te veulent, ils jouent l'Europe, et le coach a demandé ton nom. Réfléchis vite. »</p>
-  <div class="stats">
-    <div><div class="v">🇧🇪</div><div class="k">Belgique</div></div>
-    <div><div class="v">⭐</div><div class="k">joue l'Europe</div></div>
-    <div><div class="v">🔄</div><div class="k">rotation promise</div></div>
-    <div><div class="v">2</div><div class="k">devant toi au poste</div></div>
+V.joueur.offre = `<div class="card"><div class="step">Mercato d'été · proposition 1</div>
+  <div class="hdr"><div class="t">Standard de Liège</div>
+    <div class="m">Jupiler Pro League · 3ᵉ la saison dernière · joue le tour préliminaire de Ligue des champions</div></div>
+  <p class="narr">Ton agent a décroché. « Ils te veulent, et le coach a demandé ton nom. Réfléchis vite. »</p>
+  <div class="sheet">
+    <div><span class="l">Rôle promis</span><span class="v">Rotation</span></div>
+    <div><span class="l">Concurrence à ton poste</span><span class="v">2 joueurs devant toi</span></div>
+    <div><span class="l">Salaire proposé</span><span class="v money">32 000 € / mois</span></div>
+    <div><span class="l">Ton salaire actuel</span><span class="v money">14 000 € / mois</span></div>
+    <div><span class="l">Durée</span><span class="v">3 ans</span></div>
+    <div><span class="l">Prime à la signature</span><span class="v money">120 000 €</span></div>
+    <div><span class="l">Le coach</span><span class="v">Réputé dur avec les jeunes</span></div>
   </div>
-  <p class="sub">Le coach est réputé dur avec les jeunes.</p>
   <div class="row"><button class="opt" style="flex:1"><span class="ico">🤝</span><span><b>Ouvrir la négociation</b></span></button>
     <button class="opt" style="flex:1"><span class="ico">🚪</span><span><b>Refuser</b><span class="sub">Elle disparaît pour de bon.</span></span></button></div>
-  <p class="sub">Ton agent dit qu'il reste « deux ou trois pistes sérieuses ». Tu ne sais pas s'il dit vrai.</p>
-  <div class="note"><b>Ce que ça prouve :</b> une offre à la fois, sans savoir ce qui vient après. Ce que l'agent te révèle dépend de votre relation — un lien, pas un chiffre.</div></div>`;
+  <p class="sub">📞 Ton agent : « Il reste deux ou trois pistes sérieuses. » Tu ne sais pas s'il dit vrai.</p>
+  <div class="note"><b>Ce que ça prouve :</b> une offre à la fois, lue comme une fiche et non comme un bandeau d'icônes. Tous les montants sont <b>exacts</b>, jamais arrondis. Ce que l'agent te révèle dépend de votre relation.</div></div>`;
 
 V.joueur.nego = `<div class="card"><div class="step">Négociation · Standard de Liège</div>
   <h2>Ce que tu demandes</h2>
@@ -299,23 +327,23 @@ V.joueur.nego = `<div class="card"><div class="step">Négociation · Standard de
   <p class="sub">Le club peut refuser. Il a déjà refusé deux fois cette semaine.</p>
   <div class="note"><b>Ce que ça prouve :</b> le moment lent du mode joueur·euse, l'équivalent du mercato. Une promesse non tenue devient une <b>graine</b> qui germera dans une ou deux saisons.</div></div>`;
 
-V.joueur.bilan = `<div class="card"><div class="step">Saison 2018-2019 · le temps où l'on souffle</div>
-  <h2>Ce que la saison t'a laissé</h2>
-  <div class="stats">
-    <div><div class="v">28</div><div class="k">matchs</div></div>
-    <div><div class="v">9</div><div class="k">buts</div></div>
-    <div><div class="v">4</div><div class="k">passes</div></div>
-    <div><div class="v">6,8</div><div class="k">note moyenne</div></div>
-    <div><div class="v">11ᵉ</div><div class="k">Le Havre AC</div></div>
+V.joueur.bilan = `<div class="card"><div class="step">Le temps où l'on souffle</div>
+  <div class="hdr"><div class="t">Saison 2018-2019</div><div class="m">Le Havre AC · Ligue 2 · 11ᵉ · finaliste de la coupe</div></div>
+  <div class="sheet">
+    <div><span class="l">Matchs joués</span><span class="v">28 sur 38</span></div>
+    <div><span class="l">Buts · passes</span><span class="v">9 · 4</span></div>
+    <div><span class="l">Note moyenne</span><span class="v">6,8</span></div>
+    <div><span class="l">Homme du match</span><span class="v">3 fois</span></div>
+    <div><span class="l">Absence</span><span class="v">7 semaines, dos</span></div>
+    <div><span class="l">Gains de la saison</span><span class="v money">168 000 €</span></div>
   </div>
-  <div class="trophies"><span>🥈 finaliste de la coupe</span><span>⭐ 3 fois homme du match</span><span>🩼 7 semaines d'arrêt</span></div>
-  <div class="bloc gagne"><span class="i">🏆</span><div><h4>Ce que tu as gagné</h4>
-    <p class="narr">La confiance d'un coach qui ne voulait pas de toi en août. Le soir d'Amiens, tout le stade a fini par connaître ton nom.</p></div></div>
-  <div class="bloc perdu"><span class="i">💔</span><div><h4>Ce que tu as perdu</h4>
+  <div class="bloc gagne"><span class="i">▲</span><div><h4>Ce que tu as gagné</h4>
+    <p class="narr">La confiance d'un coach qui ne voulait pas de toi en août. Le soir d'Amiens, tout le stade a fini par connaître ton nom. Et une finale, la première.</p></div></div>
+  <div class="bloc perdu"><span class="i">▼</span><div><h4>Ce que tu as perdu</h4>
     <p class="narr">Le mariage de ta sœur. Deux mois de dos. Et la promesse du président, jamais tenue — tu ne l'oublieras pas au moment de signer ailleurs.</p></div></div>
-  <div class="bloc suite"><span class="i">⏭️</span><div><h4>Ce qui t'attend</h4>
+  <div class="bloc suite"><span class="i">→</span><div><h4>Ce qui t'attend</h4>
     <p class="narr">Liège a appelé. Ton corps demande un été calme. Ton ami attend une réponse pour l'académie. Les trois ne tiennent pas ensemble.</p></div></div>
-  <div class="note"><b>Ce que ça prouve :</b> le bilan en trois temps, dont « ce que tu as perdu » — ce que le jeu ne te disait jamais. Les chiffres du haut sont des <b>faits</b> (matchs, buts, notes), pas des jauges.</div></div>`;
+  <div class="note"><b>Ce que ça prouve :</b> le bilan en trois temps, dont « ce que tu as perdu » — ce que le jeu ne te disait jamais. Les chiffres du haut sont des <b>faits</b> (matchs, buts, notes, argent), jamais des jauges.</div></div>`;
 
 V.joueur.journal = `<div class="card"><div class="step">Le journal · tout, dans l'ordre</div>
   <h2>Ta carrière, ligne par ligne</h2>
@@ -329,27 +357,33 @@ V.joueur.journal = `<div class="card"><div class="step">Le journal · tout, dans
   </div>
   <div class="note"><b>Ce que ça prouve :</b> la mémoire de la carrière, puisque rien n'est chiffré. Elle est aussi <b>lisible par mes sondes</b> : c'est comme ça que je pourrai te dire quelle histoire le jeu produit, au lieu de te l'affirmer.</div></div>`;
 
-V.joueur.fin = `<div class="card"><div class="step">Fin de carrière · 37 ans</div>
-  <h2>Marco Tavares</h2>
-  <div class="stats">
-    <div><div class="v">14</div><div class="k">saisons</div></div>
-    <div><div class="v">412</div><div class="k">matchs</div></div>
-    <div><div class="v">96</div><div class="k">buts</div></div>
-    <div><div class="v">2</div><div class="k">coupes</div></div>
-    <div><div class="v">11</div><div class="k">sélections</div></div>
-    <div><div class="v">5</div><div class="k">clubs</div></div>
+V.joueur.fin = `<div class="card"><div class="step">Fin de carrière</div>
+  <div class="hdr"><div class="t">Marco Tavares</div><div class="m">Milieu offensif · 2018 → 2032 · raccroche à 37 ans</div></div>
+  <div class="sheet">
+    <div><span class="l">Saisons</span><span class="v">14</span></div>
+    <div><span class="l">Matchs · buts · passes</span><span class="v">412 · 96 · 71</span></div>
+    <div><span class="l">Clubs</span><span class="v">5, dont 2 à l'étranger</span></div>
+    <div><span class="l">Sélections</span><span class="v">11 (2 buts)</span></div>
+    <div><span class="l">Meilleure saison</span><span class="v">2024-2025 · note 7,4</span></div>
+    <div><span class="l">Gains de carrière</span><span class="v money">18 400 000 €</span></div>
   </div>
-  <div class="trophies"><span>🥇 Coupe de France 2027</span><span>🥇 Coupe de Belgique 2024</span><span>🇫🇷 11 sélections</span><span>🌱 une académie qui tourne</span><span>👨‍👩‍👧‍👦 deux enfants</span></div>
-  <p class="narr">Un genou qui a dit non un an trop tôt, une académie dans ton quartier, et deux enfants qui n'ont jamais habité plus de trois ans au même endroit.</p>
+  <h3>Palmarès</h3>
+  <div class="st">
+    <div><span class="i">🥇</span><span class="n">2027</span><span class="w">Coupe de France, avec Le Havre AC</span></div>
+    <div><span class="i">🥇</span><span class="n">2024</span><span class="w">Coupe de Belgique, avec le Standard de Liège</span></div>
+    <div><span class="i">⭐</span><span class="n">2025</span><span class="w">Équipe type de la saison</span></div>
+    <div><span class="i">🌱</span><span class="n">depuis 2019</span><span class="w">Une académie qui tourne dans ton quartier</span></div>
+  </div>
+  <p class="narr" style="margin-top:12px">Un genou qui a dit non un an trop tôt. Deux enfants qui n'ont jamais habité plus de trois ans au même endroit. Et un club où l'on prononce encore ton nom.</p>
   <h3>Tes parties, de la meilleure à la moins bonne</h3>
   <div class="rank">
-    <div><span class="m">🥇</span><span><b>Karim Bensalah</b> · joueur · 1998-2015<br><span class="sub">3 titres, une Ligue des champions, une famille tenue</span></span><span class="tag">légende</span></div>
-    <div><span class="m">🥈</span><span><b>Marco Tavares</b> · joueur · 2018-2032<br><span class="sub">2 coupes, 11 sélections, une académie</span></span><span class="tag">accomplie</span></div>
-    <div><span class="m">🥉</span><span><b>Hervé Lambert</b> · entraîneur · 2018-2041<br><span class="sub">1 titre, 4 licenciements, deux internationaux formés</span></span><span class="tag">solide</span></div>
+    <div><span class="m">1</span><span><b>Karim Bensalah</b> · joueur · 1998-2015<br><span class="sub">3 titres, une Ligue des champions, une famille tenue</span></span><span class="tag">légende</span></div>
+    <div><span class="m">2</span><span><b>Marco Tavares</b> · joueur · 2018-2032<br><span class="sub">2 coupes, 11 sélections, une académie</span></span><span class="tag">accomplie</span></div>
+    <div><span class="m">3</span><span><b>Hervé Lambert</b> · entraîneur · 2018-2041<br><span class="sub">1 titre, 4 licenciements, deux internationaux formés</span></span><span class="tag">solide</span></div>
     <div><span class="m">4</span><span><b>Yann Prigent</b> · joueur · 1974-1986<br><span class="sub">une montée, un genou, personne autour</span></span><span class="tag">amère</span></div>
     <div><span class="m">5</span><span><b>Ibrahim Konaté</b> · joueur · 2008-2014<br><span class="sub">jamais titulaire, jamais parti</span></span><span class="tag">ratée</span></div>
   </div>
-  <div class="note"><b>Ce que ça prouve :</b> le classement de toutes tes parties, joueur et entraîneur mélangés, de la meilleure à la moins bonne. C'est ce que tu voulais à la place d'un score.</div></div>`;
+  <div class="note"><b>Ce que ça prouve :</b> le classement de toutes tes parties, joueur et entraîneur mélangés. Le palmarès est une liste datée, pas une grille d'icônes.</div></div>`;
 
 /* ---------------- COACH ---------------- */
 V.coach.origine = `<div class="card"><div class="step">Création · étape 1 sur 2</div>
@@ -468,24 +502,45 @@ V.coach.situation = `<div class="card"><div class="step">Ta situation · consult
   <div class="st"><div><span class="i">🕯️</span><span class="n">9 saisons</span><span class="w">Deux licenciements. Tu dors mal depuis septembre. <span class="down">↘</span></span></div></div>
   <div class="note"><b>Ce que ça prouve :</b> mêmes familles que côté joueur·euse, contenus différents. L'<b>usure du métier</b> est l'équivalent exact du corps du joueur : à son maximum, tu arrêtes.</div></div>`;
 
-V.coach.mercato = `<div class="card"><div class="step">Mercato d'été · dossier 4 sur 18</div>
-  <h2>Amadou Traoré</h2>
-  <div class="stats">
-    <div><div class="v">24</div><div class="k">ans</div></div>
-    <div><div class="v">🇸🇳</div><div class="k">Sénégal</div></div>
-    <div><div class="v">⚽</div><div class="k">attaquant</div></div>
-    <div><div class="v">🦊</div><div class="k">renard des surfaces</div></div>
+V.coach.mercato = `<div class="card no-sticky"><div class="step">Mercato d'été · dossier 4 sur 18</div>
+  <div class="sheet" style="margin-top:0">
+    <div><span class="l">Budget transferts restant</span><span class="v money">840 000 €</span></div>
+    <div><span class="l">Masse salariale</span><span class="v money">1 730 000 € / 1 950 000 €</span></div>
+    <div><span class="l">Effectif</span><span class="v">23 joueurs / 27</span></div>
   </div>
-  <div class="pills"><i class="pill foot">✅ s'épanouit en jeu direct — ce que le club demande</i><i class="pill neutre">📄 fin de contrat</i></div>
-  <dl class="kv" style="margin-top:12px">
-    <dt>Transfert</dt><dd>1,2 M€ · ton budget tient</dd>
-    <dt>Salaire</dt><dd>40 000 € par mois</dd>
-    <dt>À son poste</dt><dd>Deux attaquants, dont un que tu voulais vendre</dd>
-  </dl>
-  <div class="row"><button class="opt" style="flex:1"><span class="ico">✍️</span><span><b>Le recruter</b></span></button>
-    <button class="opt" style="flex:1"><span class="ico">🗑️</span><span><b>Écarter</b></span></button>
+  <div class="bar"><i style="width:89%"></i></div>
+  <p class="sub">Il te reste 220 000 € de masse salariale avant le plafond.</p>
+
+  <div class="hdr" style="margin-top:16px"><div class="t">Amadou Traoré</div>
+    <div class="m">Attaquant · 24 ans · 🇸🇳 Sénégal · Valenciennes · fin de contrat en juin</div></div>
+  <div class="pills"><i class="pill foot">✅ s'épanouit en jeu direct — ce que le club demande</i><i class="pill neutre">🦊 renard des surfaces</i></div>
+  <div class="sheet">
+    <div><span class="l">Niveau</span><span class="v">6,4</span></div>
+    <div><span class="l">Indemnité de transfert</span><span class="v money">1 200 000 €</span></div>
+    <div><span class="l">Salaire demandé</span><span class="v money">40 000 € / mois</span></div>
+    <div><span class="l">Ton budget après l'achat</span><span class="v money">− 360 000 €</span></div>
+    <div><span class="l">À son poste, tu as</span><span class="v">Bakayoko 6,1 · Perrin 5,4</span></div>
+  </div>
+  <div class="lack">⛔ <b>Il te manque 360 000 €</b> de budget de transfert, et <b>20 000 € / mois</b> de masse salariale.<br>
+    <span class="sub">Vendre Perrin (+ 380 000 €, −22 000 € / mois) suffirait pour les deux.</span></div>
+  <div class="row"><button class="opt" style="flex:1"><span class="ico">✍️</span><span><b>Recruter</b></span></button>
+    <button class="opt" style="flex:1"><span class="ico">🗑️</span><span><b>Écarter le dossier</b></span></button>
     <button class="opt" style="flex:1"><span class="ico">➡️</span><span><b>Passer</b></span></button></div>
-  <div class="note"><b>Ce que ça prouve :</b> le mercato est <b>gardé tel quel</b>, c'est le moment lent que tu aimes. Ce qui change : tes recrues font monter ou baisser ton <b>flair</b>, selon qu'elles jouent et réussissent, sur une à trois saisons.</div></div>`;
+
+  <h3>Ton effectif · vends ici pour libérer du budget ou de la place</h3>
+  <div class="scrollx"><table class="sq">
+    <thead><tr><th></th><th>Joueur</th><th>Âge</th><th class="r">Niv.</th><th class="r">Salaire / mois</th><th class="r">Valeur</th><th></th></tr></thead>
+    <tbody>
+      <tr><td><span class="pos">G</span></td><td>🇫🇷 Delecroix</td><td>29</td><td class="r">6,2</td><td class="r money">48 000 €</td><td class="r money">1 900 000 €</td><td class="r"><button class="mini">Vendre</button></td></tr>
+      <tr><td><span class="pos">D</span></td><td>🇫🇷 Semis</td><td>26</td><td class="r">6,0</td><td class="r money">42 000 €</td><td class="r money">1 650 000 €</td><td class="r"><button class="mini">Vendre</button></td></tr>
+      <tr><td><span class="pos">M</span></td><td>🇸🇳 Mendy</td><td>27</td><td class="r">6,7</td><td class="r money">61 000 €</td><td class="r money">3 100 000 €</td><td class="r"><button class="mini">Vendre</button></td></tr>
+      <tr><td><span class="pos">M</span></td><td>🇫🇷 Lefort</td><td>34</td><td class="r">5,8</td><td class="r money">39 000 €</td><td class="r money">210 000 €</td><td class="r"><button class="mini">Vendre</button></td></tr>
+      <tr><td><span class="pos">A</span></td><td>🇫🇷 Bakayoko</td><td>25</td><td class="r">6,1</td><td class="r money">44 000 €</td><td class="r money">1 850 000 €</td><td class="r"><button class="mini">Vendre</button></td></tr>
+      <tr><td><span class="pos">A</span></td><td>🇧🇷 Perrin</td><td>31</td><td class="r">5,4</td><td class="r money">22 000 €</td><td class="r money">380 000 €</td><td class="r"><button class="mini">Vendre</button></td></tr>
+    </tbody>
+  </table></div>
+  <p class="sub">Vingt-trois joueurs, la liste complète défile. Les montants sont exacts : rien n'est arrondi.</p>
+  <div class="note"><b>Ce que ça prouve :</b> le mercato est gardé, mais lu comme une <b>fiche</b>. L'effectif complet est sous la carte pour vendre, la situation est en haut, et ce qui bloque est écrit <b>au centime</b> avec la vente qui suffirait — c'est ton reproche des 10 000 € manquants qu'on ne voyait pas.</div></div>`;
 
 V.coach.boutique = `<div class="card"><div class="step">La boutique · ouverte quand tu veux</div>
   <h2>Ton train de vie</h2>
@@ -505,44 +560,50 @@ V.coach.boutique = `<div class="card"><div class="step">La boutique · ouverte q
   </div>
   <div class="note"><b>Ce que ça prouve :</b> la boutique existe aussi côté banc, avec ses sujets à elle, et dans les deux sens. Acheter une maison quand on peut être viré en novembre est exactement l'arbitrage qu'on cherche.</div></div>`;
 
-V.coach.bilan = `<div class="card"><div class="step">Saison 2018-2019 · le temps où l'on souffle</div>
-  <h2>Ce que la saison t'a laissé</h2>
-  <div class="stats">
-    <div><div class="v">9ᵉ</div><div class="k">objectif : 10ᵉ</div></div>
-    <div><div class="v">14</div><div class="k">victoires</div></div>
-    <div><div class="v">42</div><div class="k">buts pour</div></div>
-    <div><div class="v">38</div><div class="k">buts contre</div></div>
-    <div><div class="v">8ᵉ</div><div class="k">tour de coupe</div></div>
+V.coach.bilan = `<div class="card"><div class="step">Le temps où l'on souffle</div>
+  <div class="hdr"><div class="t">Saison 2018-2019</div><div class="m">Ligue 2 · 9ᵉ pour un objectif de 10ᵉ · éliminé au 8ᵉ tour de coupe</div></div>
+  <div class="sheet">
+    <div><span class="l">Bilan</span><span class="v">14 victoires · 8 nuls · 16 défaites</span></div>
+    <div><span class="l">Buts pour · contre</span><span class="v">42 · 38</span></div>
+    <div><span class="l">Budget de mercato utilisé</span><span class="v money">2 400 000 € sur 3 000 000 €</span></div>
+    <div><span class="l">Recrues titulaires</span><span class="v">3 sur 4</span></div>
+    <div><span class="l">Jeunes lancés</span><span class="v">2</span></div>
+    <div><span class="l">Contrat</span><span class="v">prolongé jusqu'en 2022</span></div>
   </div>
-  <div class="trophies"><span>🪑 le président t'a prolongé</span><span>🌱 2 jeunes lancés</span><span>🔍 3 recrues sur 4 titulaires</span></div>
-  <div class="bloc gagne"><span class="i">🏆</span><div><h4>Ce que tu as gagné</h4>
+  <div class="bloc gagne"><span class="i">▲</span><div><h4>Ce que tu as gagné</h4>
     <p class="narr">Un rang au-dessus de ce qu'on te demandait, avec le troisième budget en partant de la fin. Le soir de Guingamp, à dix contre onze, ton vestiaire a compris qui tu étais.</p></div></div>
-  <div class="bloc perdu"><span class="i">💔</span><div><h4>Ce que tu as perdu</h4>
+  <div class="bloc perdu"><span class="i">▼</span><div><h4>Ce que tu as perdu</h4>
     <p class="narr">Mendy, parti libre en te reprochant de l'avoir écarté. Deux mois de sommeil. Et l'école de ta fille, encore une fois.</p></div></div>
-  <div class="bloc suite"><span class="i">⏭️</span><div><h4>Ce qui t'attend</h4>
+  <div class="bloc suite"><span class="i">→</span><div><h4>Ce qui t'attend</h4>
     <p class="narr">Le président veut le top 5 avec le même budget. Un club de Ligue 1 a appelé ton agent. La chronique télé attend une réponse. Et le championnat commence à se renforcer contre toi.</p></div></div>
   <div class="note"><b>Ce que ça prouve :</b> le bilan en trois temps, identique dans les deux modes — c'était jusqu'ici la grande asymétrie entre les deux carrières.</div></div>`;
 
-V.coach.fin = `<div class="card"><div class="step">Fin de carrière · 61 ans</div>
-  <h2>Hervé Lambert</h2>
-  <div class="stats">
-    <div><div class="v">23</div><div class="k">saisons</div></div>
-    <div><div class="v">9</div><div class="k">clubs</div></div>
-    <div><div class="v">4</div><div class="k">licenciements</div></div>
-    <div><div class="v">1</div><div class="k">titre</div></div>
-    <div><div class="v">1</div><div class="k">coupe</div></div>
-    <div><div class="v">2</div><div class="k">internationaux formés</div></div>
+V.coach.fin = `<div class="card"><div class="step">Fin de carrière</div>
+  <div class="hdr"><div class="t">Hervé Lambert</div><div class="m">Entraîneur · 2018 → 2041 · raccroche à 61 ans, usure maximale</div></div>
+  <div class="sheet">
+    <div><span class="l">Saisons sur un banc</span><span class="v">23</span></div>
+    <div><span class="l">Clubs</span><span class="v">9, dont 2 en Ligue 1</span></div>
+    <div><span class="l">Licenciements</span><span class="v">4</span></div>
+    <div><span class="l">Matchs dirigés</span><span class="v">874</span></div>
+    <div><span class="l">Joueurs devenus internationaux</span><span class="v">2</span></div>
+    <div><span class="l">Gains de carrière</span><span class="v money">9 100 000 €</span></div>
   </div>
-  <div class="trophies"><span>🥇 Champion 2033</span><span>🥇 Coupe 2029</span><span>🎓 2 internationaux formés</span><span>🕯️ usure maximale</span></div>
-  <p class="narr">Deux joueurs que tu as lancés à dix-huit ans sont devenus internationaux. Ta fille ne t'a pas parlé pendant trois ans, et vous vous êtes retrouvés.</p>
+  <h3>Palmarès</h3>
+  <div class="st">
+    <div><span class="i">🥇</span><span class="n">2033</span><span class="w">Champion de Ligue 1, avec Lille</span></div>
+    <div><span class="i">🥇</span><span class="n">2029</span><span class="w">Coupe de France, avec Reims</span></div>
+    <div><span class="i">🎓</span><span class="n">2031 · 2036</span><span class="w">Deux joueurs lancés devenus internationaux</span></div>
+    <div><span class="i">📺</span><span class="n">depuis 2038</span><span class="w">Chroniqueur, tous les dimanches soir</span></div>
+  </div>
+  <p class="narr" style="margin-top:12px">Ta fille ne t'a pas parlé pendant trois ans, et vous vous êtes retrouvés. Tu dors mieux depuis que tu as arrêté.</p>
   <h3>Tes parties, de la meilleure à la moins bonne</h3>
   <div class="rank">
-    <div><span class="m">🥇</span><span><b>Karim Bensalah</b> · joueur · 1998-2015<br><span class="sub">3 titres, une Ligue des champions, une famille tenue</span></span><span class="tag">légende</span></div>
-    <div><span class="m">🥈</span><span><b>Marco Tavares</b> · joueur · 2018-2032<br><span class="sub">2 coupes, 11 sélections, une académie</span></span><span class="tag">accomplie</span></div>
-    <div><span class="m">🥉</span><span><b>Hervé Lambert</b> · entraîneur · 2018-2041<br><span class="sub">1 titre, 4 licenciements, deux internationaux formés</span></span><span class="tag">solide</span></div>
-    <div><span class="m">4</span><span><b>Yann Prigent</b> · joueur · 1974-1986</span><span class="tag">amère</span></div>
+    <div><span class="m">1</span><span><b>Karim Bensalah</b> · joueur · 1998-2015<br><span class="sub">3 titres, une Ligue des champions, une famille tenue</span></span><span class="tag">légende</span></div>
+    <div><span class="m">2</span><span><b>Marco Tavares</b> · joueur · 2018-2032<br><span class="sub">2 coupes, 11 sélections, une académie</span></span><span class="tag">accomplie</span></div>
+    <div><span class="m">3</span><span><b>Hervé Lambert</b> · entraîneur · 2018-2041<br><span class="sub">1 titre, 4 licenciements, deux internationaux formés</span></span><span class="tag">solide</span></div>
+    <div><span class="m">4</span><span><b>Yann Prigent</b> · joueur · 1974-1986<br><span class="sub">une montée, un genou, personne autour</span></span><span class="tag">amère</span></div>
   </div>
-  <div class="note"><b>Ce que ça prouve :</b> un seul classement pour les deux modes. Tes carrières de joueur et d'entraîneur se comparent dans la même liste.</div></div>`;
+  <div class="note"><b>Ce que ça prouve :</b> un seul classement pour les deux modes, et un palmarès daté qui se lit comme une fiche de carrière.</div></div>`;
 
 let mode = 'joueur', cur = 'origine';
 function setMode(m){
