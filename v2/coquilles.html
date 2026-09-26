@@ -10,13 +10,13 @@
     --ui:'Inter',system-ui,sans-serif; --display:'Bebas Neue',Impact,sans-serif; --narr:'Libre Baskerville',Georgia,serif;
   }
   :root[data-mode="joueur"]{ --bg:#101422; --panel:#171c30; --panel-2:#1f2540; --line:#2b3350; --gold:#e0b64a; --sage:#5da0c9; --muted:#9aa2bd; }
-  body{ background:var(--bg); color:var(--cream); font-family:var(--ui); font-size:15px; line-height:1.55; transition:background .2s; }
-  .wrap{ max-width:760px; margin:0 auto; padding-inline:16px; padding-block:20px 60px; }
+  body{ background:var(--bg); color:var(--cream); font-family:var(--ui); font-size:15px; line-height:1.5; transition:background .2s; }
+  .wrap{ max-width:780px; margin:0 auto; padding-inline:16px; padding-block:20px 60px; }
   h1{ font-family:var(--display); font-size:clamp(28px,6vw,44px); line-height:1; letter-spacing:.02em; margin:0 0 4px; }
-  h2{ font-family:var(--display); font-size:clamp(22px,4.4vw,30px); letter-spacing:.03em; margin:0 0 2px; line-height:1.05; text-wrap:balance; }
-  h3{ font-size:11px; letter-spacing:.13em; text-transform:uppercase; color:var(--gold); margin:18px 0 6px; font-weight:600; }
+  h2{ font-family:var(--display); font-size:clamp(23px,4.6vw,32px); letter-spacing:.03em; margin:0 0 8px; line-height:1.03; text-wrap:balance; }
+  h3{ font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--gold); margin:18px 0 8px; font-weight:600; }
   p{ margin:0 0 10px; }
-  .narr{ font-family:var(--narr); font-size:14.5px; color:#d9d4c3; }
+  .narr{ font-family:var(--narr); font-size:14px; color:#d9d4c3; }
   .sub{ color:var(--muted); font-size:12.5px; }
   .card{ background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; margin:0 0 14px; }
   .modes{ display:flex; gap:8px; margin:0 0 12px; }
@@ -27,41 +27,90 @@
   .nav button{ font:inherit; font-size:12px; padding:5px 10px; border-radius:99px; cursor:pointer;
     background:transparent; color:var(--muted); border:1px solid var(--line); }
   .nav button[aria-pressed="true"]{ color:#14150f; background:var(--cream); border-color:var(--cream); font-weight:600; }
-  .opt{ display:block; width:100%; text-align:left; font:inherit; color:var(--cream); background:var(--panel-2);
-    border:1px solid var(--line); border-left:3px solid var(--gold-dim); border-radius:9px; padding:12px 14px; margin:0 0 8px; cursor:pointer; }
-  .opt:hover{ border-left-color:var(--gold); background:#1d3227; }
+
+  /* options */
+  .opt{ display:grid; grid-template-columns:44px 1fr; gap:12px; width:100%; text-align:left; font:inherit; color:var(--cream);
+    background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin:0 0 8px; cursor:pointer; align-items:start; }
+  .opt:hover{ border-color:var(--gold-dim); background:#1d3227; }
   :root[data-mode="joueur"] .opt:hover{ background:#232a49; }
-  .opt b{ display:block; font-size:14.5px; margin-bottom:3px; }
-  .opt .two{ display:flex; flex-wrap:wrap; gap:4px 14px; font-size:12px; margin-top:6px; }
-  .opt .foot{ color:var(--sage); }
-  .opt .vie{ color:var(--amber); }
+  .opt .ico{ font-size:27px; line-height:1.05; text-align:center; }
+  .opt b{ display:block; font-size:14.5px; margin-bottom:2px; }
+  .pills{ display:flex; flex-wrap:wrap; gap:5px; margin-top:7px; }
+  .pill{ font-size:11.5px; padding:2px 8px; border-radius:99px; border:1px solid transparent; white-space:nowrap; }
+  .pill.foot{ color:var(--sage); border-color:color-mix(in srgb, var(--sage) 45%, transparent); background:color-mix(in srgb, var(--sage) 12%, transparent); }
+  .pill.vie{ color:var(--amber); border-color:color-mix(in srgb, var(--amber) 45%, transparent); background:color-mix(in srgb, var(--amber) 12%, transparent); }
+  .pill.risk{ color:var(--red); border-color:color-mix(in srgb, var(--red) 45%, transparent); background:color-mix(in srgb, var(--red) 12%, transparent); }
+  .pill.neutre{ color:var(--muted); border-color:var(--line); }
+
+  /* faits de match / timeline */
+  .tl{ display:grid; gap:4px; margin:6px 0 10px; }
+  .tl div{ display:grid; grid-template-columns:38px 22px 1fr; gap:8px; align-items:baseline; font-size:13px;
+    padding:5px 8px; border-radius:7px; background:var(--panel-2); }
+  .tl .min{ color:var(--muted); font-size:11.5px; font-variant-numeric:tabular-nums; }
+  .tl .me{ outline:1px solid var(--gold-dim); }
+
+  /* gros chiffres */
+  .stats{ display:grid; grid-template-columns:repeat(auto-fit,minmax(88px,1fr)); gap:8px; margin:10px 0 4px; }
+  .stats div{ background:var(--panel-2); border:1px solid var(--line); border-radius:9px; padding:9px 10px; text-align:center; }
+  .stats .v{ font-family:var(--display); font-size:29px; line-height:1; color:var(--gold); }
+  .stats .k{ font-size:10.5px; color:var(--muted); letter-spacing:.04em; margin-top:2px; }
+  .score{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .score .big{ font-family:var(--display); font-size:52px; line-height:1; color:var(--gold); }
+
+  /* liens & chantiers en lignes avec icône */
+  .st{ display:grid; gap:5px; }
+  .st div{ display:grid; grid-template-columns:30px 118px 1fr; gap:8px; align-items:baseline; font-size:13px; }
+  .st .i{ font-size:17px; text-align:center; }
+  .st .n{ color:var(--muted); font-size:12px; }
+  .st .arrow{ color:var(--sage); } .st .down{ color:var(--red); }
+  @media(max-width:560px){ .st div{ grid-template-columns:26px 1fr; } .st .n{ grid-column:2; } .st .w{ grid-column:2; } }
+
+  /* boutique */
+  .shop{ display:grid; gap:7px; }
+  .shop div{ display:grid; grid-template-columns:34px 1fr auto; gap:10px; align-items:center; font-size:13px;
+    background:var(--panel-2); border:1px solid var(--line); border-radius:9px; padding:9px 11px; }
+  .shop .i{ font-size:20px; text-align:center; }
+  .shop i{ color:var(--muted); font-style:normal; font-size:11.5px; display:block; }
+  .shop .p{ text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .shop .off{ opacity:.45; }
+  .tabs{ display:flex; gap:6px; margin:0 0 10px; }
+  .tabs button{ font:inherit; font-size:12.5px; font-weight:600; padding:6px 12px; border-radius:99px; cursor:pointer;
+    background:var(--panel-2); color:var(--muted); border:1px solid var(--line); }
+  .tabs button[aria-pressed="true"]{ background:var(--cream); color:#14150f; border-color:var(--cream); }
+
+  /* bilan */
+  .bloc{ display:grid; grid-template-columns:40px 1fr; gap:12px; background:var(--panel-2); border:1px solid var(--line);
+    border-radius:10px; padding:13px 15px; margin:0 0 9px; }
+  .bloc .i{ font-size:26px; text-align:center; line-height:1; }
+  .bloc h4{ margin:0 0 4px; font-size:12.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--gold); }
+  .bloc.perdu{ border-left:3px solid var(--red); } .bloc.perdu h4{ color:var(--red); }
+  .bloc.gagne{ border-left:3px solid var(--sage); } .bloc.gagne h4{ color:var(--sage); }
+  .bloc.suite{ border-left:3px solid var(--gold-dim); }
+
+  .trophies{ display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; }
+  .trophies span{ font-size:12.5px; padding:4px 10px; border-radius:8px; background:var(--panel-2); border:1px solid var(--line); }
+  .rank{ display:grid; gap:7px; }
+  .rank div{ display:grid; grid-template-columns:34px 1fr auto; gap:10px; align-items:center;
+    background:var(--panel-2); border:1px solid var(--line); border-radius:9px; padding:9px 11px; font-size:13px; }
+  .rank .m{ font-size:21px; text-align:center; }
+  .rank .tag{ font-size:11px; color:var(--muted); white-space:nowrap; }
+  .jrn{ display:grid; gap:5px; font-size:12.5px; }
+  .jrn div{ display:grid; grid-template-columns:70px 22px 1fr; gap:8px; align-items:baseline; }
+  .jrn .d{ color:var(--gold-dim); font-size:11px; }
   .kv{ display:grid; grid-template-columns:auto 1fr; gap:4px 12px; font-size:13px; margin:0 0 10px; }
-  .kv dt{ color:var(--muted); white-space:nowrap; }
-  .kv dd{ margin:0; }
+  .kv dt{ color:var(--muted); white-space:nowrap; } .kv dd{ margin:0; }
   .row{ display:flex; flex-wrap:wrap; gap:8px; }
   .chip{ font-size:12px; padding:3px 9px; border-radius:99px; background:var(--panel-2); border:1px solid var(--line); }
-  .chip.good{ color:var(--sage); } .chip.bad{ color:var(--red); } .chip.warn{ color:var(--amber); }
-  .big{ font-family:var(--display); font-size:46px; line-height:1; color:var(--gold); }
-  .score{ display:flex; align-items:baseline; gap:10px; }
+  .chip.on{ border-color:var(--gold); color:var(--gold); }
   .note{ border-top:1px dashed var(--line); margin-top:14px; padding-top:10px; font-size:12px; color:var(--muted); }
   .note b{ color:var(--gold-dim); }
-  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-  @media(max-width:620px){ .grid2{ grid-template-columns:1fr; } }
-  .shop{ display:grid; grid-template-columns:1fr auto; gap:6px 12px; font-size:13px; align-items:center; }
-  .shop i{ color:var(--muted); font-style:normal; font-size:12px; }
-  .jrn{ font-size:12.5px; border-left:2px solid var(--line); padding-left:12px; }
-  .jrn div{ margin-bottom:6px; }
-  .jrn span{ color:var(--gold-dim); }
-  .rank{ display:grid; grid-template-columns:auto 1fr auto; gap:6px 12px; font-size:13px; align-items:baseline; }
-  .rank b{ font-family:var(--display); font-size:20px; color:var(--gold); }
-  ol{ padding-left:18px; margin:0 0 10px; } li{ margin-bottom:5px; }
-  .step{ font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+  .step{ font-size:10.5px; letter-spacing:.11em; text-transform:uppercase; color:var(--muted); margin-bottom:9px; }
   [hidden]{ display:none!important; }
 </style>
 
 <div class="wrap">
   <h1>Coquilles vides</h1>
-  <p class="sub">Absolut Coach 2 · aucune mécanique derrière, uniquement la structure et les mots. Chaque écran dit en bas ce qu'il est censé prouver.</p>
+  <p class="sub">Absolut Coach 2 · aucune mécanique derrière. Chaque écran dit en bas ce qu'il est censé prouver.</p>
 
   <div class="modes">
     <button id="mJ" aria-pressed="true" onclick="setMode('joueur')">👟 Joueur·euse</button>
@@ -73,349 +122,429 @@
 
 <script>
 const S = {
-  joueur: [
-    ['creation', 'Création'],
-    ['semaine', 'La semaine'],
-    ['arret', 'Un arrêt'],
-    ['fait', 'Un fait de match'],
-    ['resultat', 'Le résultat'],
-    ['situation', 'Ta situation'],
-    ['boutique', 'La boutique'],
-    ['treve', 'La trêve'],
-    ['offre', 'Une offre'],
-    ['nego', 'La négociation'],
-    ['bilan', 'Bilan de saison'],
-    ['journal', 'Le journal'],
-    ['fin', 'Fin de carrière'],
-  ],
-  coach: [
-    ['creation', 'Création'],
-    ['plan', 'Le plan de saison'],
-    ['semaine', 'La semaine du groupe'],
-    ['arret', 'Un arrêt de compo'],
-    ['fait', 'Un fait de match'],
-    ['resultat', 'Le résultat'],
-    ['situation', 'Ta situation'],
-    ['mercato', 'Le mercato'],
-    ['boutique', 'La boutique'],
-    ['bilan', 'Bilan de saison'],
-    ['fin', 'Fin de carrière'],
-  ],
+  joueur: [['origine','Création · origine'],['ambition','Création · ambitions'],['semaine','La semaine'],['arret','Un arrêt'],
+    ['fait','Un fait de match'],['resultat','Le résultat'],['situation','Ta situation'],['boutique','La boutique'],
+    ['treve','La trêve'],['offre','Une offre'],['nego','La négociation'],['bilan','Bilan de saison'],['journal','Le journal'],['fin','Fin de carrière']],
+  coach: [['origine','Création · origine'],['ambition','Création · ambitions'],['plan','Le plan de saison'],['semaine','La semaine du groupe'],
+    ['arret','Un arrêt de compo'],['fait','Un fait de match'],['resultat','Le résultat'],['situation','Ta situation'],
+    ['mercato','Le mercato'],['boutique','La boutique'],['bilan','Bilan de saison'],['fin','Fin de carrière']],
 };
 
-const V = {
-  joueur: {
-    creation: `<div class="card"><div class="step">Création · 1 seul choix qui écrit tout</div>
-      <h2>Où tu as appris à jouer</h2>
-      <p class="narr">Ton époque et ton poste sont derrière toi. Reste le plus lourd : d'où tu viens.</p>
-      <button class="opt"><b>🏛️ La grande académie</b><span class="sub">Formé au centre d'un club professionnel. On t'a appris à jouer, on t'a aussi appris à attendre.</span>
-        <div class="two"><span class="foot">Technique installée · un agent déjà là</span><span class="vie">Des proches loin · une image à construire</span></div></button>
-      <button class="opt"><b>🧱 Le terrain du quartier</b><span class="sub">Repéré tard, sur du bitume. Personne ne t'a rien appris, et ça se voit dans les deux sens.</span>
-        <div class="two"><span class="foot">Physique et mental d'acier · technique brute</span><span class="vie">Les tiens autour de toi · pas un euro</span></div></button>
-      <button class="opt"><b>✈️ Arrivé de l'étranger</b><span class="sub">Un pari de recruteur, une langue à apprendre, une famille à six mille kilomètres.</span>
-        <div class="two"><span class="foot">Un pied hors norme · un vestiaire à conquérir</span><span class="vie">Une famille à faire venir · tout à prouver</span></div></button>
-      <div class="note"><b>Ce que ça prouve :</b> un seul choix pose les quatre familles d'un coup — tes axes, tes liens de départ, tes chantiers de vie, ton corps. Ta qualité et ton défaut sont tirés au sort autour de cette origine et <b>ne sont pas nommés</b> : tu les découvriras en jouant.</div></div>`,
+const V = { joueur:{}, coach:{} };
 
-    semaine: `<div class="card"><div class="step">Saison 2018-2019 · 12ᵉ journée · Le Havre AC</div>
-      <h2>Ta semaine</h2>
-      <p class="narr">Samedi, vous recevez Amiens. Trois jours de travail devant toi, et une seule chose que tu peux vraiment décider.</p>
-      <h3>Ce que tu travailles</h3>
-      <button class="opt"><b>⚽ Rester après l'entraînement</b><span class="sub">Frappes, centres, gestes répétés jusqu'à la nuit.</span>
-        <div class="two"><span class="foot">Samedi : des jambes un peu lourdes</span><span class="vie">Tu rentres tard</span></div></button>
-      <button class="opt"><b>💪 La salle et les sprints</b><span class="sub">Le préparateur t'a fait un programme. Il est violent.</span>
-        <div class="two"><span class="foot">Samedi : fatigué</span><span class="vie">—</span></div></button>
-      <button class="opt"><b>🧠 La vidéo et le calme</b><span class="sub">Tu revois tes matchs, tu parles au préparateur mental.</span>
-        <div class="two"><span class="foot">Samedi : lucide</span><span class="vie">Du temps chez toi</span></div></button>
-      <button class="opt"><b>🛌 Lever le pied</b><span class="sub">Le corps tire. Tu écoutes.</span>
-        <div class="two"><span class="foot">Samedi : frais</span><span class="vie">Deux jours avec les tiens</span></div></button>
-      <div class="note"><b>Ce que ça prouve :</b> la décision fixe de chaque journée. Un clic, puis le match. Aucun chiffre : ni ton niveau, ni ton plafond, ni la valeur du gain. Le compte rendu de séance te dira si elle a rendu.</div></div>`,
+/* ---------------- JOUEUR ---------------- */
+V.joueur.origine = `<div class="card"><div class="step">Création · étape 1 sur 2</div>
+  <h2>Où tu as appris à jouer</h2>
+  <p class="narr">Ton époque et ton poste sont derrière toi. Reste le plus lourd : d'où tu viens.</p>
+  <button class="opt"><span class="ico">🏛️</span><span><b>La grande académie</b><span class="sub">Formé au centre d'un club pro. On t'a appris à jouer, on t'a aussi appris à attendre.</span>
+    <span class="pills"><i class="pill foot">⚽ technique installée</i><i class="pill foot">🤝 un agent déjà là</i><i class="pill vie">🏡 les tiens loin</i><i class="pill neutre">📣 personne ne te connaît</i></span></span></button>
+  <button class="opt"><span class="ico">🧱</span><span><b>Le terrain du quartier</b><span class="sub">Repéré tard, sur du bitume. Personne ne t'a rien appris, et ça se voit dans les deux sens.</span>
+    <span class="pills"><i class="pill foot">💪 physique d'acier</i><i class="pill foot">🧠 mental d'acier</i><i class="pill risk">⚽ technique brute</i><i class="pill vie">🏡 les tiens autour de toi</i></span></span></button>
+  <button class="opt"><span class="ico">✈️</span><span><b>Arrivé de l'étranger</b><span class="sub">Un pari de recruteur, une langue à apprendre, une famille à six mille kilomètres.</span>
+    <span class="pills"><i class="pill foot">🎩 un pied hors norme</i><i class="pill risk">✊ un vestiaire à conquérir</i><i class="pill vie">🏡 une famille à faire venir</i></span></span></button>
+  <div class="note"><b>Ce que ça prouve :</b> un seul choix pose les quatre familles d'un coup — axes, liens de départ, chantiers de vie, corps. Ta qualité et ton défaut sont tirés au sort autour de cette origine et <b>ne sont pas nommés</b> : tu les découvriras en jouant.</div></div>`;
 
-    arret: `<div class="card"><div class="step">Avant Amiens · ce qui est en train de t'arriver</div>
-      <h2>Le coach t'attend dans son bureau</h2>
-      <p class="narr">« Assieds-toi. Je vais être direct : samedi, je commence avec Diallo. Ce n'est pas contre toi. »</p>
-      <button class="opt"><b>Encaisser sans un mot</b><span class="sub">Tu hoches la tête et tu sors.</span>
-        <div class="two"><span class="foot">Il te trouve professionnel</span><span class="vie">Tu rentres avec ça sur l'estomac</span></div></button>
-      <button class="opt"><b>Demander ce qui te manque</b><span class="sub">Tu veux savoir, précisément.</span>
-        <div class="two"><span class="foot">Il te dit la vérité, elle pique</span><span class="vie">—</span></div></button>
-      <button class="opt"><b>Lui dire que tu mérites mieux</b><span class="sub">Tu as marqué deux fois en trois entrées.</span>
-        <div class="two"><span class="foot">Le vestiaire va le savoir</span><span class="vie">Ton agent est content de toi</span></div></button>
-      <button class="opt"><b>Appeler ton agent en sortant</b><span class="sub">Si c'est comme ça, autant préparer janvier.</span>
-        <div class="two"><span class="foot">Le coach le sentira</span><span class="vie">Une porte s'ouvre ailleurs</span></div></button>
-      <div class="note"><b>Ce que ça prouve :</b> un arrêt situationnel — il n'apparaît que <b>parce que</b> tu as perdu ta place. Chaque option annonce ses deux côtés, foot et vie, <b>en mots</b>. Zéro à trois arrêts par journée, celui-ci compte pour un.</div></div>`,
+V.joueur.ambition = `<div class="card"><div class="step">Création · étape 2 sur 2</div>
+  <h2>Ce que tu veux de cette vie</h2>
+  <p class="narr">À dix-sept ans, on a tous une idée de pourquoi on court. Elle changera peut-être.</p>
+  <button class="opt"><span class="ico">🏆</span><span><b>Tout gagner</b><span class="sub">Les trophées, le ballon d'or, les grands soirs. Le reste attendra.</span>
+    <span class="pills"><i class="pill foot">📣 la presse te suivra tôt</i><i class="pill risk">🏡 les proches passeront après</i></span></span></button>
+  <button class="opt"><span class="ico">🏡</span><span><b>Rester près des miens</b><span class="sub">Jouer, bien gagner, et dîner chez toi le dimanche.</span>
+    <span class="pills"><i class="pill vie">🏡 une famille solide</i><i class="pill risk">🌍 tu refuseras des clubs</i></span></span></button>
+  <button class="opt"><span class="ico">💰</span><span><b>Mettre ma famille à l'abri</b><span class="sub">Le foot est un métier. Tu es le premier de la famille à en vivre.</span>
+    <span class="pills"><i class="pill vie">💰 l'argent d'abord</i><i class="pill risk">📣 on te reprochera tes transferts</i></span></span></button>
+  <button class="opt"><span class="ico">🌱</span><span><b>Construire autre chose à côté</b><span class="sub">Une académie dans ton quartier, un commerce, un nom qui sert.</span>
+    <span class="pills"><i class="pill vie">🌱 des projets tôt</i><i class="pill risk">⚽ du temps pris au foot</i></span></span></button>
+  <div class="note"><b>Ce que ça prouve :</b> l'ambition est le deuxième choix de création, et c'est <b>elle qui ouvre les contenus</b> — un joueur qui veut tout gagner ne croise pas les mêmes événements que celui qui veut rentrer chez lui. Elle pourra dériver dans la carrière.</div></div>`;
 
-    fait: `<div class="card"><div class="step">Le Havre – Amiens · 67ᵉ minute · 1-1</div>
-      <h2>Le ballon arrive sur ton pied gauche</h2>
-      <p class="narr">Tu es entré à la 58ᵉ. Vingt mètres, l'angle est fermé, et Diallo appelle dans le dos du défenseur.</p>
-      <button class="opt"><b>Frapper</b></button>
-      <button class="opt"><b>Le servir</b></button>
-      <div class="note"><b>Ce que ça prouve :</b> un fait de match, adapté à ton poste. <b>Aucune chance affichée</b> : tes axes et le hasard tranchent, et tu ne sauras jamais si l'autre option aurait marché. Zéro à deux par match, tirés.</div></div>`,
+V.joueur.semaine = `<div class="card"><div class="step">2018-2019 · 12ᵉ journée · Le Havre AC reçoit Amiens</div>
+  <h2>Ta semaine</h2>
+  <p class="narr">Trois jours de travail, et une seule chose que tu peux vraiment décider.</p>
+  <h3>Ce que tu travailles</h3>
+  <button class="opt"><span class="ico">⚽</span><span><b>Rester après l'entraînement</b><span class="sub">Frappes, centres, gestes répétés jusqu'à la nuit.</span>
+    <span class="pills"><i class="pill risk">🫁 samedi : jambes lourdes</i><i class="pill vie">🏡 tu rentres tard</i></span></span></button>
+  <button class="opt"><span class="ico">💪</span><span><b>La salle et les sprints</b><span class="sub">Le préparateur t'a fait un programme. Il est violent.</span>
+    <span class="pills"><i class="pill risk">🫁 samedi : fatigué</i></span></span></button>
+  <button class="opt"><span class="ico">🧠</span><span><b>La vidéo et le calme</b><span class="sub">Tu revois tes matchs, tu parles au préparateur mental.</span>
+    <span class="pills"><i class="pill foot">🎯 samedi : lucide</i><i class="pill vie">🏡 du temps chez toi</i></span></span></button>
+  <button class="opt"><span class="ico">🔁</span><span><b>La semaine normale</b><span class="sub">Tu fais ce que le coach demande, rien de plus, rien de moins.</span>
+    <span class="pills"><i class="pill neutre">↔️ un peu de tout, rien de marquant</i></span></span></button>
+  <button class="opt"><span class="ico">🛌</span><span><b>Lever le pied</b><span class="sub">Le corps tire. Tu écoutes.</span>
+    <span class="pills"><i class="pill foot">🫁 samedi : frais</i><i class="pill vie">🏡 deux jours avec les tiens</i></span></span></button>
+  <div class="note"><b>Ce que ça prouve :</b> la décision fixe de chaque journée, avec l'option <b>semaine normale</b> — on n'est pas obligé de pousser un axe. Aucun chiffre : ni ton niveau, ni ton plafond, ni la valeur du gain. Le compte rendu de séance dira si elle a rendu.</div></div>`;
 
-    resultat: `<div class="card"><div class="step">12ᵉ journée · terminé</div>
-      <div class="score"><span class="big">2 – 1</span><div><b>Le Havre AC</b> – Amiens SC<br><span class="sub">Tu es entré à la 58ᵉ · note 7,2</span></div></div>
-      <p class="narr" style="margin-top:12px">Tu as frappé. Le gardien a détourné, le ballon est revenu sur Diallo qui a poussé au fond. Il t'a cherché dans la foule pour te montrer du doigt.</p>
-      <h3>Ce que ça change</h3>
-      <div class="row">
-        <span class="chip good">Le coach revoit son jugement</span>
-        <span class="chip good">Le vestiaire t'a vu jouer collectif</span>
-        <span class="chip warn">Tes jambes ont pris cher</span>
-      </div>
-      <div class="note"><b>Ce que ça prouve :</b> le résultat répond à tes décisions de la semaine et au fait de match. Les conséquences sont des <b>phrases</b>, jamais des variations chiffrées. La seule note affichée est celle du match, qui est déjà sur dix dans le vrai football.</div></div>`,
+V.joueur.arret = `<div class="card"><div class="step">Avant Amiens · ce qui est en train de t'arriver</div>
+  <h2>Le coach t'attend dans son bureau</h2>
+  <p class="narr">« Assieds-toi. Je vais être direct : samedi, je commence avec Diallo. Ce n'est pas contre toi. »</p>
+  <button class="opt"><span class="ico">🤐</span><span><b>Encaisser sans un mot</b><span class="sub">Tu hoches la tête et tu sors.</span>
+    <span class="pills"><i class="pill foot">🎽 il te trouve professionnel</i><i class="pill risk">🧠 tu rentres avec ça sur l'estomac</i></span></span></button>
+  <button class="opt"><span class="ico">❓</span><span><b>Demander ce qui te manque</b><span class="sub">Tu veux savoir, précisément.</span>
+    <span class="pills"><i class="pill foot">🎽 il te dit la vérité</i><i class="pill risk">🧠 elle pique</i></span></span></button>
+  <button class="opt"><span class="ico">🔥</span><span><b>Lui dire que tu mérites mieux</b><span class="sub">Tu as marqué deux fois en trois entrées.</span>
+    <span class="pills"><i class="pill risk">🎽 il ne l'oubliera pas</i><i class="pill foot">✊ le vestiaire te respecte</i></span></span></button>
+  <button class="opt"><span class="ico">📞</span><span><b>Appeler ton agent en sortant</b><span class="sub">Si c'est comme ça, autant préparer janvier.</span>
+    <span class="pills"><i class="pill risk">🎽 le coach le sentira</i><i class="pill vie">🤝 une porte s'ouvre ailleurs</i></span></span></button>
+  <div class="note"><b>Ce que ça prouve :</b> un arrêt situationnel — il n'apparaît que <b>parce que</b> tu as perdu ta place. Chaque option annonce ses deux côtés en pastilles, foot et vie. Zéro à trois arrêts par journée, celui-ci compte pour un.</div></div>`;
 
-    situation: `<div class="card"><div class="step">Ta situation · consultable à tout moment</div>
-      <h2>Où tu en es</h2>
-      <h3>Ce que les autres pensent de toi</h3>
-      <dl class="kv">
-        <dt>Le coach</dt><dd>Il te fait entrer, il ne te lance pas encore.</dd>
-        <dt>Le vestiaire</dt><dd>On te sert volontiers. Tu comptes ici.</dd>
-        <dt>Le club</dt><dd>Le président t'a promis du temps de jeu. Il ne l'a pas tenu.</dd>
-        <dt>Les supporters</dt><dd>Ton nom circule. Rien de plus.</dd>
-        <dt>Ton agent</dt><dd>Il répond vite et il dit ce qu'il sait.</dd>
-        <dt>Le sélectionneur</dt><dd>Il ne sait pas encore que tu existes.</dd>
-      </dl>
-      <h3>Ta vie</h3>
-      <dl class="kv">
-        <dt>Les proches</dt><dd>Ta mère a déménagé près du club. Ça tient.</dd>
-        <dt>L'argent</dt><dd>Tu gagnes plus que tu ne dépenses, pour l'instant.</dd>
-        <dt>Ton image</dt><dd>Un joueur de plus, pas encore un nom.</dd>
-        <dt>Tes projets</dt><dd>Rien de commencé.</dd>
-      </dl>
-      <h3>Ton corps</h3>
-      <p class="sub">Vingt-deux ans, rien de cassé, et le staff te trouve solide.</p>
-      <h3>Ce que le staff te dit de ton jeu</h3>
-      <p class="narr">« Techniquement, tu es déjà au niveau du championnat au-dessus. Physiquement, tu es en retard sur le groupe. Ton pied gauche, on n'en parle même pas. »</p>
-      <div class="note"><b>Ce que ça prouve :</b> les jauges existent dans le moteur et <b>ne sortent jamais en chiffres</b>. Les quatre familles sont séparées : les liens (les autres), les chantiers (ta vie), l'état long (ton corps), les axes (racontés par le staff, deux ou trois fois par saison).</div></div>`,
+V.joueur.fait = `<div class="card"><div class="step">Le Havre – Amiens · 67ᵉ minute · 1-1</div>
+  <h2>Le ballon arrive sur ton pied gauche</h2>
+  <p class="narr">Tu es entré à la 58ᵉ. Vingt mètres, l'angle est fermé, et Diallo appelle dans le dos du défenseur.</p>
+  <button class="opt"><span class="ico">🎯</span><span><b>Frapper</b></span></button>
+  <button class="opt"><span class="ico">🅰️</span><span><b>Le servir</b></span></button>
+  <div class="note"><b>Ce que ça prouve :</b> un fait de match adapté à ton poste. <b>Aucune chance affichée</b> : tes axes et le hasard tranchent, et tu ne sauras jamais si l'autre option aurait marché. Zéro à deux par match.</div></div>`;
 
-    boutique: `<div class="card"><div class="step">La boutique · ouverte quand tu veux</div>
-      <h2>Ce que tu peux te permettre</h2>
-      <p class="sub">Ligue 2, 14 000 € par mois. Le catalogue dépend de là où tu es : il n'y a pas de maison à Saint-Tropez dans cette liste.</p>
-      <div class="shop">
-        <div>🚗 Une voiture correcte<br><i>Ton image monte un peu. Tes proches trouvent ça raisonnable.</i></div><div>18 000 €<br><i>entretien léger</i></div>
-        <div>🏠 Un appartement près du centre<br><i>Tu dors mieux. Ta famille vient moins.</i></div><div>90 000 €<br><i>entretien réel</i></div>
-        <div>🧘 Un préparateur physique perso<br><i>Tes séances rendent mieux. Chaque mois.</i></div><div>2 000 € / mois</div>
-        <div>👨‍👩‍👧 Faire venir tes parents<br><i>Les proches, d'un coup. Une fois.</i></div><div>40 000 €</div>
-        <div class="sub">🏝️ Une maison au bord de l'eau</div><div class="sub">hors de portée</div>
-      </div>
-      <div class="note"><b>Ce que ça prouve :</b> l'argent sert. Chaque achat a un <b>coût d'entretien</b>, donc le train de vie te suit quand tes revenus baissent — et tu pourras revendre, en le payant ailleurs.</div></div>`,
+V.joueur.resultat = `<div class="card"><div class="step">12ᵉ journée · terminé</div>
+  <div class="score"><span class="big">2 – 1</span><div><b>Le Havre AC</b> – Amiens SC<br><span class="sub">Tu es entré à la 58ᵉ · 32 minutes · note 7,2</span></div></div>
+  <h3>Le film du match</h3>
+  <div class="tl">
+    <div><span class="min">14ᵉ</span><span>⚽</span><span>Amiens ouvre le score — Gomis, sur corner</span></div>
+    <div><span class="min">39ᵉ</span><span>🟨</span><span>Lefort averti pour contestation</span></div>
+    <div><span class="min">52ᵉ</span><span>⚽</span><span>Égalisation — <b>Diallo</b>, ton concurrent au poste</span></div>
+    <div class="me"><span class="min">58ᵉ</span><span>🔄</span><span>Tu entres à la place de Traoré</span></div>
+    <div class="me"><span class="min">67ᵉ</span><span>🎯</span><span>Ta frappe est détournée… <b>Diallo pousse au fond</b>. 2-1</span></div>
+    <div><span class="min">74ᵉ</span><span>🎪</span><span>Penalty pour Amiens — <b>arrêté</b> par Delecroix</span></div>
+    <div><span class="min">88ᵉ</span><span>🩼</span><span>Sortie sur blessure de Mendy, cuisse</span></div>
+  </div>
+  <h3>Ce que ça change</h3>
+  <div class="pills">
+    <i class="pill foot">🎽 le coach revoit son jugement</i>
+    <i class="pill foot">✊ le vestiaire t'a vu jouer collectif</i>
+    <i class="pill risk">🫁 tes jambes ont pris cher</i>
+    <i class="pill neutre">⚔️ Diallo a marqué : ta place reste chère</i>
+  </div>
+  <div class="note"><b>Ce que ça prouve :</b> le film du match est de retour — buteurs, cartons, penalty, blessure — <b>y compris ce qui ne te concerne pas</b>, et en marquant ce qui te concerne. Les conséquences restent des phrases, jamais des chiffres.</div></div>`;
 
-    treve: `<div class="card"><div class="step">Trêve d'hiver · un des quatre temps lents</div>
-      <h2>Deux semaines sans match</h2>
-      <p class="narr">Le club ferme jusqu'au 3 janvier. Personne ne te demande rien, et c'est justement le problème.</p>
-      <button class="opt"><b>🏡 Rentrer chez toi</b><span class="sub">Ta sœur se marie le 28. Tu n'y étais pas l'an dernier.</span>
-        <div class="two"><span class="foot">Tu reprendras un peu lourd</span><span class="vie">Les proches, franchement</span></div></button>
-      <button class="opt"><b>🏋️ Rester travailler seul</b><span class="sub">Le centre est vide. Tu as les clés.</span>
-        <div class="two"><span class="foot">Janvier te trouvera prêt</span><span class="vie">Personne ne comprendra</span></div></button>
-      <button class="opt"><b>🤝 Lancer le projet dont on te parle</b><span class="sub">Un ami veut monter une académie dans ton quartier.</span>
-        <div class="two"><span class="foot">Ça te prendra du temps toute l'année</span><span class="vie">Un projet, une image</span></div></button>
-      <button class="opt"><b>☀️ Partir loin, sans téléphone</b><span class="sub">Dix jours où personne ne te trouve.</span>
-        <div class="two"><span class="foot">Tu reviens frais</span><span class="vie">L'agent t'a cherché</span></div></button>
-      <div class="note"><b>Ce que ça prouve :</b> les temps lents sont là (mercato d'été, trêve, mercato d'hiver, intersaison) et c'est là que la vie se décide. Un projet lancé ici <b>prélèvera sur tes semaines</b> jusqu'à ce qu'il aboutisse.</div></div>`,
+V.joueur.situation = `<div class="card"><div class="step">Ta situation · consultable à tout moment</div>
+  <h2>Où tu en es</h2>
+  <h3>Ce que les autres pensent de toi</h3>
+  <div class="st">
+    <div><span class="i">🎽</span><span class="n">Le coach</span><span class="w">Il te fait entrer, il ne te lance pas encore. <span class="arrow">↗</span></span></div>
+    <div><span class="i">✊</span><span class="n">Le vestiaire</span><span class="w">On te sert volontiers. Tu comptes ici.</span></div>
+    <div><span class="i">🪑</span><span class="n">Le club</span><span class="w">Le président t'avait promis du temps de jeu. Il ne l'a pas tenu. <span class="down">↘</span></span></div>
+    <div><span class="i">📣</span><span class="n">Les supporters</span><span class="w">Ton nom circule. Rien de plus.</span></div>
+    <div><span class="i">🤝</span><span class="n">Ton agent</span><span class="w">Il répond vite et il dit ce qu'il sait.</span></div>
+    <div><span class="i">🇫🇷</span><span class="n">Le sélectionneur</span><span class="w">Il ne sait pas encore que tu existes.</span></div>
+  </div>
+  <h3>Ta vie</h3>
+  <div class="st">
+    <div><span class="i">🏡</span><span class="n">Les proches</span><span class="w">Ta mère a déménagé près du club. Ça tient. <span class="arrow">↗</span></span></div>
+    <div><span class="i">💰</span><span class="n">L'argent</span><span class="w">Tu gagnes plus que tu ne dépenses, pour l'instant.</span></div>
+    <div><span class="i">📸</span><span class="n">Ton image</span><span class="w">Un joueur de plus, pas encore un nom.</span></div>
+    <div><span class="i">🌱</span><span class="n">Tes projets</span><span class="w">Rien de commencé.</span></div>
+  </div>
+  <h3>Ton corps</h3>
+  <div class="st"><div><span class="i">🩻</span><span class="n">22 ans</span><span class="w">Rien de cassé, et le staff te trouve solide.</span></div></div>
+  <h3>Ce que le staff dit de ton jeu</h3>
+  <p class="narr">« Techniquement, tu es déjà au niveau du championnat au-dessus. Physiquement, tu es en retard sur le groupe. Ton pied gauche, on n'en parle même pas. »</p>
+  <div class="note"><b>Ce que ça prouve :</b> les jauges existent dans le moteur et <b>ne sortent jamais en chiffres</b>. Les flèches disent seulement ce qui a bougé récemment. Quatre familles séparées : les liens, les chantiers, l'état long, et les axes racontés par le staff.</div></div>`;
 
-    offre: `<div class="card"><div class="step">Mercato d'été · une proposition</div>
-      <h2>Le Standard de Liège</h2>
-      <p class="narr">Ton agent a décroché. « Ils te veulent, ils jouent l'Europe, et le coach a demandé ton nom. Réfléchis vite. »</p>
-      <dl class="kv">
-        <dt>Le club</dt><dd>Belgique · joue la coupe d'Europe</dd>
-        <dt>Le rôle promis</dt><dd>Rotation. Tu joueras, pas tout le temps.</dd>
-        <dt>La concurrence</dt><dd>Deux joueurs devant toi à ton poste</dd>
-        <dt>Le coach</dt><dd>Réputé dur avec les jeunes</dd>
-      </dl>
-      <div class="row"><button class="opt" style="flex:1">
-        <b>Ouvrir la négociation</b></button><button class="opt" style="flex:1"><b>Refuser</b><span class="sub">Elle disparaît pour de bon.</span></button></div>
-      <p class="sub">Ton agent dit qu'il reste « deux ou trois pistes sérieuses ». Tu ne sais pas s'il dit vrai.</p>
-      <div class="note"><b>Ce que ça prouve :</b> une offre à la fois, sans savoir ce qui vient après. Ce que l'agent te révèle dépend de votre relation — c'est un lien, pas un chiffre.</div></div>`,
+V.joueur.boutique = `<div class="card"><div class="step">La boutique · ouverte quand tu veux</div>
+  <h2>Ton train de vie</h2>
+  <p class="sub">Ligue 2 · 14 000 € par mois · tu dépenses 4 200 € par mois d'entretien.</p>
+  <div class="tabs"><button aria-pressed="true" onclick="shop('a',this)">Acheter</button><button aria-pressed="false" onclick="shop('v',this)">Vendre</button></div>
+  <div id="shopA" class="shop">
+    <div><span class="i">🚗</span><span>Une voiture correcte<i>Ton image monte un peu. Tes proches trouvent ça raisonnable.</i></span><span class="p">18 000 €<i>entretien léger</i></span></div>
+    <div><span class="i">🏠</span><span>Un appartement près du centre<i>Tu dors mieux. Ta famille vient moins.</i></span><span class="p">90 000 €<i>420 € / mois</i></span></div>
+    <div><span class="i">🧘</span><span>Un préparateur perso<i>Tes séances rendent mieux, chaque semaine.</i></span><span class="p">2 000 € / mois</span></div>
+    <div><span class="i">👨‍👩‍👧</span><span>Faire venir tes parents<i>Les proches, d'un coup. Une seule fois.</i></span><span class="p">40 000 €</span></div>
+    <div class="off"><span class="i">🏝️</span><span>Une maison au bord de l'eau<i>Il faudrait jouer deux divisions au-dessus.</i></span><span class="p">hors de portée</span></div>
+  </div>
+  <div id="shopV" class="shop" hidden>
+    <div><span class="i">🚙</span><span>Le 4×4 acheté en 2017<i>Tes proches diront que tu recules. Ton image aussi.</i></span><span class="p">+ 22 000 €<i>−340 € / mois</i></span></div>
+    <div><span class="i">🏢</span><span>L'appartement du centre<i>Tu retournes en colocation près du centre d'entraînement.</i></span><span class="p">+ 78 000 €<i>−420 € / mois</i></span></div>
+    <div><span class="i">🧘</span><span>Arrêter le préparateur perso<i>Tes séances rendront moins dès la semaine prochaine.</i></span><span class="p">−2 000 € / mois</span></div>
+    <div class="off"><span class="i">👨‍👩‍👧</span><span>La maison de tes parents<i>Certaines choses ne se revendent pas.</i></span><span class="p">—</span></div>
+  </div>
+  <div class="note"><b>Ce que ça prouve :</b> on achète <b>et on vend</b>. Quand les revenus baissent — blessure, division inférieure, fin de carrière — tu peux redescendre le train de vie, en le payant sur les proches, l'image ou ton corps. Chaque ligne porte son entretien mensuel.</div></div>`;
 
-    nego: `<div class="card"><div class="step">Négociation · Standard de Liège</div>
-      <h2>Ce que tu demandes</h2>
-      <p class="narr">Le directeur sportif a une heure. Ton agent te laisse trancher.</p>
-      <button class="opt"><b>Le salaire, au maximum</b><span class="sub">Tu montes à trois fois ce que tu gagnes.</span>
-        <div class="two"><span class="foot">Il faudra le justifier sur le terrain</span><span class="vie">Le train de vie va suivre tout seul</span></div></button>
-      <button class="opt"><b>Une place de titulaire écrite</b><span class="sub">Pas une promesse orale : une clause.</span>
-        <div class="two"><span class="foot">Le coach n'aimera pas</span><span class="vie">—</span></div></button>
-      <button class="opt"><b>Un contrat court</b><span class="sub">Deux ans. Si ça marche, tu repars négocier.</span>
-        <div class="two"><span class="foot">Aucune protection si tu te blesses</span><span class="vie">Ta liberté</span></div></button>
-      <button class="opt"><b>Leur promesse sur l'Europe</b><span class="sub">Qu'ils s'engagent à te qualifier dans le groupe.</span>
-        <div class="two"><span class="foot">S'ils ne tiennent pas, tu pourras partir</span><span class="vie">—</span></div></button>
-      <p class="sub">Le club peut refuser. Il a déjà refusé deux fois cette semaine.</p>
-      <div class="note"><b>Ce que ça prouve :</b> le moment lent du mode joueur·euse, l'équivalent du mercato. Une promesse non tenue devient une <b>graine</b> : elle germera dans une ou deux saisons, sans qu'on ait rien à inventer.</div></div>`,
+V.joueur.treve = `<div class="card"><div class="step">Trêve d'hiver · un des quatre temps lents</div>
+  <h2>Deux semaines sans match</h2>
+  <p class="narr">Le club ferme jusqu'au 3 janvier. Personne ne te demande rien, et c'est justement le problème.</p>
+  <button class="opt"><span class="ico">🏡</span><span><b>Rentrer chez toi</b><span class="sub">Ta sœur se marie le 28. Tu n'y étais pas l'an dernier.</span>
+    <span class="pills"><i class="pill risk">🫁 tu reprendras lourd</i><i class="pill vie">🏡 les proches, franchement</i></span></span></button>
+  <button class="opt"><span class="ico">🏋️</span><span><b>Rester travailler seul</b><span class="sub">Le centre est vide. Tu as les clés.</span>
+    <span class="pills"><i class="pill foot">⚽ janvier te trouvera prêt</i><i class="pill risk">🏡 personne ne comprendra</i></span></span></button>
+  <button class="opt"><span class="ico">🌱</span><span><b>Lancer le projet dont on te parle</b><span class="sub">Un ami veut monter une académie dans ton quartier.</span>
+    <span class="pills"><i class="pill vie">🌱 un projet, une image</i><i class="pill risk">⚽ du temps pris toute l'année</i></span></span></button>
+  <button class="opt"><span class="ico">☀️</span><span><b>Partir loin, sans téléphone</b><span class="sub">Dix jours où personne ne te trouve.</span>
+    <span class="pills"><i class="pill foot">🫁 tu reviens frais</i><i class="pill risk">🤝 l'agent t'a cherché</i></span></span></button>
+  <div class="note"><b>Ce que ça prouve :</b> les quatre temps lents (mercato d'été, trêve, mercato d'hiver, intersaison) portent la vie. Un projet lancé ici <b>prélèvera sur tes semaines</b> jusqu'à ce qu'il aboutisse.</div></div>`;
 
-    bilan: `<div class="card"><div class="step">Saison 2018-2019 · le temps où l'on souffle</div>
-      <h2>Ce que cette saison t'a laissé</h2>
-      <h3>Ce que tu as gagné</h3>
-      <p class="narr">Vingt-huit matchs, neuf buts, et la confiance d'un coach qui ne voulait pas de toi en août. Le soir d'Amiens, tout le stade a fini par connaître ton nom.</p>
-      <h3>Ce que tu as perdu</h3>
-      <p class="narr">Le mariage de ta sœur. Deux mois de dos. Et la promesse du président, qui n'a jamais été tenue — tu ne l'oublieras pas au moment de signer ailleurs.</p>
-      <h3>Ce qui t'attend</h3>
-      <p class="narr">Liège a appelé. Ton corps demande un été calme. Ton ami attend une réponse pour l'académie du quartier. Les trois ne tiennent pas ensemble.</p>
-      <div class="note"><b>Ce que ça prouve :</b> le bilan en trois temps, dont « ce que tu as perdu » — ce que le jeu ne te disait jamais. Écrit à partir du journal, donc à partir de <b>tes</b> décisions.</div></div>`,
+V.joueur.offre = `<div class="card"><div class="step">Mercato d'été · une proposition</div>
+  <h2>Standard de Liège</h2>
+  <p class="narr">Ton agent a décroché. « Ils te veulent, ils jouent l'Europe, et le coach a demandé ton nom. Réfléchis vite. »</p>
+  <div class="stats">
+    <div><div class="v">🇧🇪</div><div class="k">Belgique</div></div>
+    <div><div class="v">⭐</div><div class="k">joue l'Europe</div></div>
+    <div><div class="v">🔄</div><div class="k">rotation promise</div></div>
+    <div><div class="v">2</div><div class="k">devant toi au poste</div></div>
+  </div>
+  <p class="sub">Le coach est réputé dur avec les jeunes.</p>
+  <div class="row"><button class="opt" style="flex:1"><span class="ico">🤝</span><span><b>Ouvrir la négociation</b></span></button>
+    <button class="opt" style="flex:1"><span class="ico">🚪</span><span><b>Refuser</b><span class="sub">Elle disparaît pour de bon.</span></span></button></div>
+  <p class="sub">Ton agent dit qu'il reste « deux ou trois pistes sérieuses ». Tu ne sais pas s'il dit vrai.</p>
+  <div class="note"><b>Ce que ça prouve :</b> une offre à la fois, sans savoir ce qui vient après. Ce que l'agent te révèle dépend de votre relation — un lien, pas un chiffre.</div></div>`;
 
-    journal: `<div class="card"><div class="step">Le journal · tout, dans l'ordre</div>
-      <h2>Ta carrière, ligne par ligne</h2>
-      <div class="jrn">
-        <div><span>2018 · J12</span> Le coach t'annonce que tu commences sur le banc. Tu as demandé ce qui te manquait.</div>
-        <div><span>2018 · J12</span> 67ᵉ : tu as frappé. Diallo a poussé le ballon au fond. 2-1.</div>
-        <div><span>2018 · J13</span> Semaine de vidéo et de calme.</div>
-        <div><span>2018 · déc.</span> Trêve : tu es rentré chez toi pour le mariage.</div>
-        <div><span>2019 · J21</span> Dos bloqué à l'échauffement. Sept semaines.</div>
-        <div><span>2019 · juin</span> Le Standard de Liège ouvre la négociation.</div>
-      </div>
-      <div class="note"><b>Ce que ça prouve :</b> la mémoire de la carrière, puisque rien n'est chiffré à l'écran. Elle est aussi <b>lisible par mes sondes</b> : c'est comme ça que je pourrai te dire quelle histoire le jeu produit, au lieu de te l'affirmer.</div></div>`,
+V.joueur.nego = `<div class="card"><div class="step">Négociation · Standard de Liège</div>
+  <h2>Ce que tu demandes</h2>
+  <p class="narr">Le directeur sportif a une heure. Ton agent te laisse trancher.</p>
+  <button class="opt"><span class="ico">💰</span><span><b>Le salaire, au maximum</b><span class="sub">Tu montes à trois fois ce que tu gagnes.</span>
+    <span class="pills"><i class="pill risk">🎽 il faudra le justifier</i><i class="pill vie">💰 le train de vie suivra tout seul</i></span></span></button>
+  <button class="opt"><span class="ico">✍️</span><span><b>Une place de titulaire écrite</b><span class="sub">Pas une promesse orale : une clause.</span>
+    <span class="pills"><i class="pill foot">⏱️ du temps de jeu garanti</i><i class="pill risk">🎽 le coach n'aimera pas</i></span></span></button>
+  <button class="opt"><span class="ico">⏳</span><span><b>Un contrat court</b><span class="sub">Deux ans. Si ça marche, tu repars négocier.</span>
+    <span class="pills"><i class="pill vie">🕊️ ta liberté</i><i class="pill risk">🩼 aucune protection si tu te blesses</i></span></span></button>
+  <button class="opt"><span class="ico">⭐</span><span><b>Leur promesse sur l'Europe</b><span class="sub">Qu'ils s'engagent à te qualifier dans le groupe.</span>
+    <span class="pills"><i class="pill foot">🌱 une graine : s'ils ne tiennent pas, tu pourras partir</i></span></span></button>
+  <p class="sub">Le club peut refuser. Il a déjà refusé deux fois cette semaine.</p>
+  <div class="note"><b>Ce que ça prouve :</b> le moment lent du mode joueur·euse, l'équivalent du mercato. Une promesse non tenue devient une <b>graine</b> qui germera dans une ou deux saisons.</div></div>`;
 
-    fin: `<div class="card"><div class="step">Fin de carrière · 37 ans</div>
-      <h2>Ce qu'il en reste</h2>
-      <p class="narr">Quatorze saisons, 412 matchs, 96 buts, deux coupes, onze sélections. Un genou qui a dit non un an trop tôt, une académie qui tourne dans ton quartier, et deux enfants qui n'ont jamais habité plus de trois ans au même endroit.</p>
-      <h3>Tes parties, de la meilleure à la moins bonne</h3>
-      <div class="rank">
-        <b>1</b><div>Karim Bensalah · 1998-2015 · ailier<br><span class="sub">3 titres, une Ligue des champions, une famille tenue</span></div><div class="sub">légende</div>
-        <b>2</b><div>Marco Tavares · 2018-2032 · milieu<br><span class="sub">2 coupes, 11 sélections, une académie</span></div><div class="sub">accomplie</div>
-        <b>3</b><div>Yann Prigent · 1974-1986 · défenseur<br><span class="sub">une montée, un genou, personne autour</span></div><div class="sub">amère</div>
-        <b>4</b><div>Ibrahim Konaté · 2008-2014 · attaquant<br><span class="sub">jamais titulaire, jamais parti</span></div><div class="sub">ratée</div>
-      </div>
-      <div class="note"><b>Ce que ça prouve :</b> le classement de toutes tes parties, de la meilleure à la moins bonne. C'est ce que tu as demandé à la place d'un score : une carrière ne vaut que comparée aux autres que tu as vécues.</div></div>`,
-  },
+V.joueur.bilan = `<div class="card"><div class="step">Saison 2018-2019 · le temps où l'on souffle</div>
+  <h2>Ce que la saison t'a laissé</h2>
+  <div class="stats">
+    <div><div class="v">28</div><div class="k">matchs</div></div>
+    <div><div class="v">9</div><div class="k">buts</div></div>
+    <div><div class="v">4</div><div class="k">passes</div></div>
+    <div><div class="v">6,8</div><div class="k">note moyenne</div></div>
+    <div><div class="v">11ᵉ</div><div class="k">Le Havre AC</div></div>
+  </div>
+  <div class="trophies"><span>🥈 finaliste de la coupe</span><span>⭐ 3 fois homme du match</span><span>🩼 7 semaines d'arrêt</span></div>
+  <div class="bloc gagne"><span class="i">🏆</span><div><h4>Ce que tu as gagné</h4>
+    <p class="narr">La confiance d'un coach qui ne voulait pas de toi en août. Le soir d'Amiens, tout le stade a fini par connaître ton nom.</p></div></div>
+  <div class="bloc perdu"><span class="i">💔</span><div><h4>Ce que tu as perdu</h4>
+    <p class="narr">Le mariage de ta sœur. Deux mois de dos. Et la promesse du président, jamais tenue — tu ne l'oublieras pas au moment de signer ailleurs.</p></div></div>
+  <div class="bloc suite"><span class="i">⏭️</span><div><h4>Ce qui t'attend</h4>
+    <p class="narr">Liège a appelé. Ton corps demande un été calme. Ton ami attend une réponse pour l'académie. Les trois ne tiennent pas ensemble.</p></div></div>
+  <div class="note"><b>Ce que ça prouve :</b> le bilan en trois temps, dont « ce que tu as perdu » — ce que le jeu ne te disait jamais. Les chiffres du haut sont des <b>faits</b> (matchs, buts, notes), pas des jauges.</div></div>`;
 
-  coach: {
-    creation: `<div class="card"><div class="step">Création · 1 seul choix qui écrit tout</div>
-      <h2>D'où tu viens sur un banc</h2>
-      <p class="narr">L'époque est choisie. Reste ce que les gens verront quand ils liront ton nom sur la feuille de match.</p>
-      <button class="opt"><b>🎽 Ancien joueur professionnel</b><span class="sub">Cinq cents matchs dans les jambes. Le vestiaire t'écoute avant même que tu parles.</span>
-        <div class="two"><span class="foot">Management et prestige installés · tactique à faire</span><span class="vie">Un nom, de l'argent de côté</span></div></button>
-      <button class="opt"><b>📹 Analyste vidéo</b><span class="sub">Dix mille matchs découpés. Reste à parler à des humains.</span>
-        <div class="two"><span class="foot">Tactique et flair · aucun prestige</span><span class="vie">Personne ne te connaît</span></div></button>
-      <button class="opt"><b>🏟️ Éducateur de quartier</b><span class="sub">Vingt ans de U13 sous la pluie. Tu sais faire progresser n'importe qui.</span>
-        <div class="two"><span class="foot">Management · ni réseau ni prestige</span><span class="vie">Une famille soudée, un salaire de misère</span></div></button>
-      <div class="note"><b>Ce que ça prouve :</b> la même structure que côté joueur·euse, avec les axes du métier — <b>tactique, management, flair, prestige</b> — et les mêmes quatre chantiers de vie.</div></div>`,
+V.joueur.journal = `<div class="card"><div class="step">Le journal · tout, dans l'ordre</div>
+  <h2>Ta carrière, ligne par ligne</h2>
+  <div class="jrn">
+    <div><span class="d">2018 · J12</span><span>🎽</span><span>Le coach t'annonce le banc. Tu as demandé ce qui te manquait.</span></div>
+    <div><span class="d">2018 · J12</span><span>🎯</span><span>67ᵉ : tu as frappé. Diallo a poussé au fond. 2-1.</span></div>
+    <div><span class="d">2018 · J13</span><span>🧠</span><span>Semaine de vidéo et de calme.</span></div>
+    <div><span class="d">2018 · déc.</span><span>🏡</span><span>Trêve : rentré chez toi pour le mariage.</span></div>
+    <div><span class="d">2019 · J21</span><span>🩼</span><span>Dos bloqué à l'échauffement. Sept semaines.</span></div>
+    <div><span class="d">2019 · juin</span><span>🤝</span><span>Le Standard de Liège ouvre la négociation.</span></div>
+  </div>
+  <div class="note"><b>Ce que ça prouve :</b> la mémoire de la carrière, puisque rien n'est chiffré. Elle est aussi <b>lisible par mes sondes</b> : c'est comme ça que je pourrai te dire quelle histoire le jeu produit, au lieu de te l'affirmer.</div></div>`;
 
-    plan: `<div class="card"><div class="step">Août · avant la première journée</div>
-      <h2>Ton plan de saison</h2>
-      <p class="narr">Le président t'a demandé la dixième place. Ton effectif en vaut la treizième.</p>
-      <h3>Comment tu fais jouer</h3>
-      <div class="row"><span class="chip">🧠 Possession patiente</span><span class="chip good">🚀 Jeu direct — demandé par le club</span><span class="chip">🧱 Bloc bas</span><span class="chip">💪 Athlétique</span></div>
-      <h3>Ta politique de composition</h3>
-      <button class="opt"><b>Aligner les meilleurs, toujours</b><span class="sub">On joue pour gagner samedi.</span>
-        <div class="two"><span class="foot">Les cadres s'épuisent</span><span class="vie">Les jeunes ne progressent pas</span></div></button>
-      <button class="opt"><b>Faire tourner</b><span class="sub">Tout le monde joue, personne ne s'installe.</span>
-        <div class="two"><span class="foot">Un groupe frais, moins d'automatismes</span><span class="vie">—</span></div></button>
-      <button class="opt"><b>Lancer les jeunes</b><span class="sub">Tu construis pour dans deux ans.</span>
-        <div class="two"><span class="foot">Des points perdus cette saison</span><span class="vie">Le centre de formation te bénit</span></div></button>
-      <div class="note"><b>Ce que ça prouve :</b> tu ne composes plus onze noms chaque semaine. Tu poses une <b>politique</b> en août, et un ou deux arbitrages par match viennent la confirmer ou la trahir.</div></div>`,
+V.joueur.fin = `<div class="card"><div class="step">Fin de carrière · 37 ans</div>
+  <h2>Marco Tavares</h2>
+  <div class="stats">
+    <div><div class="v">14</div><div class="k">saisons</div></div>
+    <div><div class="v">412</div><div class="k">matchs</div></div>
+    <div><div class="v">96</div><div class="k">buts</div></div>
+    <div><div class="v">2</div><div class="k">coupes</div></div>
+    <div><div class="v">11</div><div class="k">sélections</div></div>
+    <div><div class="v">5</div><div class="k">clubs</div></div>
+  </div>
+  <div class="trophies"><span>🥇 Coupe de France 2027</span><span>🥇 Coupe de Belgique 2024</span><span>🇫🇷 11 sélections</span><span>🌱 une académie qui tourne</span><span>👨‍👩‍👧‍👦 deux enfants</span></div>
+  <p class="narr">Un genou qui a dit non un an trop tôt, une académie dans ton quartier, et deux enfants qui n'ont jamais habité plus de trois ans au même endroit.</p>
+  <h3>Tes parties, de la meilleure à la moins bonne</h3>
+  <div class="rank">
+    <div><span class="m">🥇</span><span><b>Karim Bensalah</b> · joueur · 1998-2015<br><span class="sub">3 titres, une Ligue des champions, une famille tenue</span></span><span class="tag">légende</span></div>
+    <div><span class="m">🥈</span><span><b>Marco Tavares</b> · joueur · 2018-2032<br><span class="sub">2 coupes, 11 sélections, une académie</span></span><span class="tag">accomplie</span></div>
+    <div><span class="m">🥉</span><span><b>Hervé Lambert</b> · entraîneur · 2018-2041<br><span class="sub">1 titre, 4 licenciements, deux internationaux formés</span></span><span class="tag">solide</span></div>
+    <div><span class="m">4</span><span><b>Yann Prigent</b> · joueur · 1974-1986<br><span class="sub">une montée, un genou, personne autour</span></span><span class="tag">amère</span></div>
+    <div><span class="m">5</span><span><b>Ibrahim Konaté</b> · joueur · 2008-2014<br><span class="sub">jamais titulaire, jamais parti</span></span><span class="tag">ratée</span></div>
+  </div>
+  <div class="note"><b>Ce que ça prouve :</b> le classement de toutes tes parties, joueur et entraîneur mélangés, de la meilleure à la moins bonne. C'est ce que tu voulais à la place d'un score.</div></div>`;
 
-    semaine: `<div class="card"><div class="step">12ᵉ journée · déplacement à Guingamp</div>
-      <h2>La semaine du groupe</h2>
-      <p class="narr">Trois séances avant le car du vendredi. Tu ne peux en travailler qu'une sérieusement.</p>
-      <button class="opt"><b>📐 Les automatismes</b><span class="sub">Le bloc, les sorties de balle, les répétitions.</span>
-        <div class="two"><span class="foot">L'équipe jouera mieux samedi</span><span class="vie">—</span></div></button>
-      <button class="opt"><b>💪 L'athlétique</b><span class="sub">Ils vont détester. Ils tiendront mieux en mars.</span>
-        <div class="two"><span class="foot">Samedi sera dur</span><span class="vie">—</span></div></button>
-      <button class="opt"><b>🎬 La vidéo de l'adversaire</b><span class="sub">Guingamp presse haut. Tu veux qu'ils l'aient vu.</span>
-        <div class="two"><span class="foot">Un plan clair, des jambes intactes</span><span class="vie">Deux soirées de préparation</span></div></button>
-      <button class="opt"><b>🛌 Deux jours de repos</b><span class="sub">Ils ont joué jeudi. Le staff insiste.</span>
-        <div class="two"><span class="foot">Frais, mais rien de travaillé</span><span class="vie">Tu rentres dîner chez toi</span></div></button>
-      <div class="note"><b>Ce que ça prouve :</b> la décision fixe de la journée, côté banc. Elle porte sur <b>le groupe</b>, pas sur toi : tes axes à toi montent par les résultats, pas à l'entraînement.</div></div>`,
+/* ---------------- COACH ---------------- */
+V.coach.origine = `<div class="card"><div class="step">Création · étape 1 sur 2</div>
+  <h2>D'où tu viens sur un banc</h2>
+  <p class="narr">Ce que les gens verront quand ils liront ton nom sur la feuille de match.</p>
+  <button class="opt"><span class="ico">🎽</span><span><b>Ancien joueur professionnel</b><span class="sub">Cinq cents matchs dans les jambes. Le vestiaire t'écoute avant que tu parles.</span>
+    <span class="pills"><i class="pill foot">🗣️ management installé</i><i class="pill foot">🏅 prestige</i><i class="pill risk">📐 tactique à faire</i><i class="pill vie">💰 de l'argent de côté</i></span></span></button>
+  <button class="opt"><span class="ico">📹</span><span><b>Analyste vidéo</b><span class="sub">Dix mille matchs découpés. Reste à parler à des humains.</span>
+    <span class="pills"><i class="pill foot">📐 tactique</i><i class="pill foot">🔍 flair</i><i class="pill risk">🏅 aucun prestige</i></span></span></button>
+  <button class="opt"><span class="ico">🏟️</span><span><b>Éducateur de quartier</b><span class="sub">Vingt ans de U13 sous la pluie. Tu sais faire progresser n'importe qui.</span>
+    <span class="pills"><i class="pill foot">🗣️ management</i><i class="pill risk">🤝 aucun réseau</i><i class="pill vie">🏡 une famille soudée</i></span></span></button>
+  <div class="note"><b>Ce que ça prouve :</b> même structure que côté joueur·euse, avec les axes du métier — <b>tactique, management, flair, prestige</b> — et les mêmes quatre chantiers de vie.</div></div>`;
 
-    arret: `<div class="card"><div class="step">Avant Guingamp · un arbitrage de compo</div>
-      <h2>Mendy n'est pas remis</h2>
-      <p class="narr">Ton meilleur milieu s'est plaint de la cuisse jeudi. Le médecin dit : « À toi de voir. »</p>
-      <button class="opt"><b>Le faire jouer quand même</b><span class="sub">Il dit qu'il tiendra. Il dit toujours ça.</span>
-        <div class="two"><span class="foot">Ton onze reste ton onze · risque de rechute</span><span class="vie">Le staff te trouve inconscient</span></div></button>
-      <button class="opt"><b>Aligner Lefort à sa place</b><span class="sub">Trente-quatre ans, il connaît le poste par cœur.</span>
-        <div class="two"><span class="foot">Sûr, sans étincelle</span><span class="vie">—</span></div></button>
-      <button class="opt"><b>Lancer le gamin de la réserve</b><span class="sub">Dix-huit ans, deux entraînements avec le groupe.</span>
-        <div class="two"><span class="foot">On ne sait pas · il apprendra</span><span class="vie">Le centre de formation te regarde</span></div></button>
-      <button class="opt"><b>Laisser ton adjoint trancher</b><span class="sub">Tu as un conseil d'administration ce soir.</span>
-        <div class="two"><span class="foot">Il décidera bien, ou pas</span><span class="vie">Tu récupères ta soirée</span></div></button>
-      <div class="note"><b>Ce que ça prouve :</b> un arrêt qui porte sur <b>un homme</b>, jamais sur onze. Il alimente ton axe management : ce que tu obtiens de celui que tu imposes fera monter ou baisser cet axe, comparé à sa moyenne.</div></div>`,
+V.coach.ambition = `<div class="card"><div class="step">Création · étape 2 sur 2</div>
+  <h2>Ce que tu veux de ce métier</h2>
+  <button class="opt"><span class="ico">🏗️</span><span><b>Bâtir un club</b><span class="sub">Rester dix ans quelque part et laisser quelque chose derrière.</span>
+    <span class="pills"><i class="pill foot">🌱 les jeunes comptent</i><i class="pill risk">🏆 peu de trophées</i></span></span></button>
+  <button class="opt"><span class="ico">🚀</span><span><b>Monter vite</b><span class="sub">Un club, deux saisons, un plus gros club.</span>
+    <span class="pills"><i class="pill foot">🏅 le prestige avant tout</i><i class="pill risk">🏡 la famille déménagera</i></span></span></button>
+  <button class="opt"><span class="ico">🏆</span><span><b>Tout gagner</b><span class="sub">Les titres, l'Europe, et tant pis pour le reste.</span>
+    <span class="pills"><i class="pill foot">🏆 les grands soirs</i><i class="pill risk">🕯️ l'usure viendra vite</i></span></span></button>
+  <button class="opt"><span class="ico">🎓</span><span><b>Former des joueurs</b><span class="sub">Tu veux qu'on dise ton nom quand ils débutent en sélection.</span>
+    <span class="pills"><i class="pill vie">🌱 une trace durable</i><i class="pill risk">🪑 les présidents s'impatienteront</i></span></span></button>
+  <div class="note"><b>Ce que ça prouve :</b> l'ambition <b>ouvre les contenus</b> aussi côté banc, et fait qu'un bâtisseur ne croise pas les mêmes histoires qu'un ambitieux pressé.</div></div>`;
 
-    fait: `<div class="card"><div class="step">Guingamp – ton club · 71ᵉ · 1-2 pour toi</div>
-      <h2>Rouge pour ton latéral</h2>
-      <p class="narr">Semis vient de prendre son deuxième jaune sur un geste d'humeur. Vingt minutes à tenir à dix, avec un but d'avance.</p>
-      <button class="opt"><b>Sortir un attaquant, fermer</b></button>
-      <button class="opt"><b>Ne rien changer, tenir comme ça</b></button>
-      <button class="opt"><b>Faire entrer le gamin en défense</b></button>
-      <div class="note"><b>Ce que ça prouve :</b> le fait de match côté banc, sans probabilité affichée. Ce qu'il produit fera bouger ta tactique — <b>seulement si le résultat sort de ce que l'écart de force annonçait</b>.</div></div>`,
+V.coach.plan = `<div class="card"><div class="step">Août · avant la première journée</div>
+  <h2>Ton plan de saison</h2>
+  <p class="narr">Le président t'a demandé la dixième place. Ton effectif en vaut la treizième.</p>
+  <h3>Comment tu fais jouer</h3>
+  <div class="row"><span class="chip">🧠 Possession</span><span class="chip on">🚀 Jeu direct — demandé par le club</span><span class="chip">🧱 Bloc bas</span><span class="chip">💪 Athlétique</span><span class="chip">🎩 Fantaisie</span></div>
+  <h3>Ta politique de composition</h3>
+  <button class="opt"><span class="ico">🥇</span><span><b>Aligner les meilleurs, toujours</b><span class="sub">On joue pour gagner samedi.</span>
+    <span class="pills"><i class="pill foot">🏆 des points tout de suite</i><i class="pill risk">🫁 les cadres s'épuisent</i><i class="pill risk">🌱 les jeunes stagnent</i></span></span></button>
+  <button class="opt"><span class="ico">🔄</span><span><b>Faire tourner</b><span class="sub">Tout le monde joue, personne ne s'installe.</span>
+    <span class="pills"><i class="pill foot">🫁 un groupe frais</i><i class="pill risk">📐 moins d'automatismes</i></span></span></button>
+  <button class="opt"><span class="ico">🌱</span><span><b>Lancer les jeunes</b><span class="sub">Tu construis pour dans deux ans.</span>
+    <span class="pills"><i class="pill vie">🎓 le centre te bénit</i><i class="pill risk">🏆 des points perdus</i></span></span></button>
+  <div class="note"><b>Ce que ça prouve :</b> tu ne composes plus onze noms chaque semaine. Tu poses une <b>politique</b> en août, et un ou deux arbitrages par match la confirment ou la trahissent.</div></div>`;
 
-    resultat: `<div class="card"><div class="step">12ᵉ journée · terminé</div>
-      <div class="score"><span class="big">1 – 2</span><div>Guingamp – <b>ton club</b><br><span class="sub">À dix pendant vingt minutes</span></div></div>
-      <p class="narr" style="margin-top:12px">Tu as fermé. Ils ont poussé sans jamais cadrer. Lefort a joué le match de sa saison à la place de Mendy, et le vestiaire est venu le chercher au coup de sifflet.</p>
-      <h3>Ce que ça change</h3>
-      <div class="row">
-        <span class="chip good">Le président respire</span>
-        <span class="chip good">Le vestiaire croit à ton plan</span>
-        <span class="chip good">Tu as gagné un match que tu devais perdre</span>
-        <span class="chip warn">Mendy n'a pas aimé être écarté</span>
-      </div>
-      <div class="note"><b>Ce que ça prouve :</b> gagner un match qu'on devait perdre fait progresser. Gagner un match qu'on devait gagner n'apprend rien — c'est la règle que tu as posée pour les axes de l'entraîneur·euse.</div></div>`,
+V.coach.semaine = `<div class="card"><div class="step">12ᵉ journée · déplacement à Guingamp</div>
+  <h2>La semaine du groupe</h2>
+  <p class="narr">Trois séances avant le car du vendredi. Tu ne peux en travailler qu'une sérieusement.</p>
+  <button class="opt"><span class="ico">📐</span><span><b>Les automatismes</b><span class="sub">Le bloc, les sorties de balle, les répétitions.</span>
+    <span class="pills"><i class="pill foot">⚽ l'équipe jouera mieux samedi</i></span></span></button>
+  <button class="opt"><span class="ico">💪</span><span><b>L'athlétique</b><span class="sub">Ils vont détester. Ils tiendront mieux en mars.</span>
+    <span class="pills"><i class="pill risk">🫁 samedi sera dur</i><i class="pill foot">📈 mars sera meilleur</i></span></span></button>
+  <button class="opt"><span class="ico">🎬</span><span><b>La vidéo de l'adversaire</b><span class="sub">Guingamp presse haut. Tu veux qu'ils l'aient vu.</span>
+    <span class="pills"><i class="pill foot">🎯 un plan clair</i><i class="pill vie">🏡 deux soirées de préparation</i></span></span></button>
+  <button class="opt"><span class="ico">🔁</span><span><b>La semaine normale</b><span class="sub">Le programme habituel, sans insister sur rien.</span>
+    <span class="pills"><i class="pill neutre">↔️ un peu de tout, rien de marquant</i></span></span></button>
+  <button class="opt"><span class="ico">🛌</span><span><b>Deux jours de repos</b><span class="sub">Ils ont joué jeudi. Le staff insiste.</span>
+    <span class="pills"><i class="pill foot">🫁 frais</i><i class="pill risk">📐 rien de travaillé</i></span></span></button>
+  <div class="note"><b>Ce que ça prouve :</b> la décision fixe côté banc, avec l'option <b>semaine normale</b>. Elle porte sur le groupe, pas sur toi : tes axes montent par les résultats inattendus.</div></div>`;
 
-    situation: `<div class="card"><div class="step">Ta situation · consultable à tout moment</div>
-      <h2>Où tu en es</h2>
-      <h3>Ce que les autres pensent de toi</h3>
-      <dl class="kv">
-        <dt>Le président</dt><dd>Il t'a défendu en conférence. Une fois.</dd>
-        <dt>Le vestiaire</dt><dd>Ils appliquent ce que tu demandes, sans discuter.</dd>
-        <dt>Le staff</dt><dd>Le préparateur te trouve trop dur avec les trentenaires.</dd>
-        <dt>Les supporters</dt><dd>Ils t'attendent. Ils ne t'ont pas encore adopté.</dd>
-        <dt>Ton réseau</dt><dd>Trois agents répondent quand tu appelles. Pas les bons.</dd>
-        <dt>La direction sportive</dt><dd>Elle t'a imposé un attaquant que tu ne voulais pas.</dd>
-      </dl>
-      <h3>Ta vie</h3>
-      <dl class="kv">
-        <dt>Les proches</dt><dd>Troisième déménagement en cinq ans. Ta fille ne veut plus changer d'école.</dd>
-        <dt>L'argent</dt><dd>Correct, mais tu n'as rien derrière si on te vire.</dd>
-        <dt>Ton image</dt><dd>« Sérieux, un peu rigide. »</dd>
-        <dt>Tes projets</dt><dd>On te propose une chronique à la télé.</dd>
-      </dl>
-      <h3>Ton usure</h3>
-      <p class="sub">Neuf saisons, deux licenciements. Tu dors mal depuis septembre.</p>
-      <div class="note"><b>Ce que ça prouve :</b> mêmes familles que côté joueur·euse, contenus entièrement différents. L'<b>usure du métier</b> est l'équivalent exact du corps du joueur : à son maximum, tu arrêtes.</div></div>`,
+V.coach.arret = `<div class="card"><div class="step">Avant Guingamp · un arbitrage de compo</div>
+  <h2>Mendy n'est pas remis</h2>
+  <p class="narr">Ton meilleur milieu s'est plaint de la cuisse jeudi. Le médecin dit : « À toi de voir. »</p>
+  <button class="opt"><span class="ico">🎲</span><span><b>Le faire jouer quand même</b><span class="sub">Il dit qu'il tiendra. Il dit toujours ça.</span>
+    <span class="pills"><i class="pill foot">⚽ ton onze reste ton onze</i><i class="pill risk">🩼 risque de rechute</i><i class="pill risk">🧑‍🤝‍🧑 le staff te trouve inconscient</i></span></span></button>
+  <button class="opt"><span class="ico">🧓</span><span><b>Aligner Lefort à sa place</b><span class="sub">Trente-quatre ans, il connaît le poste par cœur.</span>
+    <span class="pills"><i class="pill neutre">↔️ sûr, sans étincelle</i></span></span></button>
+  <button class="opt"><span class="ico">🐣</span><span><b>Lancer le gamin de la réserve</b><span class="sub">Dix-huit ans, deux entraînements avec le groupe.</span>
+    <span class="pills"><i class="pill risk">❓ on ne sait pas</i><i class="pill vie">🎓 le centre te regarde</i></span></span></button>
+  <button class="opt"><span class="ico">🤷</span><span><b>Laisser ton adjoint trancher</b><span class="sub">Tu as un conseil d'administration ce soir.</span>
+    <span class="pills"><i class="pill neutre">🧑‍🤝‍🧑 il décidera bien, ou pas</i><i class="pill vie">🏡 tu récupères ta soirée</i></span></span></button>
+  <div class="note"><b>Ce que ça prouve :</b> un arrêt qui porte sur <b>un homme</b>, jamais sur onze. Ce que fait celui que tu imposes alimente ton axe management.</div></div>`;
 
-    mercato: `<div class="card"><div class="step">Mercato d'été · dossier 4 sur 18</div>
-      <h2>Amadou Traoré</h2>
-      <p class="sub">Attaquant · 24 ans · Ligue 2 · en fin de contrat</p>
-      <dl class="kv">
-        <dt>Le joueur</dt><dd>Renard des surfaces. Il vit dans les six mètres.</dd>
-        <dt>Dans ton jeu</dt><dd>Il s'épanouira en jeu direct — ce que le club demande.</dd>
-        <dt>À son poste, tu as</dt><dd>Deux attaquants, dont un que tu voulais vendre</dd>
-        <dt>Transfert · salaire</dt><dd>1,2 M€ · 40 000 € par mois</dd>
-        <dt>Ce qui bloque</dt><dd>Rien. Ton budget tient.</dd>
-      </dl>
-      <div class="row"><button class="opt" style="flex:1"><b>Le recruter</b></button><button class="opt" style="flex:1"><b>Écarter le dossier</b></button><button class="opt" style="flex:1"><b>Passer</b></button></div>
-      <div class="note"><b>Ce que ça prouve :</b> le mercato est <b>gardé tel quel</b> — c'est le moment lent que tu aimes. Ce qu'il devient : les recrues que tu choisis font monter ou baisser ton <b>flair</b>, selon qu'elles jouent et réussissent, sur une à trois saisons.</div></div>`,
+V.coach.fait = `<div class="card"><div class="step">Guingamp – ton club · 71ᵉ · 1-2 pour toi</div>
+  <h2>Rouge pour ton latéral</h2>
+  <p class="narr">Semis vient de prendre son deuxième jaune sur un geste d'humeur. Vingt minutes à tenir à dix, avec un but d'avance.</p>
+  <button class="opt"><span class="ico">🧱</span><span><b>Sortir un attaquant, fermer</b></span></button>
+  <button class="opt"><span class="ico">✋</span><span><b>Ne rien changer, tenir comme ça</b></span></button>
+  <button class="opt"><span class="ico">🐣</span><span><b>Faire entrer le gamin en défense</b></span></button>
+  <div class="note"><b>Ce que ça prouve :</b> le fait de match côté banc, sans probabilité affichée. Ce qu'il produit fera bouger ta tactique <b>seulement si le résultat sort de ce que l'écart de force annonçait</b>.</div></div>`;
 
-    boutique: `<div class="card"><div class="step">La boutique · ouverte quand tu veux</div>
-      <h2>Ce que tu peux te permettre</h2>
-      <p class="sub">Entraîneur de Ligue 2, 25 000 € par mois, et rien de garanti après juin.</p>
-      <div class="shop">
-        <div>🏡 Acheter au lieu de louer<br><i>Ta fille arrête de changer d'école. Tu seras coincé si on te vire.</i></div><div>240 000 €</div>
-        <div>📹 Un analyste payé de ta poche<br><i>Ta tactique progresse plus vite. Chaque mois.</i></div><div>3 500 € / mois</div>
-        <div>🚗 Une voiture qui fait sérieux<br><i>Le milieu te regarde autrement.</i></div><div>45 000 €</div>
-        <div>🎓 Le diplôme supérieur, cet été<br><i>Un projet. Deux mois sans vacances.</i></div><div>12 000 €</div>
-        <div class="sub">🏖️ Une résidence secondaire</div><div class="sub">hors de portée</div>
-      </div>
-      <div class="note"><b>Ce que ça prouve :</b> la boutique existe aussi côté banc, avec ses sujets à elle. Acheter une maison quand on peut être viré en novembre est exactement le genre d'arbitrage qu'on cherche.</div></div>`,
+V.coach.resultat = `<div class="card"><div class="step">12ᵉ journée · terminé</div>
+  <div class="score"><span class="big">1 – 2</span><div>Guingamp – <b>ton club</b><br><span class="sub">À dix pendant vingt minutes · 9ᵉ au classement</span></div></div>
+  <h3>Le film du match</h3>
+  <div class="tl">
+    <div><span class="min">22ᵉ</span><span>⚽</span><span><b>Traoré</b> ouvre le score, de la tête</span></div>
+    <div><span class="min">45ᵉ</span><span>⚽</span><span>Guingamp égalise sur penalty — Bassi</span></div>
+    <div><span class="min">58ᵉ</span><span>⚽</span><span><b>Lefort</b> reprend l'avantage — son premier but de la saison</span></div>
+    <div><span class="min">64ᵉ</span><span>🟨</span><span>Semis averti</span></div>
+    <div class="me"><span class="min">71ᵉ</span><span>🟥</span><span>Second jaune pour Semis — tu as fermé le match</span></div>
+    <div><span class="min">80ᵉ</span><span>🎪</span><span>Penalty pour Guingamp — <b>sur le poteau</b></span></div>
+    <div><span class="min">88ᵉ</span><span>🩼</span><span>Crampe de Lefort, sorti sous les applaudissements</span></div>
+  </div>
+  <h3>Ce que ça change</h3>
+  <div class="pills">
+    <i class="pill foot">🪑 le président respire</i>
+    <i class="pill foot">✊ le vestiaire croit à ton plan</i>
+    <i class="pill foot">📐 tu as gagné un match que tu devais perdre</i>
+    <i class="pill risk">🗣️ Mendy n'a pas aimé être écarté</i>
+  </div>
+  <div class="note"><b>Ce que ça prouve :</b> le film du match aussi côté banc — buteurs, cartons, penaltys, blessures. Et gagner un match qu'on devait perdre fait progresser ; gagner celui qu'on devait gagner n'apprend rien.</div></div>`;
 
-    bilan: `<div class="card"><div class="step">Saison 2018-2019 · le temps où l'on souffle</div>
-      <h2>Ce que cette saison t'a laissé</h2>
-      <h3>Ce que tu as gagné</h3>
-      <p class="narr">Neuvième, un rang au-dessus de ce qu'on te demandait, avec le troisième budget en partant de la fin. Le soir de Guingamp, à dix contre onze, ton vestiaire a compris qui tu étais.</p>
-      <h3>Ce que tu as perdu</h3>
-      <p class="narr">Mendy, parti libre en te reprochant de l'avoir écarté. Deux mois de sommeil. Et l'école de ta fille, encore une fois.</p>
-      <h3>Ce qui t'attend</h3>
-      <p class="narr">Le président veut le top 5 avec le même budget. Un club de Ligue 1 a appelé ton agent. La chronique télé attend une réponse. Et le championnat commence à se renforcer contre toi.</p>
-      <div class="note"><b>Ce que ça prouve :</b> le bilan en trois temps, identique dans les deux modes — c'était jusqu'ici la grande asymétrie entre les deux carrières.</div></div>`,
+V.coach.situation = `<div class="card"><div class="step">Ta situation · consultable à tout moment</div>
+  <h2>Où tu en es</h2>
+  <h3>Ce que les autres pensent de toi</h3>
+  <div class="st">
+    <div><span class="i">🪑</span><span class="n">Le président</span><span class="w">Il t'a défendu en conférence. Une fois. <span class="arrow">↗</span></span></div>
+    <div><span class="i">✊</span><span class="n">Le vestiaire</span><span class="w">Ils appliquent ce que tu demandes, sans discuter.</span></div>
+    <div><span class="i">🧑‍🤝‍🧑</span><span class="n">Le staff</span><span class="w">Le préparateur te trouve trop dur avec les trentenaires. <span class="down">↘</span></span></div>
+    <div><span class="i">📣</span><span class="n">Les supporters</span><span class="w">Ils t'attendent. Ils ne t'ont pas adopté.</span></div>
+    <div><span class="i">🤝</span><span class="n">Ton réseau</span><span class="w">Trois agents répondent quand tu appelles. Pas les bons.</span></div>
+    <div><span class="i">🏢</span><span class="n">La direction</span><span class="w">Elle t'a imposé un attaquant que tu ne voulais pas.</span></div>
+  </div>
+  <h3>Ta vie</h3>
+  <div class="st">
+    <div><span class="i">🏡</span><span class="n">Les proches</span><span class="w">Troisième déménagement en cinq ans. Ta fille ne veut plus changer d'école. <span class="down">↘</span></span></div>
+    <div><span class="i">💰</span><span class="n">L'argent</span><span class="w">Correct, mais rien derrière si on te vire.</span></div>
+    <div><span class="i">📸</span><span class="n">Ton image</span><span class="w">« Sérieux, un peu rigide. »</span></div>
+    <div><span class="i">🌱</span><span class="n">Tes projets</span><span class="w">On te propose une chronique à la télé.</span></div>
+  </div>
+  <h3>Ton usure</h3>
+  <div class="st"><div><span class="i">🕯️</span><span class="n">9 saisons</span><span class="w">Deux licenciements. Tu dors mal depuis septembre. <span class="down">↘</span></span></div></div>
+  <div class="note"><b>Ce que ça prouve :</b> mêmes familles que côté joueur·euse, contenus différents. L'<b>usure du métier</b> est l'équivalent exact du corps du joueur : à son maximum, tu arrêtes.</div></div>`;
 
-    fin: `<div class="card"><div class="step">Fin de carrière · 61 ans</div>
-      <h2>Ce qu'il en reste</h2>
-      <p class="narr">Vingt-trois saisons, neuf clubs, quatre licenciements, un titre et une coupe. Deux joueurs que tu as lancés à dix-huit ans sont devenus internationaux. Ta fille ne t'a pas parlé pendant trois ans, et vous vous êtes retrouvés.</p>
-      <h3>Tes parties, de la meilleure à la moins bonne</h3>
-      <div class="rank">
-        <b>1</b><div>Karim Bensalah · joueur · 1998-2015<br><span class="sub">3 titres, une Ligue des champions, une famille tenue</span></div><div class="sub">légende</div>
-        <b>2</b><div>Hervé Lambert · entraîneur · 2018-2041<br><span class="sub">1 titre, 4 licenciements, deux internationaux formés</span></div><div class="sub">accomplie</div>
-        <b>3</b><div>Yann Prigent · joueur · 1974-1986</div><div class="sub">amère</div>
-      </div>
-      <div class="note"><b>Ce que ça prouve :</b> un seul classement pour les deux modes. Tes carrières de joueur et d'entraîneur se comparent dans la même liste.</div></div>`,
-  },
-};
+V.coach.mercato = `<div class="card"><div class="step">Mercato d'été · dossier 4 sur 18</div>
+  <h2>Amadou Traoré</h2>
+  <div class="stats">
+    <div><div class="v">24</div><div class="k">ans</div></div>
+    <div><div class="v">🇸🇳</div><div class="k">Sénégal</div></div>
+    <div><div class="v">⚽</div><div class="k">attaquant</div></div>
+    <div><div class="v">🦊</div><div class="k">renard des surfaces</div></div>
+  </div>
+  <div class="pills"><i class="pill foot">✅ s'épanouit en jeu direct — ce que le club demande</i><i class="pill neutre">📄 fin de contrat</i></div>
+  <dl class="kv" style="margin-top:12px">
+    <dt>Transfert</dt><dd>1,2 M€ · ton budget tient</dd>
+    <dt>Salaire</dt><dd>40 000 € par mois</dd>
+    <dt>À son poste</dt><dd>Deux attaquants, dont un que tu voulais vendre</dd>
+  </dl>
+  <div class="row"><button class="opt" style="flex:1"><span class="ico">✍️</span><span><b>Le recruter</b></span></button>
+    <button class="opt" style="flex:1"><span class="ico">🗑️</span><span><b>Écarter</b></span></button>
+    <button class="opt" style="flex:1"><span class="ico">➡️</span><span><b>Passer</b></span></button></div>
+  <div class="note"><b>Ce que ça prouve :</b> le mercato est <b>gardé tel quel</b>, c'est le moment lent que tu aimes. Ce qui change : tes recrues font monter ou baisser ton <b>flair</b>, selon qu'elles jouent et réussissent, sur une à trois saisons.</div></div>`;
 
-let mode = 'joueur', cur = 'creation';
+V.coach.boutique = `<div class="card"><div class="step">La boutique · ouverte quand tu veux</div>
+  <h2>Ton train de vie</h2>
+  <p class="sub">Entraîneur de Ligue 2 · 25 000 € par mois · rien de garanti après juin.</p>
+  <div class="tabs"><button aria-pressed="true" onclick="shop('a',this)">Acheter</button><button aria-pressed="false" onclick="shop('v',this)">Vendre</button></div>
+  <div id="shopA" class="shop">
+    <div><span class="i">🏡</span><span>Acheter au lieu de louer<i>Ta fille arrête de changer d'école. Tu seras coincé si on te vire.</i></span><span class="p">240 000 €<i>1 100 € / mois</i></span></div>
+    <div><span class="i">📹</span><span>Un analyste payé de ta poche<i>Ta tactique progresse plus vite.</i></span><span class="p">3 500 € / mois</span></div>
+    <div><span class="i">🚗</span><span>Une voiture qui fait sérieux<i>Le milieu te regarde autrement.</i></span><span class="p">45 000 €</span></div>
+    <div><span class="i">🎓</span><span>Le diplôme supérieur, cet été<i>Un projet. Deux mois sans vacances.</i></span><span class="p">12 000 €</span></div>
+    <div class="off"><span class="i">🏖️</span><span>Une résidence secondaire<i>Il faudrait entraîner en Ligue 1.</i></span><span class="p">hors de portée</span></div>
+  </div>
+  <div id="shopV" class="shop" hidden>
+    <div><span class="i">🏠</span><span>La maison achetée en 2016<i>Ta fille changera d'école. Encore.</i></span><span class="p">+ 210 000 €<i>−1 100 € / mois</i></span></div>
+    <div><span class="i">📹</span><span>Arrêter l'analyste<i>Ta tactique progressera moins vite.</i></span><span class="p">−3 500 € / mois</span></div>
+    <div><span class="i">🚙</span><span>La berline de fonction rachetée<i>On remarquera que tu roules autrement.</i></span><span class="p">+ 26 000 €</span></div>
+  </div>
+  <div class="note"><b>Ce que ça prouve :</b> la boutique existe aussi côté banc, avec ses sujets à elle, et dans les deux sens. Acheter une maison quand on peut être viré en novembre est exactement l'arbitrage qu'on cherche.</div></div>`;
+
+V.coach.bilan = `<div class="card"><div class="step">Saison 2018-2019 · le temps où l'on souffle</div>
+  <h2>Ce que la saison t'a laissé</h2>
+  <div class="stats">
+    <div><div class="v">9ᵉ</div><div class="k">objectif : 10ᵉ</div></div>
+    <div><div class="v">14</div><div class="k">victoires</div></div>
+    <div><div class="v">42</div><div class="k">buts pour</div></div>
+    <div><div class="v">38</div><div class="k">buts contre</div></div>
+    <div><div class="v">8ᵉ</div><div class="k">tour de coupe</div></div>
+  </div>
+  <div class="trophies"><span>🪑 le président t'a prolongé</span><span>🌱 2 jeunes lancés</span><span>🔍 3 recrues sur 4 titulaires</span></div>
+  <div class="bloc gagne"><span class="i">🏆</span><div><h4>Ce que tu as gagné</h4>
+    <p class="narr">Un rang au-dessus de ce qu'on te demandait, avec le troisième budget en partant de la fin. Le soir de Guingamp, à dix contre onze, ton vestiaire a compris qui tu étais.</p></div></div>
+  <div class="bloc perdu"><span class="i">💔</span><div><h4>Ce que tu as perdu</h4>
+    <p class="narr">Mendy, parti libre en te reprochant de l'avoir écarté. Deux mois de sommeil. Et l'école de ta fille, encore une fois.</p></div></div>
+  <div class="bloc suite"><span class="i">⏭️</span><div><h4>Ce qui t'attend</h4>
+    <p class="narr">Le président veut le top 5 avec le même budget. Un club de Ligue 1 a appelé ton agent. La chronique télé attend une réponse. Et le championnat commence à se renforcer contre toi.</p></div></div>
+  <div class="note"><b>Ce que ça prouve :</b> le bilan en trois temps, identique dans les deux modes — c'était jusqu'ici la grande asymétrie entre les deux carrières.</div></div>`;
+
+V.coach.fin = `<div class="card"><div class="step">Fin de carrière · 61 ans</div>
+  <h2>Hervé Lambert</h2>
+  <div class="stats">
+    <div><div class="v">23</div><div class="k">saisons</div></div>
+    <div><div class="v">9</div><div class="k">clubs</div></div>
+    <div><div class="v">4</div><div class="k">licenciements</div></div>
+    <div><div class="v">1</div><div class="k">titre</div></div>
+    <div><div class="v">1</div><div class="k">coupe</div></div>
+    <div><div class="v">2</div><div class="k">internationaux formés</div></div>
+  </div>
+  <div class="trophies"><span>🥇 Champion 2033</span><span>🥇 Coupe 2029</span><span>🎓 2 internationaux formés</span><span>🕯️ usure maximale</span></div>
+  <p class="narr">Deux joueurs que tu as lancés à dix-huit ans sont devenus internationaux. Ta fille ne t'a pas parlé pendant trois ans, et vous vous êtes retrouvés.</p>
+  <h3>Tes parties, de la meilleure à la moins bonne</h3>
+  <div class="rank">
+    <div><span class="m">🥇</span><span><b>Karim Bensalah</b> · joueur · 1998-2015<br><span class="sub">3 titres, une Ligue des champions, une famille tenue</span></span><span class="tag">légende</span></div>
+    <div><span class="m">🥈</span><span><b>Marco Tavares</b> · joueur · 2018-2032<br><span class="sub">2 coupes, 11 sélections, une académie</span></span><span class="tag">accomplie</span></div>
+    <div><span class="m">🥉</span><span><b>Hervé Lambert</b> · entraîneur · 2018-2041<br><span class="sub">1 titre, 4 licenciements, deux internationaux formés</span></span><span class="tag">solide</span></div>
+    <div><span class="m">4</span><span><b>Yann Prigent</b> · joueur · 1974-1986</span><span class="tag">amère</span></div>
+  </div>
+  <div class="note"><b>Ce que ça prouve :</b> un seul classement pour les deux modes. Tes carrières de joueur et d'entraîneur se comparent dans la même liste.</div></div>`;
+
+let mode = 'joueur', cur = 'origine';
 function setMode(m){
   mode = m; cur = S[m][0][0];
   document.documentElement.setAttribute('data-mode', m);
@@ -424,9 +553,14 @@ function setMode(m){
   draw();
 }
 function go(id){ cur = id; draw(); }
+function shop(which, btn){
+  const a = document.getElementById('shopA'), v = document.getElementById('shopV');
+  if(!a || !v) return;
+  a.hidden = which === 'v'; v.hidden = which === 'a';
+  [...btn.parentElement.children].forEach(b => b.setAttribute('aria-pressed', b === btn));
+}
 function draw(){
-  const nav = document.getElementById('nav');
-  nav.innerHTML = S[mode].map(([id, label]) =>
+  document.getElementById('nav').innerHTML = S[mode].map(([id, label]) =>
     `<button aria-pressed="${id === cur}" onclick="go('${id}')">${label}</button>`).join('');
   document.getElementById('screens').innerHTML = V[mode][cur] || '<div class="card sub">Écran à écrire.</div>';
   window.scrollTo({ top: 0, behavior: 'smooth' });
