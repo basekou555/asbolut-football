@@ -14,7 +14,7 @@
    - tout ce qui arrive est écrit dans `S.journal`, seule mémoire du jeu.
    ============================================================ */
 
-const VERSION = 2;
+const VERSION = 3;   // les concurrents au poste n'existaient pas en v2
 let S = null;
 /* Mis à true par le banc d'essai (labo.html) : les milliers de saisons qu'il
    simule ne doivent pas écraser la carrière rangée dans localStorage. */
@@ -116,8 +116,22 @@ function nouvellePartie(c){
   const liens = { coach:50, vestiaire:50, club:50, supporters:45, agent:50, selection:0 };
   Object.entries(c.origine.liens || {}).forEach(([k, v]) => liens[k] = clamp(liens[k] + v));
 
+  /* Les concurrents au poste. Le propriétaire, 27/09/2026 : « plus on est fort au
+     poste, plus on a de chances d'être titulaire par rapport à ses concurrents,
+     aux autres joueurs du même poste. C'est une stat que le coach peut prendre en
+     compte. » Avant, on se comparait à un nombre abstrait tiré de la force du club ;
+     maintenant ce sont des gens, avec un nom, un niveau et une forme qui bouge. */
   const ligue = creerLigue(c.annee);
   const club = ligue.equipes[ri(10, 17)];   // on démarre dans le bas de tableau
+  const nb = poste.id === 'G' ? 1 : 2;      // un gardien n'a qu'un rival, c'est binaire
+  const pris = [];
+  const concurrents = [];
+  for (let i = 0; i < nb; i++){
+    let n; do { n = pick(NOMS); } while (pris.includes(n)); pris.push(n);
+    // le titulaire en place est devant toi ; le second est à ta portée
+    concurrents.push({ nom:n, niv: Math.round(club.force + (i === 0 ? rnd(2, 7) : rnd(-4, 2))),
+      forme: 0, blesse: 0, age: ri(23, 31) });
+  }
 
   S = {
     v: VERSION, mode: 'joueur', annee: c.annee,
@@ -126,7 +140,7 @@ function nouvellePartie(c){
       u0: c.origine.u0, origine: c.origine.id, ambition: c.ambition.id,
       qual: { id:q.id, vu:false }, def: { id:f.id, vu:false },
       histo: {} },
-    club: { nom: club.nom, force: club.force },
+    club: { nom: club.nom, force: club.force }, concurrents,
     ligue, liens,
     /* `fond` est la réserve que construit le travail physique : on récupère plus
        vite d'un match à l'autre, on se blesse moins, et on laisse moins de jambes
@@ -303,18 +317,42 @@ function appliquer(o){
 }
 
 /* ---------- le match ---------- */
+/* Ta valeur aux yeux du coach quand il fait son onze. `spec` compte une deuxième
+   fois : être juste à son poste, c'est exactement ce qu'il regarde. */
+function valeurAuPoste(){
+  return niveauJour() + (S.moi.base.spec + S.moi.boost.spec - 50) * .09
+    + (S.liens.coach - 50) * .16
+    + (S.moi.age <= 18 ? -5 : S.moi.age === 19 ? -2.5 : 0);
+}
+function concurrentsDispos(){ return S.concurrents.filter(c => c.blesse <= 0); }
+/* Celui qui te barre la route aujourd'hui, ou null si la voie est libre. */
+function devantToi(){
+  const d = concurrentsDispos(); if (!d.length) return null;
+  const moi = valeurAuPoste();
+  let best = null;
+  d.forEach(c => { const v = c.niv + c.forme; if (v > moi && (!best || v > best.niv + best.forme)) best = c; });
+  return best;
+}
 function monStatut(adv){
   if (S.etats.blessure > 0) return 'blesse';
   if (S.etats.suspension > 0) return 'suspendu';
-  const concurrent = S.club.force + rnd(-4, 4);
-  /* `spec` compte une deuxième fois ici : être juste à son poste, c'est ce que
-     le coach regarde pour faire un onze. C'est l'effet long de cette séance. */
-  const credit = niveauJour() - concurrent + (S.liens.coach - 50) * .16
-    + (S.moi.base.spec + S.moi.boost.spec - 50) * .09
-    + (S.moi.age <= 18 ? -5 : S.moi.age === 19 ? -2.5 : 0) + rnd(-3, 3);
-  if (credit > 1.5) return 'titulaire';
-  if (credit > -7) return Math.random() < .75 ? 'banc' : 'hors';
+  const d = concurrentsDispos();
+  const moi = valeurAuPoste() + rnd(-2, 2);
+  const meilleur = d.reduce((a, c) => Math.max(a, c.niv + c.forme), -99);
+  if (!d.length || moi > meilleur) return 'titulaire';    // plus personne devant : tu joues
+  const ecart = meilleur - moi;
+  if (ecart < 2.5) return Math.random() < .45 ? 'titulaire' : 'banc';   // ça se joue à rien
+  if (ecart < 8) return Math.random() < .75 ? 'banc' : 'hors';
   return 'hors';
+}
+/* Les rivaux vivent : leur forme bouge, ils se blessent, et une absence t'ouvre
+   la porte. C'est aussi une des façons de devenir titulaire. */
+function vivreConcurrents(){
+  S.concurrents.forEach(c => {
+    if (c.blesse > 0){ c.blesse--; return; }
+    c.forme = clamp(c.forme * .7 + rnd(-2.2, 2.2), -5, 5);
+    if (Math.random() < .035) c.blesse = ri(1, 4);
+  });
 }
 function lancerMatch(){
   const adv = adversaire(S.journee);
@@ -368,15 +406,29 @@ function lancerMatch(){
       if (!m.moments.some(x => x.id === f.id)) m.moments.push({ ...f, min: ri(Math.max(entree + 2, 10), 88) });
     }
     m.moments.sort((a, b) => a.min - b.min);
+    /* Un « mauvais soir » doit être une situation nommée, pas un aléa invisible.
+       Un fait de match qui tombe quand vous êtes menés, ou dans une fin serrée,
+       est plus dur — et c'est là, et seulement là, que le mental se voit. */
+    m.moments.forEach(f => {
+      let n = 0, e = 0;
+      evs.filter(x => x.type === 'but' && x.min < f.min).forEach(x => x.nous ? n++ : e++);
+      /* Être mené à la vingtième minute n'est pas encore la pression : sans ce
+         seuil, sept faits sur dix étaient « chauds » et le mot ne voulait plus
+         rien dire. */
+      const mene = e > n && f.min >= 55, tard = f.min >= 75;
+      f.chaud = mene || (tard && Math.abs(n - e) <= 1);
+      f.ctx = mene && tard ? "Vous êtes menés et il ne reste presque plus rien."
+        : mene ? "Vous êtes menés, le stade s'impatiente."
+        : tard ? "Fin de match, tout se joue là." : null;
+    });
   }
   m.evs = evs; m.entree = entree;
   S.match = m; S.momentIdx = 0;
   suiteMatch();
 }
-function coequipier(){
-  const noms = ["Diallo", "Lefort", "Perrin", "Traoré", "Semis", "Bakayoko", "Mendy", "Delecroix", "Riou", "Garnier"];
-  return pick(noms);
-}
+const NOMS = ["Diallo", "Lefort", "Perrin", "Traoré", "Semis", "Bakayoko", "Mendy", "Delecroix",
+  "Riou", "Garnier", "Kouassi", "Vasseur", "Bamba", "Lemoine", "Ferreira", "Dos Santos"];
+function coequipier(){ return pick(NOMS); }
 /* Les faits de match, par poste. Aucune probabilité n'est affichée :
    la résolution croise tes axes et le hasard. */
 const MOMENTS = {
@@ -426,11 +478,22 @@ function choisirMoment(i){
      disparaissait dans le bruit, donc le joueur ne pouvait pas le sentir. */
   const axeV = S.moi.base[f.axe] + S.moi.boost[f.axe];
   const techV = S.moi.base.tech + S.moi.boost.tech;
+  /* PRESSION : un moment chaud coûte douze points de réussite, et le mental les
+     rend — ou les aggrave quand il est bas. C'est le seul endroit où il agit sur
+     le terrain, et l'écran le dit avant le clic. */
+  const pression = f.chaud ? .12 * (1 - encaisse()) : 0;
   const bonus = (f.axe === 'tech' ? (techV - 50) * .009
       : (axeV - 50) * .006 + (techV - 50) * .005)
-    + (S.etats.fraicheur - 80) * .001;
+    + (S.etats.fraicheur - 80) * .001 - pression;
   const reussi = Math.random() < clamp(o.p + bonus, .05, .95);
   f.choix = o.l; f.reussi = reussi;
+  /* Et quand ça casse dans un moment chaud, on sort du match. Ça porte un nom,
+     ça s'écrit dans le film, et ça coûte. Le mental décide si ça arrive. */
+  if (!reussi && f.chaud && !m.perduLeFil && Math.random() < .5 - encaisse() * .42){
+    m.perduLeFil = f.min;
+    jrn('moment', `${f.min}ᵉ — Tu as perdu le fil. Vingt minutes à côté de la partie.`);
+  }
+  if (reussi && f.chaud) f.tenu = true;
   if (reussi && (f.id === 'tir' || f.id === 'face' || f.id === 'volee')){
     if (o.l.startsWith("Frapper") || o.l.startsWith("Reprendre")) { m.bn++; m.buts++; }
     else { m.bn++; m.passes++; }
@@ -457,14 +520,19 @@ function finirMatch(){
     m.note = clamp(6.1 + (res === 'V' ? .5 : res === 'D' ? -.4 : 0) + m.buts * .7 + m.passes * .4
       + (derriere ? (m.be === 0 ? 1 : m.be === 1 ? .35 : m.be >= 4 ? -.5 : 0) : 0)
       + (niveauJour() - S.club.force) * .035 + m.moments.filter(f => f.reussi).length * .3
-      - m.moments.filter(f => f.reussi === false).length * .3 + aleaNote(), 3, 10);
+      - m.moments.filter(f => f.reussi === false).length * .3
+      - (m.perduLeFil ? .5 : 0) + (m.moments.some(f => f.tenu) ? .25 : 0) + aleaNote(), 3, 10);
     m.note = Math.round(m.note * 10) / 10;
     S.stats.matchs++; S.stats.minutes += m.minutes; S.stats.buts += m.buts; S.stats.passes += m.passes;
     S.stats.notes.push(m.note); if (m.statut === 'titulaire') S.stats.titus++;
     S.etats.fraicheur = clamp(S.etats.fraicheur - (m.minutes / 90) * ri(10, 16) * (1 - S.etats.fond * .0022));
     S.etats.corps = clamp(S.etats.corps - (m.minutes / 90) * .4);
     let dCoach = clamp((m.note - 6.2) * 2.4, -4, 4);
-    if (dCoach < 0) dCoach *= (1 - encaisse() * .5);       // on encaisse le jugement
+    if (dCoach < 0){
+      const amorti = encaisse() * .5;
+      if (amorti > .15) m.amortiCoach = true;              // à dire, sinon ça n'existe pas
+      dCoach *= (1 - amorti);
+    }
     S.liens.coach = clamp(S.liens.coach + dCoach);
     S.liens.vestiaire = clamp(S.liens.vestiaire + (m.note >= 7 ? 1.2 : m.note < 5.5 ? -1 : 0));
     S.liens.supporters = clamp(S.liens.supporters + (m.buts ? 2 : 0) + (m.note >= 7.5 ? 1 : 0) - (m.note < 5.4 ? 1 : 0));
@@ -496,6 +564,8 @@ function finirMatch(){
   if (S.etats.fraicheur - e0.fraicheur <= -8) m.mvt.push({ k:'fraicheur', up:false, mot:direJambes() });
   if (m.blessure) m.mvt.push({ k:'blessure', up:false, mot:`Tu sors touché : ${m.blessure} journée${m.blessure > 1 ? 's' : ''} d'absence.` });
   if (m.suspendu) m.mvt.push({ k:'suspension', up:false, mot:`Suspendu ${m.suspendu} match${m.suspendu > 1 ? 's' : ''}.` });
+  if (m.amortiCoach) m.mvt.push({ k:'mental', up:true, mot:"Mauvais soir, mais tu n'as rien lâché : le coach t'en tient moins rigueur." });
+  if (m.perduLeFil) m.mvt.push({ k:'mental', up:false, mot:"Tu es sorti du match après cette action. Ça s'est vu de la touche." });
   jrn('match', `J${S.journee + 1} · ${m.adv.dom ? S.club.nom + ' – ' + m.adv.nom : m.adv.nom + ' – ' + S.club.nom} ${m.adv.dom ? m.bn + '-' + m.be : m.be + '-' + m.bn}`
     + (m.minutes ? ` · toi : ${m.minutes} min, note ${nb(m.note)}${m.buts ? `, ${m.buts} but${m.buts > 1 ? 's' : ''}` : ''}${m.passes ? `, ${m.passes} passe${m.passes > 1 ? 's' : ''}` : ''}` : ` · ${m.statut === 'banc' ? 'resté sur le banc' : m.statut === 'blesse' ? "à l'infirmerie" : m.statut === 'suspendu' ? 'suspendu' : 'hors du groupe'}`)
     + (m.blessure ? ` · sorti touché, ${m.blessure} journée${m.blessure > 1 ? 's' : ''} d'absence` : '')
@@ -536,6 +606,7 @@ function decouverte(m){
 /* ---------- la suite ---------- */
 function apresMatch(){
   const d = S.dernier;
+  vivreConcurrents();
   if (S.etats.blessure > 0) S.etats.blessure--;
   if (S.etats.suspension > 0) S.etats.suspension--;
   if (d && d.blessure) S.etats.blessure = d.blessure;
@@ -613,11 +684,26 @@ function direFond(){ const v = S.etats.fond;
   return v > 55 ? "Tu tiens les quatre-vingt-dix minutes sans y penser." : v > 32 ? "Tu as du fond."
     : v > 14 ? "Tu tiens, sans plus." : "Tu manques de fond, et ça se paie en fin de match."; }
 function direEncaisse(){ const v = S.moi.base.ment + S.moi.boost.ment;
-  return v > 68 ? "Un mauvais soir ne te fait plus rien." : v > 54 ? "Tu encaisses bien ce qui ne va pas."
-    : v > 42 ? "Un mauvais match te reste en travers." : "Le moindre coup dur te met par terre."; }
+  return v > 68 ? "Menés à dix minutes de la fin, tu joues comme à l'entraînement."
+    : v > 54 ? "Quand ça se tend, tu restes dans ton match."
+    : v > 42 ? "Quand ça se tend, tu joues petit."
+    : "Un but encaissé et tu sors du match pendant vingt minutes."; }
 function direGeste(){ const v = S.moi.base.tech + S.moi.boost.tech;
   return v > 68 ? "Quand il faut faire le geste, il sort." : v > 54 ? "Le geste sort le plus souvent."
     : v > 42 ? "Le geste te trahit encore." : "Dans les moments qui comptent, tu rates le geste."; }
+/* Ce que ta tête va faire dans le moment qui vient. Dit avant le clic, pour que
+   le mental se sente au lieu de s'expliquer. */
+function direTete(){ const v = S.moi.base.ment + S.moi.boost.ment;
+  return v > 68 ? "Tu as déjà vécu ça." : v > 54 ? "Tu respires, et tu joues."
+    : v > 42 ? "Tes jambes se font lourdes d'un coup." : "Le stade hurle et tu ne l'entends plus."; }
+function direPlace(){
+  const d = devantToi();
+  if (!d) return "Personne ne te passe devant en ce moment.";
+  const ecart = (d.niv + d.forme) - valeurAuPoste();
+  return ecart < 2.5 ? `${d.nom} est devant toi, mais ça se joue à rien.`
+    : ecart < 8 ? `${d.nom} est devant toi, et le coach ne doute pas.`
+    : `${d.nom} est loin devant. Tu n'es pas dans ses plans.`;
+}
 function direCorps(){ const v = S.etats.corps;
   return v > 85 ? "Rien ne te fait mal." : v > 72 ? "Quelques douleurs, rien de sérieux." : v > 58 ? "Tu récupères moins vite qu'avant." : "Ton corps commence à te lâcher."; }
 function direJambes(){ const v = S.etats.fraicheur;
