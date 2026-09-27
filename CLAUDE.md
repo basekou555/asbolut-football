@@ -80,6 +80,55 @@ première saison → 0) mais le niveau final passe de 7,1 à 8,1 et les titres d
 carrière. Baisser le potentiel (7,8-9,6 → 6,4-8,8) n'y change presque rien : ce n'est pas le bon
 levier, et il ne se trouvera pas à l'aveugle.
 
+## Le moteur 2.0 (`v2/`, 27/09/2026)
+
+Après la cartographie rejetée, le propriétaire a demandé de repenser le jeu de A à Z, puis a validé
+sept verrous, puis les coquilles vides, puis : « **Vas-y pour le moteur** ». Livré ici : **une saison
+complète jouable au vrai rythme**, sans contenu de vie ni progression d'une saison sur l'autre —
+juste pour qu'il sente les dix secondes par match. `v2/index.html`, servi à **/v2/** ; la version 1.0
+reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github/workflows/pages.yml`.
+
+- **Les sept verrous tenus par le code** : (1) aucune valeur de jauge n'arrive à l'écran — le moteur
+  travaille sur 0-100 et ne sort que des phrases (`dire()`, `direCorps()`, `direFraicheur()`,
+  `direJambes()`, `direStaff()`) et des directions (`m.mvt`) ; les seuls chiffres affichés sont le
+  score, la note de match, les minutes, les journées et le classement ; (2) un match se joue en trois
+  clics ; (3) le match est simulé, pas opéré ; (4) quatre axes (`tech`, `phys`, `ment`, `spec`) ;
+  (5-7) le journal (`S.journal`) est la seule mémoire, tout y passe.
+- **Fichiers** : `v2/moteur.js` (état, ligue, axes, semaine, arrêts, match, journal, sauvegarde
+  `localStorage` clé `ac2` avec garde de version), `v2/ecrans.js` (tous les écrans, `rendre()`
+  dispatche sur `S.ecran`), `v2/style.css` (repris des coquilles validées), `v2/coquilles.html`
+  (les maquettes, gardées comme référence).
+- **Trois couches par axe** : `base` (la trace), `boost` (l'acquis récent, divisé par deux à chaque
+  match), `plafond` (jamais lu par le joueur). `plafondReel(a) = min(plafond natif, moyenne des
+  autres axes + 25)` : on n'a pas un physique à 10 avec un mental à 1.
+- **Le poids d'une séance, mesuré puis calibré.** Première version : `base += .25 × r × marge × 4`
+  où `r = tirage × marge` — le produit double par la marge donnait **+0,8 de base sur 34 semaines
+  tout donné sur un axe**, autant dire rien. Corrigé en `BOOST_SEANCE`=9 et `TRACE_SEANCE`=.55
+  appliqués à `r`. Mesuré après, six politiques, huit saisons chacune : **aucune ne domine.**
+  Tout donner sur l'axe du poste (`tech` pour un milieu) donne la plus grosse trace (**+7,3**) mais
+  fait jouer moins (18,9 matchs) ; ne jamais travailler fait jouer le plus (19,5 matchs, 15,4
+  titularisations) et ne laisse **rien** ; deux séances puis un repos est le meilleur compromis
+  (22,0 matchs, 14,9 titularisations, +4,5 de trace). Travailler le mauvais axe **et** la semaine la
+  plus lourde est puni deux fois (14,1 matchs, 4,0 titularisations).
+- **Le compte rendu de séance jugeait le mauvais nombre** : il lisait le rendement `r`, qui près du
+  plafond ne dépasse jamais 0,5, et disait donc « pour rien » presque à chaque fois. Il juge
+  maintenant le **tirage** (0,4 / 1 / 1,6) ; la proximité du plafond est une phrase à part. Mesuré :
+  4 excellentes / 11 correctes / 7 pour rien par saison.
+- **Le championnat avait douze clubs à trois points les uns des autres** (`FILLERS` posés à `s:0`) :
+  la place finale était un tirage au sort. Chaque club de complément prend maintenant un rang propre
+  (`s: rnd(-1.7, 1)`). Un club de bas de tableau finit entre la 12ᵉ et la 15ᵉ place.
+- **La note ne récompensait que ce qui se marque** : un gardien finissait à 6,2 de moyenne quand un
+  attaquant tournait à 6,8, et cet écart se propageait (la note nourrit la confiance du coach, donc
+  le temps de jeu). Le but encaissé compte maintenant pour les postes de derrière (+1 sur un clean
+  sheet, +0,35 à un but, −0,5 à partir de quatre). Mesuré après, seize saisons par poste :
+  **6,3 / 6,4 / 6,5 / 6,8** et 18 à 22 matchs. Et un gardien ne délivre plus trois passes décisives
+  par saison (`chancePasse` par poste).
+- **Ce qui n'est pas encore là** : la trêve, les offres, la progression d'une saison sur l'autre,
+  l'usure, la vie et ses chantiers, la boutique, le mercato, le mode entraîneur·euse, la coupe et
+  l'Europe. Les **contenus** sont volontairement repoussés après le moteur (décision du propriétaire) :
+  un contenu n'est une donnée qu'une fois les quatre canaux d'impact et le `ctx` figés. Les quatre
+  `ARRETS` et les huit `MOMENTS` en place sont des marqueurs de forme, pas le contenu final.
+
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).
 - Tout l'état d'une carrière est dans l'objet global `state` (sérialisé dans localStorage). `state.pendingChoice` désigne l'écran courant ; `render()` dans `ui.js` dispatche.
