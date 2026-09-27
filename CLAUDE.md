@@ -318,6 +318,44 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     hachaient la lecture. Désormais un nom à gauche, la phrase en face (une seule colonne sous
     430 px), trois sections — **Autour de toi**, **Toi**, **Ce qu'on sait de toi** — et le doublon
     de « Ta place » disparaît de l'écran de la semaine puisqu'il est dans la fiche.
+- **L'ENTENTE SE JOUE PAR LIGNE, ET ELLE CHANGE LE FOOTBALL** (le propriétaire, 27/09/2026 :
+  « il y a une petite réserve sur la relation avec chaque joueur individuellement. J'ai peur que ça
+  fasse beaucoup et que ça ait peu d'impact… soit chaque ligne fait la moyenne de la relation du
+  vestiaire, et du coup ça peut monter et descendre. Soit il n'y a pas vraiment de ligne, et ce
+  qu'on fait a un impact global sur la note du vestiaire »). Sa réserve était juste : dix relations
+  individuelles étaient **dix nombres invisibles** qui ne servaient qu'à déclencher un arrêt. Un
+  effet purement global, lui, perd les noms — donc les histoires. La **ligne est le bon grain**, à
+  une condition que j'ai posée en acceptant : qu'elle change **le football**, pas seulement une
+  jauge. Sinon ce serait un nombre de plus.
+  - **Trois ententes** (`S.lignes = {def, mil, att}`, 0-100, jamais à l'écran) ; **le vestiaire
+    n'est plus une jauge, c'est leur moyenne** (`vestiaire()`). `S.equipe[].rel` a disparu.
+  - **Un effet de match par poste, et pas le même** (`LIGNE_CLE`) : gardien et défenseur encaissent
+    avec la **défense** (l'entente entre dans la seule espérance de buts encaissés, `ent × .08`,
+    à comparer aux 2,4 de l'avantage du terrain) ; le milieu passe décisif s'il trouve l'**attaque**
+    (`chancePasse × (1 + ent × .012)`) ; l'attaquant marque si le **milieu** le trouve (`chance`,
+    même facteur). Mesuré, 60 saisons par ligne, entente forcée à 25 puis à 80 : le gardien passe de
+    **2,03 à 1,91 but encaissé** par match et le défenseur de **2,05 à 1,80** ; le milieu de **7,9 à
+    13,1 passes** décisives par saison pleine ; l'attaquant de **14,1 à 26,3 buts**. Sur l'amplitude
+    réellement atteinte en jeu (5ᵉ-95ᵉ centile : **36 à 73**, moyenne 54, σ 11), ça fait ±20 %.
+  - **Ce qui les fait bouger** : ta note nourrit **ta** ligne (±1,4), la défense répond de ce qu'elle
+    encaisse, l'attaque de ce qu'elle marque, le milieu du résultat — que tu aies joué ou non ; une
+    dérive d'une journée à l'autre avec rappel de 1 % vers 50, et les arrêts. Trois familles visent
+    une ligne (`rival`, `jeune`, `tension`) : **31 % des arrêts** mesurés. `tension` se déclenche
+    sur la ligne la plus basse (**sous 44 : 14 à 17 % des semaines**) et lui donne un visage, le plus
+    ancien de la ligne — déterministe, pour que ce soit le même tant que ça va mal.
+  - **Chaque ligne a son vocabulaire** (`MOTS_LIGNE`, six bandes × trois lignes) : la première
+    version en partageait un seul, et les trois lignes affichaient souvent la même phrase — de quoi
+    conclure qu'elles ne servent à rien. Une section **Les trois lignes** dans la fiche, avec
+    l'enjeu écrit en face de celle qui te sert (« Plus ils te trouvent, plus tu marques »), et les
+    mouvements de ligne dans « Ce que ça change » après le match.
+  - **Une migration, pas une remise à zéro** (`VERSION` 5 → 6) : il était en train de tester la
+    version déployée. `charger()` reconstruit les trois lignes depuis la sauvegarde v5 — le
+    vestiaire qu'il avait, nuancé de moitié par ce que valait chaque ligne en relations
+    individuelles — puis efface `liens.vestiaire` et les `rel`. Vérifié sur une vraie partie v5 de
+    onze matchs : reprise à la 17ᵉ journée, saison terminée sans erreur.
+  - **Rien d'autre n'a bougé** : banc d'essai rejoué avant/après (40 saisons par ligne, trois
+    croisements), aucune politique ne prend à la fois les matchs et la trace, « deux séances puis un
+    repos » reste devant sur les matchs (16,7 / 16,6 / 13,5 contre 16,8 / 15,4 / 13,1 avant).
 - **Le banc d'essai (`v2/labo.html`)**, demandé par le propriétaire : « le tableau que tu m'as
   partagé, je sais pas ce que ça représente… j'aimerais bien aussi que je puisse faire [les
   simulations] sur le nombre de matchs en fonction des choix qu'on a fait. » La page rejoue des
