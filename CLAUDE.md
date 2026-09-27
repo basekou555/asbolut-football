@@ -34,6 +34,101 @@ jeu, pas son défaut. Référence assumée : *Detroit: Become Human*.
 - Décisions tranchées : la **coupe doit devenir jouable** (comme suite de décisions, pas de
   matchs à opérer).
 
+## Cartographie des deux modes (26/09/2026)
+
+Demandée par le propriétaire : « il y a pas mal de choses construites à droite à gauche et ça manque
+de cohérence… j'aimerais qu'on cartographie les deux modes pour identifier les trous, qu'on voie ce
+qu'on a ajouté, comment ça s'est intégré, si ça a pris la place de quelque chose qui n'est plus
+pertinent, et qu'on redéfinisse l'impact des jauges. » La carte lue est publiée ici :
+**https://claude.ai/artifact/Nqe4MTf49wGfaB3qCHHroU**
+
+Mesuré sur le code en production (`c27e4ea`), quatre carrières par mode, 24 saisons chacune, rythme
+temps forts : **37,3 décisions par saison en mode entraîneur·euse** (dont 29,1 rendez-vous tirés
+dans 19 familles) contre **22,8 en mode joueur·euse**, dont **14,0 la même semaine d'entraînement**
+— 61 % des décisions du joueur·euse sont un écran unique à cinq options.
+
+**Les orphelins trouvés** (chacun vérifié dans le code, pas dans ces notes) :
+- **L'écran de mi-temps est mort** : `coachKickoff()` n'est plus appelé qu'en mode automatique, sa
+  branche manuelle pose encore `pendingChoice='halftime'`, il n'existe aucune fonction de rendu et
+  la table de dispatch ne le connaît pas. Les quatre `HALFTIME_CHOICES` sont injouables.
+- **Management (`stats.technique`, mode entraîneur·euse) n'a aucune lecture mécanique** : son seul
+  consommateur était `ctx.management` dans le choix « recadrer le vestiaire » de la mi-temps — mort,
+  et jamais alimenté de toute façon. Huit options de rendez-vous la modifient encore et la barre
+  latérale promet « vestiaire, jeunes, présidents ».
+- **`coachAlertsAfter()` tourne à vide** : `state.alerts` n'est plus lu côté entraîneur·euse (c'était
+  le déclencheur d'arrêt d'avant les rendez-vous). Vivant et utile côté joueur·euse.
+- **Les trois libellés de `TEMPOS` décrivent l'ancien jeu** (« chaque journée se joue », « 34 matchs
+  par saison », « avec ta compo ») : en mode entraîneur·euse le rythme ne règle plus que le nombre de
+  rendez-vous par phase (10 / 8 / 4). Ils restent exacts en mode joueur·euse.
+- **Le brassard ne se choisit plus** (posé automatiquement), mais reste lu par le rendez-vous du
+  capitaine — l'une des trois familles jamais tirées (avec « deux fronts » et « le symptôme »).
+- **`state.focus` et `state.lastFocus`** sont morts dans les deux modes (restes du système remplacé
+  par les carrefours).
+- **L'argent du joueur·euse** s'accumule dans `totals.earned`, s'affiche, et n'a aucune conséquence.
+- **Supporters (entraîneur·euse)** ne fait rien d'autre que +2 de pression par phase sous 3,5 ;
+  **Vestiaire (joueur·euse)** n'a aucun effet sur le joueur lui-même.
+
+**Les trous, classés** : (1) le mode joueur·euse n'a aucun interlocuteur — 19 familles contre zéro ;
+(2) 61 % de ses décisions sont le même écran ; (3) quatre indicateurs ne servent à rien ; (4) le
+bilan de fin de saison n'existe qu'en mode entraîneur·euse ; (5) aucune décision en cours de match ;
+(6) la coupe est simulée en un coup dans les deux modes ; (7) trois familles de rendez-vous sont
+injouables ; (8) les trois attributs du joueur·euse sont un seul effet à trois noms.
+
+**En attente de décision, non livré** (branche de travail) : le départ des attributs à 5,0 et la
+qualité/défaut tirés au sort. Mesuré : les saisons à zéro match disparaissent (5 carrières sur 12 en
+première saison → 0) mais le niveau final passe de 7,1 à 8,1 et les titres de 3,4 à 5,6 par
+carrière. Baisser le potentiel (7,8-9,6 → 6,4-8,8) n'y change presque rien : ce n'est pas le bon
+levier, et il ne se trouvera pas à l'aveugle.
+
+## Le moteur 2.0 (`v2/`, 27/09/2026)
+
+Après la cartographie rejetée, le propriétaire a demandé de repenser le jeu de A à Z, puis a validé
+sept verrous, puis les coquilles vides, puis : « **Vas-y pour le moteur** ». Livré ici : **une saison
+complète jouable au vrai rythme**, sans contenu de vie ni progression d'une saison sur l'autre —
+juste pour qu'il sente les dix secondes par match. `v2/index.html`, servi à **/v2/** ; la version 1.0
+reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github/workflows/pages.yml`.
+
+- **Les sept verrous tenus par le code** : (1) aucune valeur de jauge n'arrive à l'écran — le moteur
+  travaille sur 0-100 et ne sort que des phrases (`dire()`, `direCorps()`, `direFraicheur()`,
+  `direJambes()`, `direStaff()`) et des directions (`m.mvt`) ; les seuls chiffres affichés sont le
+  score, la note de match, les minutes, les journées et le classement ; (2) un match se joue en trois
+  clics ; (3) le match est simulé, pas opéré ; (4) quatre axes (`tech`, `phys`, `ment`, `spec`) ;
+  (5-7) le journal (`S.journal`) est la seule mémoire, tout y passe.
+- **Fichiers** : `v2/moteur.js` (état, ligue, axes, semaine, arrêts, match, journal, sauvegarde
+  `localStorage` clé `ac2` avec garde de version), `v2/ecrans.js` (tous les écrans, `rendre()`
+  dispatche sur `S.ecran`), `v2/style.css` (repris des coquilles validées), `v2/coquilles.html`
+  (les maquettes, gardées comme référence).
+- **Trois couches par axe** : `base` (la trace), `boost` (l'acquis récent, divisé par deux à chaque
+  match), `plafond` (jamais lu par le joueur). `plafondReel(a) = min(plafond natif, moyenne des
+  autres axes + 25)` : on n'a pas un physique à 10 avec un mental à 1.
+- **Le poids d'une séance, mesuré puis calibré.** Première version : `base += .25 × r × marge × 4`
+  où `r = tirage × marge` — le produit double par la marge donnait **+0,8 de base sur 34 semaines
+  tout donné sur un axe**, autant dire rien. Corrigé en `BOOST_SEANCE`=9 et `TRACE_SEANCE`=.55
+  appliqués à `r`. Mesuré après, six politiques, huit saisons chacune : **aucune ne domine.**
+  Tout donner sur l'axe du poste (`tech` pour un milieu) donne la plus grosse trace (**+7,3**) mais
+  fait jouer moins (18,9 matchs) ; ne jamais travailler fait jouer le plus (19,5 matchs, 15,4
+  titularisations) et ne laisse **rien** ; deux séances puis un repos est le meilleur compromis
+  (22,0 matchs, 14,9 titularisations, +4,5 de trace). Travailler le mauvais axe **et** la semaine la
+  plus lourde est puni deux fois (14,1 matchs, 4,0 titularisations).
+- **Le compte rendu de séance jugeait le mauvais nombre** : il lisait le rendement `r`, qui près du
+  plafond ne dépasse jamais 0,5, et disait donc « pour rien » presque à chaque fois. Il juge
+  maintenant le **tirage** (0,4 / 1 / 1,6) ; la proximité du plafond est une phrase à part. Mesuré :
+  4 excellentes / 11 correctes / 7 pour rien par saison.
+- **Le championnat avait douze clubs à trois points les uns des autres** (`FILLERS` posés à `s:0`) :
+  la place finale était un tirage au sort. Chaque club de complément prend maintenant un rang propre
+  (`s: rnd(-1.7, 1)`). Un club de bas de tableau finit entre la 12ᵉ et la 15ᵉ place.
+- **La note ne récompensait que ce qui se marque** : un gardien finissait à 6,2 de moyenne quand un
+  attaquant tournait à 6,8, et cet écart se propageait (la note nourrit la confiance du coach, donc
+  le temps de jeu). Le but encaissé compte maintenant pour les postes de derrière (+1 sur un clean
+  sheet, +0,35 à un but, −0,5 à partir de quatre). Mesuré après, seize saisons par poste :
+  **6,3 / 6,4 / 6,5 / 6,8** et 18 à 22 matchs. Et un gardien ne délivre plus trois passes décisives
+  par saison (`chancePasse` par poste).
+- **Ce qui n'est pas encore là** : la trêve, les offres, la progression d'une saison sur l'autre,
+  l'usure, la vie et ses chantiers, la boutique, le mercato, le mode entraîneur·euse, la coupe et
+  l'Europe. Les **contenus** sont volontairement repoussés après le moteur (décision du propriétaire) :
+  un contenu n'est une donnée qu'une fois les quatre canaux d'impact et le `ctx` figés. Les quatre
+  `ARRETS` et les huit `MOMENTS` en place sont des marqueurs de forme, pas le contenu final.
+
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).
 - Tout l'état d'une carrière est dans l'objet global `state` (sérialisé dans localStorage). `state.pendingChoice` désigne l'écran courant ; `render()` dans `ui.js` dispatche.
@@ -59,7 +154,7 @@ jeu, pas son défaut. Référence assumée : *Detroit: Become Human*.
   3. **Rien ne rattrapait jamais** : `state.leagueArms[championnat]` monte de `min(4, (écart−2)×0,8)` par saison passée au-dessus (plafond 30) et redescend de 1 par saison ordinaire. `coachStartSeason()` l'ajoute à chaque rival, `coachArmLeague()` le calcule en fin de saison sur l'effectif de l'année écoulée, c'est journalisé, affiché dans le bilan (« Le championnat s'arme contre toi ») et dans le tableau de bord. Mémorisé par championnat : on retrouve armé celui qu'on a quitté.
   Résultat mesuré : titres à partir de la 6e saison **74 % → 49 %**, écart au superclub **15,5 → 8,8**, et surtout l'écart **décroît** désormais sur une carrière (10,7 à la 5e saison, 3,7 à la 9e) au lieu de grimper.
 - **Les scores saturent** (retour du propriétaire, 25/09/2026 : « il y a des matchs où je gagnais 12-0, 15-0 »). L'espérance de buts était une exponentielle sans borne (`1,35 × exp(écart/19)`) : mesuré sur 4 000 matchs par palier, à +35 de force elle attendait **9,4 buts** et 24 % des matchs finissaient à douze buts ou plus, avec des records à 22. `tameXG()` dans `core.js` laisse les matchs ordinaires intacts (identiques jusqu'à +10 d'écart) et comprime la queue au-delà de 2,6 buts attendus, avec une asymptote à 4,8. Appliqué aux deux moteurs : `simMatch()` (matchs joués en coulisses, donc le classement) et `matchLambdas()` (le tien). Après : à +35, moyenne 4,3 et 0,13 % de matchs à douze buts ou plus ; les buts par match d'une saison restent à 2,6–3,3.
-- **La diversité des rendez-vous ne se règle pas au tirage mais à la disponibilité** (« les problèmes revenaient trop vite, trop souvent »). Pondérer le tirage par le nombre de passages (`pickByWeight`, poids `1/(1+n)^1,8`) n'a presque rien changé : à chaque arrêt, seules trois ou quatre familles étaient applicables. Les verrous `it.score>=N` (« ce match compte ») datent d'une époque où l'on s'arrêtait rarement ; avec huit arrêts par phase ils affamaient le tirage. Desserrés (la presse n'en a plus, le président 1, l'adversaire et le déplacement 2, la prime 3, les cartons aucun, la pelouse s'ouvre aux phases 1 et 3), et surtout `MEETING_CAP` (3) empêche une famille de revenir plus de trois fois par saison. Mesuré : la famille dominante passe de 15 % à 13 % des écrans, la pelouse de 0 à 6 %, les cartons de 1 à 4 %, quatorze familles au-dessus de 2 %.
+- **La diversité des rendez-vous ne se règle pas au tirage mais à la disponibilité** (« les problèmes revenaient trop vite, trop souvent »). Pondérer le tirage par le nombre de passages (`pickByWeight`, poids `1/(1+n)^1,8`) n'a presque rien changé : à chaque arrêt, seules trois ou quatre familles étaient applicables. Les verrous `it.score>=N` (« ce match compte ») datent d'une époque où l'on s'arrêtait rarement ; avec huit arrêts par phase ils affamaient le tirage. Desserrés (la presse n'en a plus, le président 1, l'adversaire et le déplacement 2, la prime 3, les cartons aucun, la pelouse s'ouvre aux phases 1 et 3), et `MEETING_CAP` (3) **devait** empêcher une famille de revenir plus de trois fois par saison. Mesuré : la famille dominante passe de 15 % à 13 % des écrans, la pelouse de 0 à 6 %, les cartons de 1 à 4 %, quatorze familles au-dessus de 2 %. **Correction du 26/09/2026 (cartographie) : ce gain vient du tirage pondéré, pas du plafond.** Le filtre qui applique `MEETING_CAP` a une porte de sortie — si aucune famille non plafonnée n'est disponible, on retombe sur la liste complète — et avec trois ou quatre familles applicables par arrêt, elle s'ouvre souvent : la presse est mesurée à **5,3 par saison** pour un plafond de 3.
 - **Le monde arrête de se répéter** (retour du propriétaire, 26/09/2026 : « il y a des dilemmes qui doivent apparaître qu'une fois et qui apparaissent dix fois dans la carrière avec les mêmes joueurs ; et il y a des dilemmes qui n'apparaissent pas »). Recensement sur 46 saisons simulées avant de toucher à quoi que ce soit — **douze contenus sur cinquante n'étaient jamais tirés** (dont deux seulement datés après 2000, donc hors de portée de la sonde), et « Le micro tendu » était apparu **109 fois**. Trois causes séparées :
   1. **Les vingt dilemmes n'entraient dans le sac que si leur jauge était sous 40.** Supporters, Staff, Formation et Proches ne descendent jamais si bas dans une carrière tenue : dix dilemmes étaient donc morts. La jauge pèse maintenant sur le **poids** et non sur l'admission (sous 25 → 9, sous 40 → 6, sous 55 → 2,5, au-dessus → 0,8). Contenus morts : 12 → 5, dont deux datés.
   2. **Une seule mémoire là où il en fallait deux.** `state.metFor` est remis à zéro chaque saison et suffit pour les histoires qui se répètent légitimement (un blessé, un carton qui pend). Les autres ne se jouent qu'**une fois par joueur et par carrière** : `metOnce()` / `markOnce()` sur `state.seenFor` (jamais remis à zéro) pour `president`, `capitaine`, `agent` et `retour`. Chacune porte désormais `mt.aboutId`, et `tests/simulate.js` échoue si une histoire se rejoue sur le même joueur — l'identifiant plutôt que le nom, pour ne pas confondre deux homonymes.

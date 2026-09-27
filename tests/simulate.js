@@ -94,7 +94,9 @@ const { chromium } = require(process.env.PLAYWRIGHT_CORE||'playwright-core');
     for(let run=0;run<8;run++){
       try{
         localStorage.clear(); const era=ERAS[run%ERAS.length];
-        const psup=[]; let pidle=0; creation={kind:'player',step:0,name:'P'+run,era,pos:PLAYER_POS[run%4],origin:pick(PLAYER_ORIGINS),trait:pick(PLAYER_TRAITS)}; launchPlayer(); state.tempo=pick(Object.keys(TEMPOS));
+        const psup=[]; let pidle=0, prev=0; creation={kind:'player',step:0,name:'P'+run,era,pos:PLAYER_POS[run%4],origin:pick(PLAYER_ORIGINS),trait:pick(PLAYER_TRAITS)}; launchPlayer(); state.tempo=pick(Object.keys(TEMPOS));
+        { const q=pQual(), f=pFlaw(); if(!q||!f) throw new Error('qualité ou défaut manquant');
+          if(q.axe===f.axe) throw new Error('qualité et défaut sur le même axe : '+q.axe); }
         let steps=0, pstat={n:0,played:0,start:0,pen:0,g:0,inj:0}, pcar={carrefours:0}, pdashSeen=false, onceEv=new Set();
         while(!state.ended&&steps<5000){
           steps++; const pc=state.pendingChoice; if(steps%100===0) await new Promise(r=>setTimeout(r,0));
@@ -122,7 +124,9 @@ const { chromium } = require(process.env.PLAYWRIGHT_CORE||'playwright-core');
             const h=renderPPrematch(); if(!/playerChooseTraining/.test(h)) throw new Error("l'avant-match ne propose pas de semaine d'entraînement");
             if(Math.random()<.35) playerSimPhase(); else playerChooseTraining(rnd(PTRAINING.length)); }
           else if(pc==='penalty'){ pstat.pen++; playerPenaltyChoice(Math.random()<.7); }
-          else if(pc==='matchResult'){ const m=state.lastMatch; pstat.n++; if(m.played) pstat.played++; if(m.start) pstat.start++; pstat.g+=m.gh+m.ga; if(m.inj) pstat.inj++; playerAfterMatch(); }
+          else if(pc==='matchResult'){ const m=state.lastMatch; pstat.n++; if(m.played) pstat.played++; if(m.start) pstat.start++; pstat.g+=m.gh+m.ga; if(m.inj) pstat.inj++;
+            if(m.reveal){ prev++; const h=renderPMatchResult(); if(!h.includes(m.reveal.name)) throw new Error("révélation non affichée : "+m.reveal.name); }
+            playerAfterMatch(); }
           else if(pc==='phaseResult'){ if(!pdashSeen){ pdashSeen=true; const h=renderPlayerDashboard(); if(!h||h.length<400) throw new Error('tableau de bord joueur vide'); } playerAfterPhase(); }
           else if(pc==='seasonEnd'){ const h=renderPSeasonEnd(); const f=state.lastSeason;
             if(f.idle&&!/Mental/.test(h)) throw new Error("saison sans jouer non expliquée");
@@ -135,14 +139,15 @@ const { chromium } = require(process.env.PLAYWRIGHT_CORE||'playwright-core');
           render();
         }
         render();
-        res.player.push({run,era:era.id,pos:state.pos,cause:state.endingCause,age:pAge(),seasons:state.history.length,totals:state.totals,note:Math.round(pRating()),clubs:state.clubs.length,sup:psup.length,idle:pidle,best:state.history.reduce((b,h)=>Math.max(b,h.note||0),0).toFixed(2),p:pstat,ev:pcar,entourage:Math.round(state.gauges.entourage)});
+        if(state.totals.apps>=13&&(!state.qual.seen||!state.flaw.seen)) throw new Error('qualité ou défaut jamais révélé après '+state.totals.apps+' matchs');
+        res.player.push({run,era:era.id,pos:state.pos,cause:state.endingCause,age:pAge(),seasons:state.history.length,totals:state.totals,note:Math.round(pRating()),clubs:state.clubs.length,sup:psup.length,idle:pidle,rev:prev,best:state.history.reduce((b,h)=>Math.max(b,h.note||0),0).toFixed(2),p:pstat,ev:pcar,entourage:Math.round(state.gauges.entourage)});
       }catch(e){ res.player.push({run,error:e.message+' @ '+(e.stack||'').split('\n')[1],pc:state&&state.pendingChoice}); }
     }
     try{ renderBadges(); renderHall(); renderRules(); state=null; renderStart(); startCoachCreation(); cPick('name','X'); cPickEra(2); render; startPlayerCreation(); cPick('name','Y'); cPickEra(5); cPick('pos',PLAYER_POS[3]); cPick('origin',PLAYER_ORIGINS[0]); cPick('trait',PLAYER_TRAITS[0]); }catch(e){ res.ui='UI error: '+e.message+' '+(e.stack||'').split('\n')[1]; }
     return res;
   });
   console.log('COACH'); out.coach.forEach(c=>console.log(c.error?JSON.stringify(c):[c.run,c.era,c.mode,c.cause,'age'+c.age,c.year,'seasons'+c.seasons,'sack'+c.sackings,'L'+c.titles.league+'/P'+c.titles.promo+'/C'+c.titles.cup+'/E'+c.titles.euro,'aw'+c.awards,'clubs'+c.clubs,'rep'+c.rep,'scams'+c.scams,'gap'+c.gap,'gapMax'+c.gapMax,'wages'+c.wr,'matches'+c.m.n,'goals/m'+(c.m.g/Math.max(1,c.m.n)).toFixed(2),'yel/m'+(c.m.y/Math.max(1,c.m.n)).toFixed(2),'red/m'+(c.m.r/Math.max(1,c.m.n)).toFixed(3),'inj/m'+(c.m.inj/Math.max(1,c.m.n)).toFixed(3),'pen/m'+(c.m.pen/Math.max(1,c.m.n)).toFixed(3),'sub/m'+(c.m.sub/Math.max(1,c.m.n)).toFixed(2),'carrefours'+c.ev.carrefours,'dilemmes'+(c.ev.dilemma||0),'vie'+(c.ev.happening||0),'incidents'+(c.ev.incident||0),'projOK'+c.proj,'proches'+c.proches].join(' ')));
-  console.log('PLAYER'); out.player.forEach(p=>console.log(p.error?JSON.stringify(p):[p.run,p.era,p.pos,p.cause,'age'+p.age,'seasons'+p.seasons,'apps'+p.totals.apps,'goals'+p.totals.goals,'titles'+p.totals.titles,'caps'+p.totals.caps,'ballons'+p.totals.ballons,'note'+p.note,'best'+p.best,'clubs'+p.clubs,'m'+p.p.n,'played'+p.p.played,'starts'+p.p.start,'pen'+p.p.pen,'inj'+p.p.inj,'carrefours'+p.ev.carrefours,'dilemmes'+(p.ev.dilemma||0),'vie'+(p.ev.happening||0),'incidents'+(p.ev.incident||0),'entourage'+p.entourage,'situations'+(p.ev.situation||0),'idle'+p.idle].join(' ')));
+  console.log('PLAYER'); out.player.forEach(p=>console.log(p.error?JSON.stringify(p):[p.run,p.era,p.pos,p.cause,'age'+p.age,'seasons'+p.seasons,'apps'+p.totals.apps,'goals'+p.totals.goals,'titles'+p.totals.titles,'caps'+p.totals.caps,'ballons'+p.totals.ballons,'note'+p.note,'best'+p.best,'clubs'+p.clubs,'m'+p.p.n,'played'+p.p.played,'starts'+p.p.start,'pen'+p.p.pen,'inj'+p.p.inj,'carrefours'+p.ev.carrefours,'dilemmes'+(p.ev.dilemma||0),'vie'+(p.ev.happening||0),'incidents'+(p.ev.incident||0),'entourage'+p.entourage,'situations'+(p.ev.situation||0),'idle'+p.idle,'rev'+p.rev].join(' ')));
   console.log('UI',out.ui||'ok'); console.log('ERRORS:',errors.length?errors.slice(0,10).join('\n'):'none');
   await browser.close();
 })();

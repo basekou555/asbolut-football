@@ -10,6 +10,50 @@ const PLAYER_ORIGINS=[
 const PLAYER_TRAITS=[
  {id:'bosseur',name:"Bosseur·euse",desc:"Premier·ère arrivé·e, dernier·ère parti·e. Moins de fantaisie.",bonus:{physique:3,mental:2,technique:-2},growth:.2},{id:'genie',name:"Génie instinctif",desc:"Des gestes que personne n'apprend.",bonus:{technique:7,mental:-2},growth:0},{id:'leader',name:"Leader naturel",desc:"Le vestiaire t'écoute déjà à 18 ans. Tu parles plus que tu ne dribbles.",bonus:{mental:5,technique:-2},gauges:{vestiaire:10}},{id:'fragile',name:"Corps fragile",desc:"Talent immense, ischios en papier.",bonus:{technique:5,physique:-3},injury:.1},{id:'fetard',name:"Fêtard·e",desc:"La nuit, tu marques aussi beaucoup.",bonus:{technique:2,mental:-3},gauges:{supporters:5,entourage:-5},scandal:true},{id:'glace',name:"Sang froid",desc:"Un penalty à la 90e ne te fait rien. Le sprint de la 89e, si.",bonus:{mental:7,physique:-3}},
 ];
+/* ---------- Une qualité et un défaut, tirés au sort, découverts en jouant ----------
+   Choix du propriétaire (26/09/2026) : « tirés au sort, révélés en jouant ». Les
+   chiffres bougent dès la création — l'écran ne montre jamais autre chose que ce que
+   le moteur joue — mais le **nom** de la chose, personne ne te l'a encore dit. Il se
+   révèle sur un match qui lui ressemble : un but, quatre-vingts minutes dans les
+   jambes, une note de patron, un carton, une blessure. La qualité et le défaut ne
+   tombent jamais sur le même axe : une carrière doit pencher, pas s'annuler. */
+const PLAYER_QUALITIES=[
+ {id:'frappe',axe:'technique',v:15,name:"Une frappe",say:"Ta frappe n'est pas normale. Le staff s'arrête pour regarder les séances de tirs.",when:r=>r.goals>=1},
+ {id:'deuxpieds',axe:'technique',v:15,name:"Deux pieds",say:"Tu joues des deux pieds sans y penser. Personne ne sait de quel côté te prendre.",when:r=>r.assists>=1},
+ {id:'poumons',axe:'physique',v:15,name:"Des poumons",say:"Tu finis les matchs plus frais que tu ne les as commencés. Le préparateur le dit à tout le monde.",when:r=>r.min>=80},
+ {id:'duel',axe:'physique',v:15,name:"Le duel",say:"On ne te passe pas dessus. Pas deux fois, en tout cas.",when:r=>r.note>=6.5&&r.min>=60},
+ {id:'nerfs',axe:'mental',v:15,name:"Des nerfs d'acier",say:"Le stade hurle et tes mains ne tremblent pas. Ça ne s'apprend pas.",when:r=>r.note>=7},
+ {id:'lecture',axe:'mental',v:15,name:"La lecture du jeu",say:"Tu es là où le ballon va arriver. C'est tout, et c'est énorme.",when:r=>r.motm==='me'||r.note>=7.2},
+];
+const PLAYER_FLAWS=[
+ {id:'gauche',axe:'technique',v:-15,name:"Un pied gauche absent",say:"Côté gauche, tu ne fais rien. Les défenseurs l'ont compris avant toi.",when:r=>r.note<6},
+ {id:'tetenon',axe:'technique',v:-15,name:"Rien de la tête",say:"Les ballons aériens ne sont pas pour toi. On arrête de te les adresser.",when:r=>r.note<6.2},
+ {id:'ischios',axe:'physique',v:-15,name:"Des ischios en verre",say:"Encore cette gêne derrière la cuisse. Le kiné ne dit rien et soupire.",when:r=>r.inj>0||r.min>=75},
+ {id:'lent',axe:'physique',v:-15,name:"Le démarrage",say:"Sur dix mètres, tout le monde te prend. Il faudra jouer autrement.",when:r=>r.min>=45},
+ {id:'sangchaud',axe:'mental',v:-15,name:"Le sang chaud",say:"Un mot de trop, un geste de trop. L'arbitre n'a pas hésité.",when:r=>r.yellow>0||r.red>0},
+ {id:'doute',axe:'mental',v:-15,name:"Le doute",say:"Un geste raté et tu joues petit pendant vingt minutes. D'en haut, ça se voit.",when:r=>r.note<5.8},
+];
+function pDrawQualityFlaw(){
+  const q=pick(PLAYER_QUALITIES);
+  return {q,f:pick(PLAYER_FLAWS.filter(x=>x.axe!==q.axe))};
+}
+function pQual(){ return state.qual?PLAYER_QUALITIES.find(x=>x.id===state.qual.id)||null:null; }
+function pFlaw(){ return state.flaw?PLAYER_FLAWS.find(x=>x.id===state.flaw.id)||null:null; }
+/* Après un match, ce que ce match vient de dire de toi. Un seul par match : deux
+   révélations d'un coup et le moment ne vaut plus rien. Filet de sécurité au
+   douzième match — à un moment, le staff a fini de te jauger. */
+function pCheckReveal(rec){
+  const late=(state.totals.apps||0)>=12;
+  const cands=[];
+  const q=pQual(), f=pFlaw();
+  if(q&&state.qual&&!state.qual.seen&&(late||(rec.played&&q.when(rec)))) cands.push({kind:'qualité',it:q,box:state.qual});
+  if(f&&state.flaw&&!state.flaw.seen&&(late||((rec.played||rec.inj)&&f.when(rec)))) cands.push({kind:'défaut',it:f,box:state.flaw});
+  if(!cands.length) return null;
+  const c=pick(cands); c.box.seen=true;
+  const s=state.stats; const axeLbl={technique:'technique',physique:'physique',mental:'mental'}[c.it.axe];
+  log(`${c.kind==='qualité'?'✨':'⚠️'} <b>${c.it.name}</b> — ${c.it.say} (${axeLbl} ${d10(c.it.v)} depuis toujours, tu le sais maintenant.)`);
+  return {kind:c.kind,name:c.it.name,say:c.it.say,axe:c.it.axe,v:c.it.v,now:s[c.it.axe]};
+}
 /* ---------- L'intersaison, en quatre temps ----------
    Retour du propriétaire (26/09/2026) : « l'intersaison d'un joueur de foot ne
    doit pas seulement être résumée en un seul choix. Est-ce qu'il part en
@@ -215,11 +259,16 @@ const PSTAT={technique:"Technique",physique:"Physique",mental:"Mental"};
 const ROLES={titulaire:{name:"Titulaire",share:.9},rotation:{name:"Rotation",share:.55},remplacant:{name:"Remplaçant·e",share:.25}};
 
 function playerFreshState(c){
-  const st={technique:36,physique:36,mental:36}; [c.origin,c.trait].forEach(o=>Object.entries(o.bonus||{}).forEach(([k,v])=>st[k]=clamp(st[k]+v)));
+  // « Tout à 5 au départ » (demande du propriétaire) : les trois axes partent de 50,
+  // soit 5,0 à l'écran, puis l'origine, l'archétype, la qualité et le défaut écartent.
+  const st={technique:50,physique:50,mental:50}; [c.origin,c.trait].forEach(o=>Object.entries(o.bonus||{}).forEach(([k,v])=>st[k]=clamp(st[k]+v)));
+  // Tiré une seule fois par création : l'aperçu de la fiche et le coup d'envoi doivent
+  // montrer les mêmes chiffres.
+  const qf=c.qf||(c.qf=pDrawQualityFlaw()); st[qf.q.axe]=clamp(st[qf.q.axe]+qf.q.v); st[qf.f.axe]=clamp(st[qf.f.axe]+qf.f.v);
   const g={corps:75,vestiaire:50,supporters:45,entourage:50}; [c.origin,c.trait].forEach(o=>Object.entries(o.gauges||{}).forEach(([k,v])=>g[k]=clamp(g[k]+v)));
   const nat=c.origin.nat==='AF'?pick(['SN','CI','ML','CM','DZ','MA']):'FR';
-  return { kind:'player', name:c.name, year:c.era.start, startYear:c.era.start, startEra:c.era.id, rouletteEcho:null, focus:[], lastFocus:null, age:c.origin.age||17, born:c.era.start-(c.origin.age||17), pos:c.pos.id, posName:c.pos.name, posIcon:c.pos.icon, nat, originName:c.origin.name, traitName:c.trait.name, traitId:c.trait.id, injuryMod:c.trait.injury||0, growth:1+(c.trait.growth||0), potential:randInt(78,96),
-    stats:st, gauges:g, pressure:8, coachTrust:50, forme:70, injury:0, fitness:100, yellows:0, suspended:0, tempo:'temps_forts', skipped:[], sinceLast:[], alerts:[], lastStatus:null, club:null, squad:[], usedNames:[], comp:null, phase:0, matchday:0, match:null, phaseMatches:[], seasonStats:null, history:[], totals:{apps:0,goals:0,assists:0,titles:0,cups:0,euros:0,caps:0,capGoals:0,ballons:0,boots:0,earned:0}, clubs:[], selected:false, selectionBoost:0, bigOfferNext:false, log:[], pendingChoice:null, currentEvent:null, currentRoulette:null, pendingResult:null, currentOffers:[], newBadges:[], lastRouletteSeason:-99, rouletteCount:0, noOfferYears:0, consecutiveBad:0, benchRun:0, vacPrep:1, vacFatigue:0, clubLeft:null, clubStuck:null, legendOf:null, ended:false, endingText:'', endingCause:null };
+  return { kind:'player', name:c.name, year:c.era.start, startYear:c.era.start, startEra:c.era.id, rouletteEcho:null, focus:[], lastFocus:null, age:c.origin.age||17, born:c.era.start-(c.origin.age||17), pos:c.pos.id, posName:c.pos.name, posIcon:c.pos.icon, nat, originName:c.origin.name, traitName:c.trait.name, traitId:c.trait.id, injuryMod:c.trait.injury||0, growth:1+(c.trait.growth||0), potential:randInt(64,88),
+    stats:st, gauges:g, pressure:8, coachTrust:50, forme:70, injury:0, fitness:100, yellows:0, suspended:0, tempo:'temps_forts', skipped:[], sinceLast:[], alerts:[], lastStatus:null, club:null, squad:[], usedNames:[], comp:null, phase:0, matchday:0, match:null, phaseMatches:[], seasonStats:null, history:[], totals:{apps:0,goals:0,assists:0,titles:0,cups:0,euros:0,caps:0,capGoals:0,ballons:0,boots:0,earned:0}, clubs:[], selected:false, selectionBoost:0, bigOfferNext:false, log:[], pendingChoice:null, currentEvent:null, currentRoulette:null, pendingResult:null, currentOffers:[], newBadges:[], lastRouletteSeason:-99, rouletteCount:0, noOfferYears:0, consecutiveBad:0, benchRun:0, qual:{id:qf.q.id,seen:false}, flaw:{id:qf.f.id,seen:false}, vacPrep:1, vacFatigue:0, clubLeft:null, clubStuck:null, legendOf:null, ended:false, endingText:'', endingCause:null };
 }
 function pRating(){ const s=state.stats; const w=state.pos==='G'?{technique:.3,physique:.3,mental:.4}:state.pos==='D'?{technique:.3,physique:.4,mental:.3}:state.pos==='M'?{technique:.4,physique:.25,mental:.35}:{technique:.45,physique:.3,mental:.25}; return s.technique*w.technique+s.physique*w.physique+s.mental*w.mental; }
 function pAge(){ return state.year-state.born; }
@@ -399,7 +448,7 @@ function playerChooseCrossroad(i){
 /* ---------- Saison ---------- */
 function playerMe(){ const corps=state.gauges.corps; return {id:'me',name:state.name,pos:state.pos,born:state.born,peak:pRating()/ageCurve(pAge()),dev:1,morale:70,form:0,injury:state.injury,real:true,isMe:true,trait:state.traitId==='leader'?'leader':state.traitId==='fetard'?'fetard':state.traitId==='fragile'?'fragile':'pro',traitId:state.traitId,fitness:state.fitness==null?100:state.fitness,yellows:state.yellows||0,suspended:state.suspended||0,injuryMod:(state.injuryMod||0)*.2+Math.max(0,50-corps)*.0004+(pAge()>=31?.006:0),selBonus:playerSelBonus()}; }
 /* Ce que le coach ajoute (ou retire) à ta note quand il compose : confiance, rôle promis, forme, jeunesse */
-function playerSelBonus(){ const c=state.club; const e=state.rouletteEcho; return (state.coachTrust-50)*.12+(c&&c.role==='titulaire'?6:c&&c.role==='rotation'?2.5:0)+(state.forme-60)*.05+(state.minutesBonus||0)*10+(pAge()<=18?-1:0)+(e&&e.seasons>0?e.delta:0); }
+function playerSelBonus(){ const c=state.club; const e=state.rouletteEcho; return (state.coachTrust-50)*.12+(c&&c.role==='titulaire'?6:c&&c.role==='rotation'?2.5:0)+(state.forme-60)*.05+(state.minutesBonus||0)*10+(pAge()<=17?-5:pAge()===18?-3:pAge()===19?-1.5:0)+(e&&e.seasons>0?e.delta:0); }
 function playerFullSquad(){ return [...state.squad.filter(p=>!p.isMe),playerMe()]; }
 function playerSquadMap(){ return Object.fromEntries(playerFullSquad().map(p=>[p.id,p])); }
 function playerSyncMe(me){ state.injury=me.injury; state.fitness=me.fitness; state.yellows=me.yellows||0; state.suspended=me.suspended||0; }
@@ -415,7 +464,11 @@ function playerShare(){
   const r=pRating(); const rivals=state.squad.filter(p=>p.pos===state.pos&&!p.injury).map(p=>playerRating(p,state.year)).sort((a,b)=>b-a);
   const slots=state.pos==='G'?1:state.pos==='A'?2:4; const nth=rivals[slots-1]||0; const gap=r-nth;
   let share=clamp(.5+gap*.05+(state.coachTrust-50)*.006+(state.forme-60)*.003+(state.minutesBonus||0),0,1);
-  if(pAge()<=18) share=Math.min(share,.6); if(state.injury>0) share*=clamp(1-state.injury/20,0,1);
+  // Un très jeune ne s'impose pas d'emblée : le coach le fait entrer, il ne le
+  // lance pas. Le frein réel est dans `playerSelBonus()`, qui décide la compo ;
+  // ce plafond-ci n'est que la lecture affichée, et il suit le même sens.
+  if(pAge()<=18) share=Math.min(share,.6);
+  if(state.injury>0) share*=clamp(1-state.injury/20,0,1);
   return share;
 }
 function playerStartSeason(){
@@ -562,6 +615,7 @@ function playerAfterMatchSim(P){
   else { ss.shares.push(0); state.benchRun=(state.benchRun||0)+1; if(m.myStatus==='bench'){ dTrust=-.6; state.forme=clamp(state.forme+1); } state.gauges.vestiaire=clamp(state.gauges.vestiaire-(m.myStatus==='out'?.3:0)); }
   state.coachTrust=clamp(state.coachTrust+dTrust+(res==='W'?.3:res==='L'?-.3:0));
   const rec={home:ha.home,away:ha.away,gh:ha.gh,ga:ha.ga,us:m.home?'home':'away',res,matchday:m.matchday,ht:m.ht,story:m.story,scorers:matchScorersText(m,P),events:m.events,ratings:m.ratings,motm:m.motm,xi:m.xi,bench:m.bench,played,start:!!(s&&s.start),min:s?s.min:0,goals:s?s.goals:0,assists:s?s.assists:0,yellow:s?s.yellow:0,red:s?s.red:0,inj:s?s.inj:0,note,dTrust:Math.round(dTrust*10)/10,status:m.myStatus,penNote:m.penNote||'',pos:tablePos(comp.table,c.name),themStrength:Math.round(m.themStrength),themStyle:m.themStyle};
+  rec.reveal=pCheckReveal(rec);
   state.phaseMatches.push(rec); state.lastMatch=rec; state.matchday++;
   log(`${res==='W'?'✅':res==='L'?'❌':'➖'} J${m.matchday+1} : ${ha.home} ${ha.gh}–${ha.ga} ${ha.away}. ${played?`Toi : ${s.min} min, note ${note.toFixed(1).replace('.',',')}${s.goals?', '+s.goals+' but'+(s.goals>1?'s':''):''}${s.assists?', '+s.assists+' passe'+(s.assists>1?'s':''):''}.`:m.myStatus==='bench'?'Tu restes sur le banc.':m.myStatus==='injured'?'Blessé·e, tu regardes depuis la tribune.':m.myStatus==='suspended'?'Suspendu·e.':'Pas dans le groupe.'}`);
   state.pendingChoice='matchResult'; saveGame();
