@@ -1128,6 +1128,45 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
      maintenant les deux, et l'arrêt d'abord (« À l'infirmerie : 3 journées encore ») ;
   3. **tu comptes dans les absents** quand c'est toi qui manques (« Toi et Diallo manquez ce
      samedi »), et « Ta place » ne te conseille plus de rester dans les plans quand tu ne joueras pas.
+- **TON CORPS N'ÉTAIT BRANCHÉ SUR RIEN** (le propriétaire, 27/09/2026 : « l'onglet blessure dans ma
+  situation n'est pas connecté à ma situation correctement »). Mesuré avant de toucher à quoi que ce
+  soit, 1 020 semaines : `S.etats.corps` a une **médiane de 89 et un dixième centile de 86** — la
+  case disait « Rien ne te fait mal » **86 % du temps** et n'atteignait jamais ses bandes basses,
+  parce que les étés rendaient plus que la saison ne prenait (+12 ou +24 contre −5). Et elle ne
+  servait à rien : aucune mécanique ne lisait ce chiffre. Deux fautes d'un coup, contre la règle du
+  projet — *chaque chiffre affiché doit avoir une conséquence visible*.
+  - **L'usure est une cible qui descend avec l'âge**, pas une punition qui s'empile. `cibleCorps(age)`
+    vaut 96 jusqu'à vingt-cinq ans puis perd 1,9 par an ; le corps y revient de 5 % par semaine, et
+    ce qu'on lui fait subir l'en écarte (les matchs, davantage quand on finit sur les jambes, les
+    blessures, l'été de travail). **On répare, on ne rajeunit pas.**
+  - **Première version, trop violente, et corrigée** : une usure qui s'accumulait (matchs + blessures
+    + années) avec une blessure qui coûtait du corps et un corps usé qui faisait se blesser — la
+    spirale. Mesuré : **corps à 77 dès vingt ans, 47 à vingt-trois, et une semaine sur trois à
+    l'infirmerie**. Le rappel vers la cible est ce qui la ferme.
+  - **Et elle sert enfin à quelque chose** : on se blesse un peu plus (`(88 − corps) × .0008`) et on
+    récupère un peu moins vite (`× (1 − (88 − corps) × .002)`). Comme cela ajoutait des blessures à
+    un jeu qui en comptait déjà beaucoup (11 à 20 % des semaines à l'infirmerie **avant** ce lot,
+    mesuré sur la version déployée), le coût des jambes vides descend de 5 à 3,5 points : le total
+    reste où il était.
+  - **Les quatre bandes sont posées là où le corps passe vraiment** (89 / 80 / 71) : mesuré sur 24
+    carrières entières, « Rien ne te fait mal » jusqu'à vingt-six ans, « Quelques douleurs » de
+    vingt-sept à trente et un, « Tu récupères moins vite » de trente-deux à trente-six, « Ton corps
+    commence à te lâcher » après. **La phrase change 127 fois par carrière** — elle ne bougeait
+    pratiquement pas.
+- **CE QUI S'EST PASSÉ SUR LE TERRAIN PÈSE PLUS QUE LA CHANCE** (le propriétaire, 27/09/2026 : « je
+  trouve certaines notes un peu trop justes »). Mesuré sur 14 387 notes de coéquipiers : un but
+  rapportait **+1,5** quand le tirage aléatoire de la note en valait **2,6 d'amplitude** — donc un
+  buteur pouvait finir sous un défenseur qui n'avait rien fait, ce qu'il avait sous les yeux
+  (Chevalier marque et prend 7,2, Garnier ne marque pas et prend 8,9). Le tirage tombe de
+  `±1,3` à `±0,95`, un but passe de 1,2 à **1,5**, une passe décisive de 0,4 à **0,55**, et le clean
+  sheet d'un défenseur de 0,8 à 0,7 — pour qu'un but batte toujours un match propre. Mesuré après :
+  **un but 7,89** (contre 7,59), un doublé **9,20** (contre 8,58), un défenseur en clean sheet
+  victorieux **7,10**, et la part des buteurs qui finissent sous la moyenne de ceux qui n'ont rien
+  fait tombe de **3 % à 1 %**. L'étendue des notes ne bouge pas (10ᵉ 5,2 · médiane 6,2 · 90ᵉ 7,5) :
+  c'est la chance qui a cédé sa place aux faits, pas le relief qui a disparu.
+  **Vérifié** : les sept invariants du tableau des notes à zéro écart sur 2 040 matchs, les
+  invariants du monde à zéro sur 14 carrières, l'arbitrage de la semaine tient aux trois croisements,
+  `tests/simulate.js` → `ERRORS: none`.
 - **Ce qui n'est pas encore là** : la vie et ses chantiers, la boutique, la sélection nationale,
   le mode entraîneur·euse. (La trêve, les offres, la progression
   d'une saison sur l'autre et l'usure sont livrées — voir « La carrière continue ».) Les **contenus** sont volontairement repoussés après le moteur (décision du propriétaire) :
