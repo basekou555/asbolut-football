@@ -37,7 +37,8 @@ function rendre(){
   const el = app(); if (!el) return;
   if (!S) { el.innerHTML = creationHTML(); window.scrollTo(0, 0); return; }
   const f = { semaine:ecranSemaine, arret:ecranArret, moment:ecranMoment,
-    resultat:ecranResultat, bilan:ecranBilan, journal:ecranJournal }[S.ecran];
+    resultat:ecranResultat, bilan:ecranBilan, journal:ecranJournal,
+    ete:ecranEte, offres:ecranOffres, carriere:ecranCarriere }[S.ecran];
   el.innerHTML = topHTML() + (f ? f() : `<div class="card"><h2>Écran inconnu</h2><p class="sub">${esc(S.ecran)}</p></div>`);
   window.scrollTo(0, 0);
 }
@@ -110,12 +111,17 @@ const LIEN_ICO = { coach:"🎽", vestiaire:"✊", club:"🏟️", supporters:"�
   def:"🛡️", mil:"🧭", att:"🎯", reserve:"🧱" };
 
 function topHTML(){
-  const pos = maPlace();
+  // hors saison, la journée et le classement sont ceux de l'année d'avant : on ne
+  // les affiche pas, on dit où on en est vraiment
+  const hors = { ete:"L'été", offres:'Mercato', carriere:'Fin de carrière' }[S.ecran];
+  const pos = hors ? 0 : maPlace();
   return `<div class="top">
     <div><div class="who">${esc(S.moi.nom)}</div>
-      <div class="sub">${esc(S.moi.posteNom)} · ${esc(S.club.nom)}</div></div>
-    <div class="meta">${S.annee}-${S.annee + 1}<br>${ordinal(Math.min(S.journee + 1, JOURNEES))} journée sur ${JOURNEES}
-      <br>${esc(S.club.nom)} ${ordinal(pos)}</div>
+      <div class="sub">${esc(S.moi.posteNom)} · ${esc(S.club.nom)}${S.moi.age ? ` · ${S.moi.age} ans` : ''}</div></div>
+    <div class="meta">${S.annee}${hors ? '' : `-${S.annee + 1}`}<br>${hors
+      ? esc(hors) : `${ordinal(Math.min(S.journee + 1, JOURNEES))} journée sur ${JOURNEES}`}
+      <br>${hors ? (S.carriere ? `${S.carriere.saisons} saison${S.carriere.saisons > 1 ? 's' : ''}` : '')
+        : `${esc(S.club.nom)} ${ordinal(pos)}`}</div>
   </div>`;
 }
 function maPlace(){ return classementTrie().findIndex(x => x.nom === S.club.nom) + 1; }
@@ -388,15 +394,123 @@ function ecranBilan(){
       ${b.perdu.map(t => `<p class="narr" style="margin:0 0 5px">${esc(t)}</p>`).join('')}</div></div>
     <div class="bloc suite"><span class="i">➡️</span><div><h4>Ce qui vient</h4>
       ${b.suite.map(t => `<p class="narr" style="margin:0 0 5px">${esc(t)}</p>`).join('')}</div></div>
-    <p class="sub">La trêve, les offres, la progression d'une saison sur l'autre : c'est la suite du moteur. Ici s'arrête ce qui est jouable.</p>
+    ${carriereHTML()}
     <div class="btn-row"><button class="btn ghost" onclick="ouvrirJournal()">📓 Le journal</button>
-      <button class="btn" onclick="recommencer()">Recommencer</button></div>
+      <button class="btn" onclick="ouvrirEte()">L'été →</button></div>
   </div>
   ${effectifHTML()}${classementHTML()}`;
 }
 
+/* ---------------- la trêve ---------------- */
+/* Ce que ta carrière a déjà laissé : la ligne qui donne envie d'une saison de plus. */
+function carriereHTML(){
+  const c = S.carriere;
+  if (!c || !c.saisons) return '';
+  const moy = moyCarriere();
+  return `<div class="sit"><div><span class="k">La carrière</span><span class="p">${c.saisons} saison${c.saisons > 1 ? 's' : ''} · ${c.matchs} matchs · ${c.buts} but${c.buts > 1 ? 's' : ''}${moy == null ? '' : ` · ${virg(Math.round(moy * 100) / 100)} de moyenne`}</span></div>
+    ${c.titres ? `<div><span class="k">Les titres</span><span class="p">${c.titres} championnat${c.titres > 1 ? 's' : ''}</span></div>` : ''}
+    <div><span class="k">Les clubs</span><span class="p">${esc(c.clubs.join(', '))}</span></div></div>`;
+}
+function ecranEte(){
+  return `<div class="card">
+    <div class="step">Été ${S.annee} · six semaines à toi</div>
+    <div class="big-ico">☀️</div>
+    <h2>Ce que tu fais de l'été</h2>
+    <p class="narr">Le championnat est fini. Ce que tu choisis maintenant, tu le porteras toute la saison prochaine.</p>
+    ${ETE.map(e => optHTML(e.ico, e.nom, e.sub, e.dit, `choisirEte('${e.id}')`)).join('')}
+  </div>`;
+}
+/* Les offres, une à la fois : on ne sait jamais si la suivante sera meilleure. */
+function motClub(f){
+  const l = S.ligue.equipes.map(e => e.force).sort((a, b) => b - a);
+  const r = l.filter(x => x > f).length + 1;
+  return r <= 2 ? "Ils jouent le titre, et ils le disent."
+    : r <= 6 ? "Le haut du tableau, et l'Europe en ligne de mire."
+    : r <= 12 ? "Un club installé, sans histoire."
+    : "Ils joueront le maintien, et ils le savent.";
+}
+function motPlace(f){
+  const d = niveau() - f;
+  return d >= 5 ? "Tu joues, et tout de suite. Ils t'appellent pour ça."
+    : d >= -2 ? "Tu auras ta chance. À toi d'en faire quelque chose."
+    : "Tu devras la prendre. Ils ont mieux que toi à ton poste.";
+}
+function ecranOffres(){
+  const o = offreCourante();
+  const reste = (S.offres || []).length - (S.offreIdx || 0);
+  if (!o) return `<div class="card">
+    <div class="step">Mercato ${S.annee} · ${S.moi.age} ans</div>
+    <div class="big-ico">📞</div>
+    <h2>${S.libre ? "Plus personne n'appelle" : "Le téléphone n'a pas sonné"}</h2>
+    <p class="narr">${S.libre
+      ? `${esc(S.club.nom)} n'a pas prolongé, et aucun club n'est venu. Il va falloir trouver autre chose.`
+      : `Aucune proposition cet été. Tu restes à ${esc(S.club.nom)}, et tu as une saison pour changer ça.`}</p>
+    ${situationTete()}
+    <div class="btn-row">${S.libre
+      ? `<button class="btn" onclick="finCarriere('personne')">Arrêter là</button>`
+      : `<button class="btn" onclick="resterAuClub()">La saison qui vient →</button>`}</div>
+  </div>`;
+  return `<div class="card">
+    <div class="step">Mercato ${S.annee} · ${S.moi.age} ans · ${reste > 1 ? "une proposition parmi d'autres" : 'une proposition'}</div>
+    <div class="big-ico">📞</div>
+    <h2>${esc(o.nom)}</h2>
+    <p class="narr">${esc(motClub(o.force))} ${esc(motPlace(o.force))}</p>
+    ${situationTete()}
+    ${S.libre ? `<p class="sub">${esc(S.club.nom)} n'a pas prolongé : tu n'as pas de club si tu refuses tout.</p>`
+      : `<p class="sub">Refuser la fait disparaître. La suivante peut être pire, ou ne pas venir.</p>`}
+    <div class="btn-row">
+      <button class="btn ghost" onclick="passerOffre()">Refuser</button>
+      <button class="btn" onclick="signerOffre()">Signer</button></div>
+    ${S.libre ? '' : `<div class="btn-row"><button class="btn ghost" onclick="resterAuClub()">Rester à ${esc(S.club.nom)}</button></div>`}
+  </div>`;
+}
+/* Ce que l'été a changé en toi, en mots : jamais un chiffre d'axe à l'écran. */
+function situationTete(){
+  const g = S.progres || {};
+  const monte = AXES.filter(a => g[a] > .8), baisse = AXES.filter(a => g[a] < -.8);
+  const mot = { tech:'la technique', phys:'le physique', ment:'le mental', spec:'ton poste' };
+  const l = [];
+  if (monte.length) l.push(`Tu as pris de l'épaisseur : ${monte.map(a => mot[a]).join(', ')}.`);
+  if (baisse.length) l.push(`Ça s'en va, aussi : ${baisse.map(a => mot[a]).join(', ')}.`);
+  if (!l.length) l.push("Une année pour rien de plus, ni rien de moins.");
+  if (S.partis && S.partis.length) l.push(`Au club : ${esc(S.partis.join(', '))} ${S.partis.length > 1 ? 'sont partis' : 'est parti'}.`);
+  return `<p class="sub">${l.join(' ')}</p>`;
+}
+/* ---------------- le bilan de carrière ---------------- */
+function ecranCarriere(){
+  const c = S.carriere || { saisons:0, matchs:0, buts:0, passes:0, titres:0, clubs:[], annees:[] };
+  const moy = moyCarriere();
+  const meilleure = (c.annees || []).slice().sort((a, b) => (b.note || 0) - (a.note || 0))[0];
+  return `<div class="card no-sticky">
+    <div class="step">${S.annee} · ${S.moi.age} ans · c'est fini</div>
+    <div class="big-ico">🏁</div>
+    <h2>Ce qu'il restera</h2>
+    <p class="narr">${S.fin && S.fin.raison === 'personne'
+      ? "Personne n'a rappelé. On ne décide pas toujours du moment."
+      : "Tu as fait le tour. Il y a un âge où le corps tranche à ta place."}</p>
+    <div class="stats">
+      <div><div class="v">${c.saisons}</div><div class="k">saisons</div></div>
+      <div><div class="v">${c.matchs}</div><div class="k">matchs</div></div>
+      <div><div class="v">${c.buts}</div><div class="k">buts</div></div>
+      <div><div class="v">${c.passes}</div><div class="k">passes déc.</div></div>
+      <div><div class="v">${moy == null ? '—' : virg(Math.round(moy * 100) / 100)}</div><div class="k">moyenne</div></div>
+      <div><div class="v">${c.titres}</div><div class="k">titre${c.titres > 1 ? 's' : ''}</div></div>
+    </div>
+    ${meilleure ? `<div class="bloc gagne"><span class="i">⭐</span><div><h4>Ta saison</h4>
+      <p class="narr" style="margin:0">${meilleure.annee}-${meilleure.annee + 1} à ${esc(meilleure.club)} : ${meilleure.matchs} matchs, ${meilleure.buts} but${meilleure.buts > 1 ? 's' : ''}${meilleure.note == null ? '' : `, ${virg(meilleure.note)} de moyenne`}${meilleure.pos ? ` — ${meilleure.pos}ᵉ du championnat` : ''}.</p></div></div>` : ''}
+    <h3>Saison par saison</h3>
+    <div class="notes">${(c.annees || []).map(a => `<div>
+      <span class="p">${String(a.annee).slice(2)}</span>
+      <span>${esc(a.club)} <i>${a.matchs} m·${a.buts} b${a.pos ? ` · ${a.pos}ᵉ` : ''}</i></span>
+      <span class="n">${a.note == null ? '—' : virg(a.note)}</span></div>`).join('')}</div>
+    <p class="sub">Les clubs : ${esc((c.clubs || []).join(', ')) || '—'}.</p>
+    <div class="btn-row"><button class="btn ghost" onclick="ouvrirJournal()">📓 Le journal</button>
+      <button class="btn" onclick="recommencer()">Une autre carrière</button></div>
+  </div>`;
+}
+
 /* ---------------- le journal ---------------- */
-const JRN_ICO = { debut:'🎬', semaine:'🏋️', arret:'💬', moment:'⚡', match:'⚽', decouverte:'✨', saison:'🗓️' };
+const JRN_ICO = { debut:'🎬', semaine:'🏋️', arret:'💬', moment:'⚡', match:'⚽', decouverte:'✨', saison:'🗓️', ete:'☀️', offre:'📞', fin:'🏁' };
 function ecranJournal(){
   // Groupé par journée, la plus récente en haut : la liste brute était un mur.
   const par = [];

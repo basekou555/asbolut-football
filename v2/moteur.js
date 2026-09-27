@@ -14,7 +14,10 @@
    - tout ce qui arrive est écrit dans `S.journal`, seule mémoire du jeu.
    ============================================================ */
 
-const VERSION = 9;   // un effectif nommé et stable : `S.equipe` est neuf
+const VERSION = 10;  // la carrière continue : `carriere`, `ete`, `offres`, `fin`
+/* MIGRATION 9 → 10 : rien à reconstruire. Une partie en cours reprend telle
+   quelle et, arrivée au bilan, enchaîne désormais sur l'été au lieu de s'arrêter.
+   `vieillir()` crée `S.carriere` au premier passage. */
 let S = null;
 /* Mis à true par le banc d'essai (labo.html) : les milliers de saisons qu'il
    simule ne doivent pas écraser la carrière rangée dans localStorage. */
@@ -181,6 +184,39 @@ function visageDe(k){
   return l.length ? l.slice().sort((a, b) => b.age - a.age)[0] : null;
 }
 
+/* L'EFFECTIF, fabriqué d'un bloc — à la création comme à chaque changement de club.
+   Des coéquipiers **stables et nommés** : sans eux, « un coéquipier progresse »,
+   « ça se tend avec ton attaquant » ou « les notes du match » n'ont personne de
+   qui parler. Vingt-deux joueurs (`EFFECTIF` est le groupe, `FORMATION` le onze),
+   ta place et celles de tes rivaux comprises. Une hiérarchie par poste :
+   `FORMATION[po]` joueurs au-dessus de la force du club, le reste en dessous —
+   sans elle, tu passais titulaire dès ta première saison (26 matchs à dix-huit
+   ans, mesuré). Tes rivaux nommés occupent les places de titulaire de ton poste. */
+function creerEffectif(club, posteId, pris){
+  pris = pris ? pris.slice() : [];
+  const tirerNom = () => { let n, k = 0;
+    do { n = pick(NOMS); k++; } while (pris.includes(n) && k < 300); pris.push(n); return n; };
+  const nb = posteId === 'G' ? 1 : 2;      // un gardien n'a qu'un rival, c'est binaire
+  const concurrents = [];
+  for (let i = 0; i < nb; i++)
+    // le titulaire en place est devant toi ; le second est à ta portée
+    concurrents.push({ nom:tirerNom(), niv: Math.round(club.force + (i === 0 ? rnd(3, 8) : rnd(1, 6))),
+      forme: 0, blesse: 0, age: ri(23, 31) });
+  const equipe = [];
+  Object.entries(EFFECTIF).forEach(([po, n]) => {
+    const combien = po === posteId ? n - 1 - nb : n;
+    const cadres = Math.max(0, FORMATION[po] - (po === posteId ? nb : 0));
+    for (let i = 0; i < combien; i++)
+      equipe.push({ nom:tirerNom(), poste:po,
+        niv: Math.round(club.force + (i < cadres ? rnd(2, 8) : rnd(-10, 0))),
+        age: ri(18, 34), forme: 0, blesse: 0, susp: 0, prog: 0, note: null });
+  });
+  // un jeune qui monte : c'est de lui que parleront les arrêts « il progresse »
+  const jeune = equipe.filter(j => j.age <= 23).sort((a, b) => a.age - b.age)[0];
+  if (jeune) jeune.monte = true;
+  return { concurrents, equipe };
+}
+
 function nouvellePartie(c){
   const poste = POSTES.find(p => p.id === c.poste) || POSTES[2];
   const base = {}; AXES.forEach(a => base[a] = 50);
@@ -190,7 +226,14 @@ function nouvellePartie(c){
   base[q.axe] = clamp(base[q.axe] + 15);
   base[f.axe] = clamp(base[f.axe] - 15);
 
-  const plafond = {}; AXES.forEach(a => plafond[a] = ri(72, 96));
+  /* LE POTENTIEL, TIRÉ UNE FOIS POUR TOUTE LA CARRIÈRE. Il était tiré entre 72 et
+     96, ce qui ne se voyait pas tant que le jeu s'arrêtait au bout d'une saison
+     (`plafondReel` le borne de toute façon à la moyenne des autres axes + 25, donc
+     à 75 en août) — mais sur une carrière entière, **tout le monde devenait une
+     star** : niveau médian 88 pour un championnat dont le meilleur club vaut 78,
+     et 37 buts par saison pour un attaquant médian. Resserré : la première saison
+     ne bouge pas, le sommet d'une carrière oui. */
+  const plafond = {}; AXES.forEach(a => plafond[a] = ri(62, 88));
   /* Le socle : le plancher de chaque axe pour le reste de la carrière. C'est ce
      que l'origine t'a donné — une carrière peut t'abîmer, elle ne peut pas
      effacer d'où tu viens. Borné par le départ réel pour que la qualité et le
@@ -217,43 +260,7 @@ function nouvellePartie(c){
      maintenant ce sont des gens, avec un nom, un niveau et une forme qui bouge. */
   const ligue = creerLigue(c.annee);
   const club = ligue.equipes[ri(10, 17)];   // on démarre dans le bas de tableau
-  const nb = poste.id === 'G' ? 1 : 2;      // un gardien n'a qu'un rival, c'est binaire
-  const pris = [];
-  const tirerNom = () => { let n; do { n = pick(NOMS); } while (pris.includes(n)); pris.push(n); return n; };
-  const concurrents = [];
-  for (let i = 0; i < nb; i++)
-    // le titulaire en place est devant toi ; le second est à ta portée
-    concurrents.push({ nom:tirerNom(), niv: Math.round(club.force + (i === 0 ? rnd(3, 8) : rnd(1, 6))),
-      forme: 0, blesse: 0, age: ri(23, 31) });
-  /* L'EFFECTIF. Des coéquipiers **stables et nommés** : sans eux, « un coéquipier
-     progresse », « ça se tend avec ton attaquant » ou « les notes du match »
-     n'ont personne de qui parler. Chacun garde son poste, son niveau, son âge et
-     une progression sur la saison — mais **plus de relation individuelle** :
-     l'entente se joue par ligne, et son visage est un nom. */
-  /* VINGT-DEUX JOUEURS, pas onze (le propriétaire, 27/09/2026 : « il me faut au
-     moins 18 joueurs voire 22, parce que là s'il y a des blessures, des
-     suspensions, il y a des trous dans l'équipe »). `EFFECTIF` est le groupe,
-     `FORMATION` est le onze. Ta place et celles de tes rivaux sont déjà comptées
-     dans `EFFECTIF` : elles sortent du nombre de coéquipiers à tirer. */
-  /* UNE HIÉRARCHIE PAR POSTE. Tous les coéquipiers étaient tirés dans la même
-     fourchette (force du club ±7), si bien qu'une fois ta place mise dans le même
-     classement que la leur, tu passais titulaire dès ta première saison : mesuré,
-     26 matchs par saison à dix-huit ans. Un club a des titulaires et des
-     doublures : `FORMATION[po]` joueurs au-dessus de la force du club, le reste
-     en dessous. Tes rivaux nommés occupent les places de titulaire de ton poste. */
-  const equipe = [];
-  Object.entries(EFFECTIF).forEach(([po, n]) => {
-    const combien = po === poste.id ? n - 1 - nb : n;
-    const cadres = Math.max(0, FORMATION[po] - (po === poste.id ? nb : 0));
-    for (let i = 0; i < combien; i++)
-      equipe.push({ nom:tirerNom(), poste:po,
-        niv: Math.round(club.force + (i < cadres ? rnd(2, 8) : rnd(-10, 0))),
-        age: ri(18, 34), forme: 0, blesse: 0, susp: 0, prog: 0, note: null });
-  });
-  // un jeune qui monte : c'est de lui que parleront les arrêts « il progresse »
-  const jeune = equipe.filter(j => j.age <= 23).sort((a, b) => a.age - b.age)[0];
-  if (jeune) jeune.monte = true;
-
+  const { concurrents, equipe } = creerEffectif(club, poste.id);
   S = {
     v: VERSION, mode: 'joueur', annee: c.annee,
     moi: { nom: c.nom, poste: poste.id, posteNom: poste.nom, specNom: poste.spec,
@@ -1049,13 +1056,19 @@ function lancerMatch(){
   }
 
   // qui marque chez nous : moi si je suis sur le terrain, sinon un coéquipier
+  /* Le bonus de `spec` était **additif** (`+ (spec-50)*.002`), donc il s'appliquait
+     même à un poste dont la chance de marquer est zéro : mesuré sur des carrières
+     entières, un **gardien marquait trois buts par saison** et finissait à 63 buts.
+     Il est désormais multiplicatif : il amplifie ce que ton poste permet, il ne
+     crée rien. À spec 50 (la première saison) il ne change rien du tout. */
   const chance = { G:0, D:.07, M:.20, A:.38 }[S.moi.poste]
-    * (S.moi.poste === 'A' ? 1 + ent * .012 : 1);
+    * (S.moi.poste === 'A' ? 1 + ent * .012 : 1)
+    * clamp(1 + (S.moi.base.spec - 50) * .006, .7, 1.3);
   const chancePasse = { G:0, D:.10, M:.24, A:.18 }[S.moi.poste]
     * (S.moi.poste === 'M' ? 1 + ent * .012 : 1);
   evs.filter(e => e.type === 'but' && e.nous).forEach(e => {
     const surLeTerrain = m.minutes && e.min >= entree && e.min <= sortie;
-    if (surLeTerrain && Math.random() < chance + (S.moi.base.spec - 50) * .002){ e.moi = true; m.buts++; }
+    if (surLeTerrain && Math.random() < chance){ e.moi = true; m.buts++; }
     else if (surLeTerrain && Math.random() < chancePasse){ e.passeMoi = true; m.passes++; }
     e.qui = e.moi ? S.moi.nom : surLeBanc(m, e.min, 'but');
     /* Un but a souvent un passeur, et jusqu'ici seul le tien existait : les
@@ -1556,11 +1569,246 @@ function bilanPerdu(note){
 }
 function bilanSuite(pos, note){
   const t = [];
-  t.push(note != null && note >= 6.6 ? `Ton agent dit que des clubs regardent.` : `Personne n'a appelé.`);
+  /* On ne prédit plus le marché ici : les offres se tirent **après** l'été, et ce
+     qu'on fait de l'été les change. « Personne n'a appelé » était donc une phrase
+     que le mercato démentait dix secondes plus tard — le même défaut que les
+     arrêts qui annonçaient le week-end avant que le groupe soit connu. */
+  t.push(note != null && note >= 6.6 ? `Ton agent dit qu'on commence à parler de toi.`
+    : S.stats.matchs >= 18 ? `Tu as fait ta saison. La suite se joue cet été.`
+    : `Tu as une saison à rattraper.`);
   if (S.etats.corps < 80) t.push(`Ton corps demande un été calme.`);
   if (S.liens.coach >= 58) t.push(`Le coach veut construire autour de toi.`);
+  if (S.moi.age >= 31) t.push(`On ne te demande plus ton âge au club : on le sait.`);
   return t;
 }
+
+/* ================== LA CARRIÈRE CONTINUE ==================
+   Le jeu s'arrêtait au bout d'une saison (le propriétaire, 27/09/2026 : « j'aimerais
+   bien qu'on avance dans le process de construction du jeu… et sortir un peu de la
+   phase labo »). C'est la pièce qui débloque tout le reste : sans deuxième saison,
+   la trace qu'une carrière doit laisser n'a nulle part où s'inscrire.
+   L'enchaînement : bilan → **l'été** (une décision) → **les offres** (une à la fois)
+   → la saison suivante. Et au bout, le **bilan de carrière**. */
+const FIN_CARRIERE = 38;
+
+/* Quatre façons de passer l'été. Chacune donne quelque chose tout de suite et
+   quelque chose qui dure — et aucune ne donne les deux. */
+const ETE = [
+  { id:'proches', ico:'🏡', nom:"Rentrer chez toi",
+    sub:"Six semaines chez les tiens. Personne ne te parle de football.",
+    dit:[{c:'vie',t:"🏡 tu reviens entier"},{c:'foot',t:"🧠 la tête se répare"},{c:'neutre',t:"↔️ rien de gagné sur le terrain"}] },
+  { id:'travail', ico:'💪', nom:"Passer l'été à travailler",
+    sub:"Un préparateur, un plan, et ton point faible comme seul sujet.",
+    dit:[{c:'foot',t:"📈 ton axe le plus faible monte"},{c:'risk',t:"🫁 tu arrives cuit en août"},{c:'risk',t:"🧠 aucune coupure"}] },
+  { id:'soin', ico:'🩺', nom:"Réparer ton corps",
+    sub:"Le kiné, la table, et tout ce que tu traînes depuis l'automne.",
+    dit:[{c:'foot',t:"🩼 tu te blesses moins toute l'année"},{c:'foot',t:"💪 tu tiens les matchs"},{c:'neutre',t:"↔️ tu ne progresses pas"}] },
+  { id:'montrer', ico:'📸', nom:"Te montrer",
+    sub:"Une tournée, des caméras, un agent qui décroche son téléphone.",
+    dit:[{c:'foot',t:"🤝 de meilleures propositions"},{c:'foot',t:"🏟️ on parle de toi"},{c:'risk',t:"🫁 l'été n'a servi qu'à ça"}] },
+];
+function ouvrirEte(){ S.ecran = 'ete'; sauver(); rendre(); }
+function choisirEte(id){
+  const e = ETE.find(x => x.id === id) || ETE[0];
+  S.ete = { id: e.id, nom: e.nom, fraicheur: 100, fond: 0, corps: 0, offres: 0, travail: 0 };
+  if (e.id === 'proches'){
+    S.ete.corps = 12;
+    // la tête se répare vraiment : on remonte au pic, ce que la saison n'offre jamais
+    AXES.forEach(a => { if (a === 'ment' && S.moi.base.ment < S.moi.pic.ment) bougerAxe('ment', S.moi.pic.ment - S.moi.base.ment); });
+  } else if (e.id === 'travail'){ S.ete.travail = 3.6; S.ete.corps = -6; S.ete.fraicheur = 78; }
+  else if (e.id === 'soin'){ S.ete.corps = 24; S.ete.fond = 26; }
+  else if (e.id === 'montrer'){ S.ete.offres = 2;
+    S.liens.agent = clamp(S.liens.agent + 14); S.liens.supporters = clamp(S.liens.supporters + 10); }
+  jrn('ete', `L'été : ${e.nom.toLowerCase()}.`);
+  vieillir();
+  if (S.moi.age >= FIN_CARRIERE) return finCarriere("l'âge");
+  genererOffres();
+  S.ecran = 'offres'; sauver(); rendre();
+}
+
+/* CE QUE LA SAISON A CONSTRUIT. Le plafond est la vraie histoire d'une carrière :
+   il monte tant qu'on est jeune **et qu'on joue**, il descend après la trentaine
+   quoi qu'on fasse. La base le suit — vers le haut d'autant plus vite qu'on a
+   joué et bien joué, vers le bas sans rien demander à personne : c'est l'usure. */
+/* La courbe d'un coéquipier : il progresse jeune, il décline vieux. */
+function courbeAge(age){
+  return age <= 20 ? 3.4 : age <= 23 ? 2.5 : age <= 26 ? 1.3 : age <= 29 ? .3
+    : age <= 32 ? -1.5 : age <= 35 ? -3.2 : -5;
+}
+/* LE PLAFOND EST TON POTENTIEL, ET IL NE MONTE JAMAIS. Première version : il
+   montait de la courbe d'âge chaque saison, donc **toutes** les carrières
+   finissaient au maximum (niveau max 99,4 de moyenne, médiane 100 sur 40
+   carrières simulées) — un potentiel qui se rattrape n'est pas un potentiel.
+   Il est tiré à la création, il ne bouge qu'à la baisse, et toute la carrière
+   consiste à savoir **quelle part tu en auras révélée, et combien de temps tu
+   l'auras tenue**. */
+function usureAge(age){ return age <= 28 ? 0 : age <= 31 ? -1.3 : age <= 34 ? -3 : -5; }
+function progresserAxes(){
+  const part = Math.min(1, S.stats.matchs / 26);
+  const note = S.stats.notes.length ? moyenneNotes() : 5.6;   // ne pas jouer coûte
+  const perf = clamp((note - 6.1) * 1.5, -1.8, 1.8);
+  const u = usureAge(S.moi.age);
+  const gain = {};
+  // l'été de travail vise l'axe le plus loin de son plafond : ce qui te manque
+  const faible = AXES.slice().sort((a, b) => (plafondReel(b) - S.moi.base[b]) - (plafondReel(a) - S.moi.base[a]))[0];
+  AXES.forEach(a => {
+    const avant = S.moi.base[a];
+    S.moi.plafond[a] = clamp(S.moi.plafond[a] + u, 40, 99);
+    const cible = plafondReel(a);
+    // on monte vers son potentiel d'autant plus vite qu'on a joué et bien joué ;
+    // on en redescend sans rien demander à personne
+    const vers = cible > S.moi.base[a]
+      ? (cible - S.moi.base[a]) * (.09 + .26 * part) + perf * .5
+      : (cible - S.moi.base[a]) * .55;
+    bougerAxe(a, vers + (a === faible ? (S.ete ? S.ete.travail : 0) : 0));
+    if (cible < S.moi.pic[a]) S.moi.pic[a] = Math.max(S.moi.base[a], cible);
+    gain[a] = S.moi.base[a] - avant;
+  });
+  S.moi.boost = { tech:0, phys:0, ment:0, spec:0 };
+  return gain;
+}
+
+/* Une année passe : on vieillit, on progresse ou on s'use, et le monde autour
+   bouge — le championnat se rejoue, les coéquipiers prennent un an, certains
+   s'en vont. Sans ça la deuxième saison serait la première avec les mêmes gens. */
+function vieillir(){
+  const pos = S.bilan ? S.bilan.pos : null;
+  S.carriere = S.carriere || { saisons:0, matchs:0, titus:0, buts:0, passes:0,
+    sum:0, nbNotes:0, titres:0, clubs:[], annees:[] };
+  const c = S.carriere;
+  c.saisons++; c.matchs += S.stats.matchs; c.titus += S.stats.titus;
+  c.buts += S.stats.buts; c.passes += S.stats.passes;
+  S.stats.notes.forEach(n => { c.sum += n; c.nbNotes++; });
+  if (pos === 1) c.titres++;
+  if (!c.clubs.includes(S.club.nom)) c.clubs.push(S.club.nom);
+  c.annees.push({ annee:S.annee, club:S.club.nom, pos, matchs:S.stats.matchs,
+    buts:S.stats.buts, note: S.bilan ? S.bilan.note : null, niveau: Math.round(niveau()) });
+  S.moi.age++; S.annee++;
+  S.progres = progresserAxes();
+}
+
+/* LES OFFRES, UNE À LA FOIS. « Plutôt que de me laisser choisir entre les
+   propositions, ce serait bien que j'aie une proposition sans savoir si j'en
+   aurai de meilleures » (le propriétaire, 26/09/2026, sur la 1.0). Refuser fait
+   disparaître l'offre pour de bon, et la suivante peut être pire, ou ne pas venir. */
+function genererOffres(){
+  const n = niveau();
+  const joue = S.stats.matchs >= 12, bonne = S.stats.notes.length && moyenneNotes() >= 6.4;
+  // ta cote : ce que tu vaux, ce que tu as montré, et ce que ton agent a fait de l'été
+  const cote = n + (joue ? 2 : -3) + (bonne ? 2.5 : 0) + (S.ete ? S.ete.offres : 0)
+    + (S.liens.agent - 50) * .06 + (S.moi.age >= 33 ? -4 : 0);
+  const dehors = S.ligue.equipes.filter(e => e.nom !== S.club.nom
+    && Math.abs(e.force - cote) < 7 + rnd(0, 4));
+  const combien = Math.min(dehors.length, Math.max(0, ri(0, 2) + (S.ete && S.ete.offres ? 1 : 0) + (bonne && joue ? 1 : 0)));
+  S.offres = shuffle(dehors).slice(0, combien).map(e => ({ nom:e.nom, force:e.force }));
+  S.offreIdx = 0;
+  /* Ton club peut ne plus vouloir de toi : trop vieux, ou une saison sans jouer.
+     C'est la seule chose qui t'oblige à partir. */
+  S.libre = (S.moi.age >= 33 && S.stats.matchs < 10) || (S.stats.matchs === 0 && S.moi.age >= 21);
+  if (S.libre) jrn('offre', `${S.club.nom} ne prolonge pas.`);
+  return S.offres;
+}
+function offreCourante(){ return (S.offres || [])[S.offreIdx || 0] || null; }
+function passerOffre(){
+  S.offreIdx = (S.offreIdx || 0) + 1;
+  if (S.offreIdx >= (S.offres || []).length && S.libre) return finCarriere("personne");
+  sauver(); rendre();
+}
+function signerOffre(){
+  const o = offreCourante(); if (!o) return;
+  jrn('offre', `Tu signes à ${o.nom}.`);
+  demarrerSaison({ nom:o.nom, force:o.force }, false);
+}
+function resterAuClub(){
+  if (S.libre) return;
+  jrn('offre', `Tu restes à ${S.club.nom}.`);
+  demarrerSaison(S.club, true);
+}
+
+/* La saison suivante commence : nouveau championnat, effectif renouvelé, tout
+   ce qui se compte remis à zéro — et rien de ce qui se construit. */
+function demarrerSaison(club, reste){
+  const ligue = creerLigue(S.annee);
+  /* Ton club dérive, mais il est **rappelé vers ce qu'il vaut dans le championnat
+     de cette année-là**. Sans ce rappel c'était une marche aléatoire sur vingt
+     saisons, qui s'échappe vers le haut : mesuré, une carrière sur quarante
+     gagnait **dix-sept titres sur vingt saisons** — exactement ce que le
+     propriétaire reprochait à la 1.0 (« j'ai tout gagné pendant 10 ans »). */
+  const i = ligue.equipes.findIndex(e => e.nom === club.nom);
+  const moyenne = ligue.equipes.reduce((a, e) => a + e.force, 0) / ligue.equipes.length;
+  const tire = i >= 0 ? ligue.equipes[i].force : moyenne;
+  const force = Math.round(clamp(club.force * .55 + tire * .45 + rnd(-2, 2), 44, 82));
+  if (i >= 0) ligue.equipes[i].force = force;
+  else ligue.equipes[ligue.equipes.length - 1] = { nom: club.nom, force };
+  ligue.equipes.sort((a, b) => b.force - a.force);
+  ligue.classement = Object.fromEntries(ligue.equipes.map(e => [e.nom, { pts:0, j:0, v:0, n:0, d:0, bp:0, bc:0 }]));
+  S.ligue = ligue; S.club = { nom: club.nom, force };
+  if (reste) renouvelerEffectif(); else {
+    const n = creerEffectif(S.club, S.moi.poste);
+    S.concurrents = n.concurrents; S.equipe = n.equipe;
+    S.lignes = { def:50, mil:50, att:50 };
+    S.liens.coach = 50; S.liens.club = 52;   // tout est à refaire ailleurs
+  }
+  S.ligneRef = { ...S.lignes };
+  S.etats = { fraicheur: S.ete ? S.ete.fraicheur : 100, forme:60, blessure:0, suspension:0,
+    corps: clamp((S.etats.corps || 88) + (S.ete ? S.ete.corps : 0)), fond: S.ete ? S.ete.fond : 0 };
+  S.stats = { matchs:0, titus:0, buts:0, passes:0, notes:[], minutes:0 };
+  S.journee = 0; S.arrets = 0; S.sansJouer = 0; S.cartons = 0;
+  S.semaine = null; S.seance = null; S.match = null; S.dernier = null; S.arret = null;
+  S.eqJour = null; S.bilan = null; S.offres = null; S.vuArrets = {}; S.recentArrets = [];
+  jrn('debut', `${S.annee}-${S.annee + 1}, ${S.moi.age} ans, ${S.club.nom}.`);
+  S.ecran = 'semaine'; sauver(); rendre();
+}
+
+/* Un vestiaire n'est pas le même d'une année sur l'autre : on prend un an, les
+   plus vieux s'en vont, des jeunes arrivent — et le club recrute à ton poste. */
+function renouvelerEffectif(){
+  const pris = S.equipe.map(j => j.nom).concat(S.concurrents.map(c => c.nom));
+  const tirer = () => { let n, k = 0;
+    do { n = pick(NOMS); k++; } while (pris.includes(n) && k < 300); pris.push(n); return n; };
+  S.equipe.forEach(j => { j.age++; j.forme = 0; j.blesse = 0; j.susp = 0; j.rancune = 0;
+    j.note = null; j.noteR = null; j.sum = 0; j.nb = 0; j.sumR = 0; j.nbR = 0;
+    j.niv = Math.round(clamp(j.niv + courbeAge(j.age) * .55 + rnd(-1, 1.6), 40, 92)); });
+  S.concurrents.forEach(c => { c.age++; c.forme = 0; c.blesse = 0;
+    c.niv = Math.round(clamp(c.niv + courbeAge(c.age) * .55 + rnd(-1, 1.6), 40, 92)); });
+  // les départs : les plus vieux, et quelques-uns qui ne jouaient pas
+  const partis = [];
+  S.equipe = S.equipe.filter(j => {
+    const part = j.age >= 35 || (j.age >= 31 && Math.random() < .3) || Math.random() < .12;
+    if (part) partis.push(j.nom); return !part;
+  });
+  S.concurrents = S.concurrents.filter(c => {
+    const part = c.age >= 35 || (c.age >= 32 && Math.random() < .35);
+    if (part) partis.push(c.nom); return !part;
+  });
+  // on complète poste par poste, et le club se renforce là où il a perdu du monde
+  const nb = S.moi.poste === 'G' ? 1 : 2;
+  while (S.concurrents.length < nb)
+    S.concurrents.push({ nom:tirer(), niv: Math.round(S.club.force + rnd(1, 7)),
+      forme:0, blesse:0, age: ri(21, 29) });
+  Object.entries(EFFECTIF).forEach(([po, n]) => {
+    const vise = po === S.moi.poste ? n - 1 - nb : n;
+    while (S.equipe.filter(j => j.poste === po).length < vise)
+      S.equipe.push({ nom:tirer(), poste:po,
+        niv: Math.round(S.club.force + rnd(-9, 5)), age: ri(18, 28),
+        forme:0, blesse:0, susp:0, prog:0, note:null });
+  });
+  S.equipe.forEach(j => { delete j.monte; });
+  const jeune = S.equipe.filter(j => j.age <= 22).sort((a, b) => a.age - b.age)[0];
+  if (jeune) jeune.monte = true;
+  S.partis = partis.slice(0, 4);
+  if (partis.length) jrn('ete', `${partis.length} départ${partis.length > 1 ? 's' : ''} au club : ${S.partis.join(', ')}.`);
+}
+
+/* Le bout de la route. Une carrière doit laisser une trace : c'est ici qu'on la lit. */
+function finCarriere(raison){
+  if (S.stats && S.journee >= JOURNEES && S.bilan) { /* déjà comptée par vieillir() */ }
+  S.fin = { raison, age: S.moi.age, annee: S.annee };
+  jrn('fin', `Fin de carrière à ${S.moi.age} ans.`);
+  S.ecran = 'carriere'; sauver(); rendre();
+}
+function moyCarriere(){ const c = S.carriere; return c && c.nbNotes ? c.sum / c.nbNotes : null; }
+
 function classementTrie(){
   return Object.entries(S.ligue.classement).map(([nom, c]) => ({ nom, ...c, diff: c.bp - c.bc }))
     .sort((a, b) => b.pts - a.pts || b.diff - a.diff || b.bp - a.bp);
@@ -1756,6 +2004,9 @@ function charger(){
       });
       d.v = 9;
     }
+    /* MIGRATION 9 → 10 : rien à reconstruire. La carrière naît au premier bilan,
+       et une partie en cours au moment de la mise à jour la commence là. */
+    if (d.v === 9) d.v = 10;
     if (d.v !== VERSION) return null;
     return d;
   } catch(e){ return null; }
