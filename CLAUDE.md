@@ -635,6 +635,38 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
   simulées n'écrasent pas la carrière rangée dans `localStorage` (vérifié par sonde). Accessible
   depuis l'écran du journal, et copié par `vercel.json` / le workflow Pages.
   `VERSION` passe à **2** : une sauvegarde v1 n'a ni `socle` ni `fond`, autant repartir propre.
+- **L'ÉCRAN D'AVANT-MATCH NE PEUT PLUS MENTIR SUR SAMEDI** (le propriétaire, 27/09/2026 :
+  « je suis tombé sur un fait d'avant-match qui disait que j'étais pas dans le groupe. Mais en fait,
+  j'ai joué le match »). Il s'était d'abord repris tout seul sur les faits de match — et il avait
+  raison de se reprendre : un `MOMENT` ne se tire que dans `if (m.minutes)`, il ne peut pas arriver
+  à quelqu'un qui n'a pas joué. Le vrai défaut était juste avant.
+  - **La cause** : le groupe se décidait dans `lancerMatch()`, donc **après** `ouvrirArrets()`. Deux
+    familles affirment pourtant le week-end à venir — `banc` (« samedi, tu commences sur le banc »)
+    et `tempsLibre` (« tu n'es même pas dans le groupe ») — et elles parlaient d'un onze qui
+    n'existait pas encore. Le match, tiré dix secondes plus tard, les démentait.
+  - **Le coach annonce son groupe avant les arrêts.** `choisirSemaine()` appelle `poserEquipeDuJour()`
+    juste avant `ouvrirArrets()` — **après la séance**, puisque son coût de fraîcheur nourrit
+    `valeurAuPoste()`. `S.eqJour` fige le groupe en **noms + `choix`** (les objets vivants portent des
+    pointeurs `ref` qui n'ont rien à faire dans une sauvegarde) ; `equipeDuJourLue()` les reconstruit
+    par nom et `lancerMatch()` joue **ce** groupe-là. `apresMatch()` remet `S.eqJour` à null : le
+    groupe de samedi ne vaut que pour samedi. Les deux familles sont réécrites sur `S.eqJour.statut`.
+    Mesuré, 60 carrières, 2 040 journées : **le statut annoncé avant les arrêts est tenu par le match
+    2 040 fois sur 2 040**, et aucun des trois écrans qui annoncent le week-end n'est démenti.
+  - **Et la mesure a trouvé mieux que le bug.** « Tu n'es même pas dans le groupe » était tiré sur
+    `sansJouer >= 2`, sans regarder le groupe. Mesuré sur 120 carrières : dans **la queue** (dix
+    matchs ou moins sur la saison, celle que le propriétaire jouait), on est hors du groupe **2,9 %
+    des semaines** et sur le banc **79,2 %**. La phrase était donc fausse à peu près chaque fois
+    qu'elle sortait — et surtout, **la vie qu'il réclamait était accrochée à la mauvaise
+    situation** (« étant donné que je ne suis même pas dans le groupe le week-end, ce serait bien
+    qu'il y ait des trucs positifs comme le temps avec la famille », 27/09/2026). Une seizième
+    famille, **`bancLong`**, la met où elle se passe vraiment : dans le groupe, sur le banc, trois
+    journées sans une minute — « tu voyages, tu t'échauffes, tu t'assois. Il ne se retourne pas.
+    Dimanche, en revanche, t'appartient » (le passer avec les tiens / rester seul sur le terrain
+    après le match / demander à l'adjoint ce qu'il regarde chez toi). `tempsLibre` reste sur le vrai
+    forfait, et y devient rare parce que le forfait l'est.
+  - **Mesuré avant/après dans la queue** : les décisions « tu ne joues pas » passent de **5,3 à
+    4,7 par saison** (29 % → **25 % des écrans**) — le volume tient, et chacune dit maintenant vrai.
+    Diversité générale : 18,3 arrêts par saison, **seize familles**, la plus fréquente à 12 %.
 - **Ce qui n'est pas encore là** : la trêve, les offres, la progression d'une saison sur l'autre,
   l'usure, la vie et ses chantiers, la boutique, le mercato, le mode entraîneur·euse, la coupe et
   l'Europe. Les **contenus** sont volontairement repoussés après le moteur (décision du propriétaire) :
