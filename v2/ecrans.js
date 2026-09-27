@@ -100,7 +100,7 @@ function setAmbition(i){
 const LIEN_NOM = { coach:"Le coach", vestiaire:"Le vestiaire", club:"Le club", supporters:"Le stade", agent:"Ton agent" };
 const LIEN_ICO = { coach:"🎽", vestiaire:"✊", club:"🏟️", supporters:"📣", agent:"🤝",
   fraicheur:"🫁", blessure:"🩼", suspension:"🟥",
-  def:"🛡️", mil:"🧭", att:"🎯" };
+  def:"🛡️", mil:"🧭", att:"🎯", reserve:"🧱" };
 
 function topHTML(){
   const pos = maPlace();
@@ -221,22 +221,25 @@ function ecranSemaine(){
   ${effectifHTML()}${classementHTML()}${liensJournal()}`;
 }
 
-/* Qui se bat avec toi pour la place. Des noms, pas un nombre : c'est ce que le
-   coach compare quand il fait son onze. */
+/* Qui se bat avec toi pour la place — **tout le poste**, pas deux noms. Le
+   propriétaire, 27/09/2026 : « si le titulaire se blesse, faut que le remplaçant
+   devienne titulaire et que celui qui était hors du groupe passe dans le groupe
+   pour compenser ; là il n'y a pas cette logique. » Maintenant elle se voit. */
 function concurrenceHTML(){
-  if (!S.concurrents || !S.concurrents.length) return '';
-  const moi = valeurAuPoste();
-  const l = S.concurrents.map(c => {
-    if (c.blesse > 0) return { i:'🩼', t:`${c.nom} est à l'infirmerie` };
-    const e = (c.niv + c.forme) - moi;
-    return { i: e > 0 ? '🔺' : '🔻',
-      t: e > 6 ? `${c.nom} est largement devant toi`
-        : e > 2 ? `${c.nom} passe devant toi`
-        : e > -2 ? `${c.nom} et toi, c'est au coude à coude`
-        : e > -6 ? `tu passes devant ${c.nom}` : `${c.nom} n'est plus une menace` };
-  });
-  return `<h3>Ta place</h3><div class="words">${l.map(x =>
-    `<div><span class="i">${x.i}</span><span>${esc(x.t)}</span></div>`).join('')}</div>`;
+  const l = monPoste();
+  if (l.length < 2) return '';
+  const places = FORMATION[S.moi.poste];
+  let rang = 0;
+  const lignes = l.map(x => {
+    const dedans = x.dispo && rang < places;
+    if (x.dispo) rang++;
+    return `<div${x.moi ? ' class="me"' : ''}><span class="i">${
+      !x.dispo ? (x.raison === 'suspendu' ? '\u{1F7E5}' : '\u{1FA7C}') : dedans ? '\u{1F7E2}' : '\u{1F518}'
+    }</span><span>${esc(x.nom)}${x.moi ? ' <i>toi</i>' : ''}${
+      !x.dispo ? ` <i>${esc(x.raison || '')}</i>` : dedans ? ' <i>dans le onze</i>' : ''}</span></div>`;
+  }).join('');
+  return `<h3>Ta place</h3><div class="words">${lignes}</div>
+    <p class="sub">${places} place${places > 1 ? 's' : ''} \u00e0 ton poste dans le onze.</p>`;
 }
 
 /* ---------------- un arrêt ---------------- */
@@ -276,7 +279,9 @@ function ecranResultat(){
   const maLigne = m.minutes
     ? `${m.entree ? `Entré à la ${ordinal(m.entree)}` : "Titulaire"} · ${m.minutes} minutes · note ${virg(m.note)}${m.buts ? ` · ${m.buts} but${m.buts > 1 ? 's' : ''}` : ''}${m.passes ? ` · ${m.passes} passe${m.passes > 1 ? 's' : ''} décisive${m.passes > 1 ? 's' : ''}` : ''}`
     : m.statut === 'banc' ? "Resté sur le banc toute la rencontre"
-    : m.statut === 'blesse' ? "À l'infirmerie" : m.statut === 'suspendu' ? "Suspendu" : "Hors du groupe";
+    : m.statut === 'blesse' ? "À l'infirmerie" : m.statut === 'suspendu' ? "Suspendu"
+    : m.noteReserve != null ? `Hors du groupe · match avec la réserve, note ${virg(m.noteReserve)}`
+    : "Hors du groupe";
   const fin = S.journee + 1 >= JOURNEES;
   return `<div class="card">
     <div class="step">${ordinal(S.journee + 1)} journée · terminé</div>

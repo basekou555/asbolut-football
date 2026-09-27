@@ -14,7 +14,7 @@
    - tout ce qui arrive est écrit dans `S.journal`, seule mémoire du jeu.
    ============================================================ */
 
-const VERSION = 8;   // un effectif nommé et stable : `S.equipe` est neuf
+const VERSION = 9;   // un effectif nommé et stable : `S.equipe` est neuf
 let S = null;
 /* Mis à true par le banc d'essai (labo.html) : les milliers de saisons qu'il
    simule ne doivent pas écraser la carrière rangée dans localStorage. */
@@ -196,7 +196,7 @@ function nouvellePartie(c){
   const concurrents = [];
   for (let i = 0; i < nb; i++)
     // le titulaire en place est devant toi ; le second est à ta portée
-    concurrents.push({ nom:tirerNom(), niv: Math.round(club.force + (i === 0 ? rnd(2, 7) : rnd(-4, 2))),
+    concurrents.push({ nom:tirerNom(), niv: Math.round(club.force + (i === 0 ? rnd(3, 8) : rnd(1, 6))),
       forme: 0, blesse: 0, age: ri(23, 31) });
   /* L'EFFECTIF. Des coéquipiers **stables et nommés** : sans eux, « un coéquipier
      progresse », « ça se tend avec ton attaquant » ou « les notes du match »
@@ -208,11 +208,19 @@ function nouvellePartie(c){
      suspensions, il y a des trous dans l'équipe »). `EFFECTIF` est le groupe,
      `FORMATION` est le onze. Ta place et celles de tes rivaux sont déjà comptées
      dans `EFFECTIF` : elles sortent du nombre de coéquipiers à tirer. */
+  /* UNE HIÉRARCHIE PAR POSTE. Tous les coéquipiers étaient tirés dans la même
+     fourchette (force du club ±7), si bien qu'une fois ta place mise dans le même
+     classement que la leur, tu passais titulaire dès ta première saison : mesuré,
+     26 matchs par saison à dix-huit ans. Un club a des titulaires et des
+     doublures : `FORMATION[po]` joueurs au-dessus de la force du club, le reste
+     en dessous. Tes rivaux nommés occupent les places de titulaire de ton poste. */
   const equipe = [];
   Object.entries(EFFECTIF).forEach(([po, n]) => {
     const combien = po === poste.id ? n - 1 - nb : n;
+    const cadres = Math.max(0, FORMATION[po] - (po === poste.id ? nb : 0));
     for (let i = 0; i < combien; i++)
-      equipe.push({ nom:tirerNom(), poste:po, niv: Math.round(club.force + rnd(-7, 6)),
+      equipe.push({ nom:tirerNom(), poste:po,
+        niv: Math.round(club.force + (i < cadres ? rnd(2, 8) : rnd(-10, 0))),
         age: ri(18, 34), forme: 0, blesse: 0, susp: 0, prog: 0, note: null });
   });
   // un jeune qui monte : c'est de lui que parleront les arrêts « il progresse »
@@ -559,9 +567,25 @@ function appliquer(o){
 function valeurAuPoste(){
   return niveauJour() + (S.moi.base.spec + S.moi.boost.spec - 50) * .09
     + (S.liens.coach - 50) * .16
-    + (S.moi.age <= 18 ? -5 : S.moi.age === 19 ? -2.5 : 0);
+    /* L'âge pèse plus qu'avant : depuis que ta place se décide dans le classement
+       de tout l'effectif, c'est le seul frein qui reste à un débutant, et un coach
+       ne donne pas le onze à un joueur de dix-huit ans. */
+    + (S.moi.age <= 18 ? -8 : S.moi.age === 19 ? -5 : S.moi.age === 20 ? -2.5 : 0);
 }
 function concurrentsDispos(){ return S.concurrents.filter(c => c.blesse <= 0); }
+/* TOUS CEUX QUI JOUENT À TON POSTE, toi compris, classés comme le coach les
+   classe. Tes rivaux nommés en font partie mais ils ne sont plus les seuls :
+   c'est l'effectif entier qui se dispute les places, donc une blessure chez
+   n'importe lequel d'entre eux te fait remonter d'un cran. */
+function monPoste(){
+  const l = groupe().filter(x => x.poste === S.moi.poste).map(x => ({
+    nom:x.nom, niv:x.niv, dispo:x.dispo, rival: !!x.rival,
+    raison: x.ref.susp > 0 ? "suspendu" : x.ref.blesse > 0 ? "\u00e0 l'infirmerie" : null }));
+  l.push({ nom:S.moi.nom, niv:valeurAuPoste(), moi:true,
+    dispo: S.etats.blessure <= 0 && S.etats.suspension <= 0,
+    raison: S.etats.blessure > 0 ? "\u00e0 l'infirmerie" : S.etats.suspension > 0 ? "suspendu" : null });
+  return l.sort((a, b) => b.niv - a.niv);
+}
 /* Celui qui te barre la route aujourd'hui, ou null si la voie est libre. */
 function devantToi(){
   const d = concurrentsDispos(); if (!d.length) return null;
@@ -569,18 +593,6 @@ function devantToi(){
   let best = null;
   d.forEach(c => { const v = c.niv + c.forme; if (v > moi && (!best || v > best.niv + best.forme)) best = c; });
   return best;
-}
-function monStatut(adv){
-  if (S.etats.blessure > 0) return 'blesse';
-  if (S.etats.suspension > 0) return 'suspendu';
-  const d = concurrentsDispos();
-  const moi = valeurAuPoste() + rnd(-2, 2);
-  const meilleur = d.reduce((a, c) => Math.max(a, c.niv + c.forme), -99);
-  if (!d.length || moi > meilleur) return 'titulaire';    // plus personne devant : tu joues
-  const ecart = meilleur - moi;
-  if (ecart < 2.5) return Math.random() < .45 ? 'titulaire' : 'banc';   // ça se joue à rien
-  if (ecart < 8) return Math.random() < .75 ? 'banc' : 'hors';
-  return 'hors';
 }
 /* Les rivaux vivent : leur forme bouge, ils se blessent, et une absence t'ouvre
    la porte. C'est aussi une des façons de devenir titulaire. */
@@ -654,26 +666,44 @@ function cumul(n, table){
    On compare le onze réellement alignable au meilleur onze possible si tout le
    monde était valide : l'écart, étalé sur onze joueurs, est ce que le match
    perd. Un groupe profond l'absorbe, un groupe court le prend en pleine figure. */
-function equipeDuJour(statut){
+function equipeDuJour(){
   const g = groupe();
   const absents = g.filter(x => !x.dispo);
+  /* TU ES DANS LE MÊME POT QUE TOUT LE MONDE (le propriétaire, 27/09/2026 :
+     « mes concurrents à mon poste, lorsqu'ils se blessent ou sont suspendus, si
+     je suis hors du groupe je vais pas passer dans le groupe… imaginons le
+     titulaire se blesse, faut que le remplaçant devienne titulaire et que celui
+     qui était hors du groupe passe dans le groupe pour compenser »). Il avait
+     raison, et la cause était structurelle : ta place se décidait **à part**
+     (`monStatut()` te comparait à tes un ou deux rivaux nommés) pendant que le
+     groupe et le onze se choisissaient sur l'effectif entier. Deux systèmes qui
+     ne se parlaient pas. Désormais **une seule liste** : tu y entres avec ta
+     valeur aux yeux du coach, et tout le reste en découle — une blessure chez un
+     milieu fait remonter tout le monde d'un cran, toi compris. */
+  const moi = { moi:true, nom:S.moi.nom, poste:S.moi.poste, niv:valeurAuPoste(),
+    dispo: S.etats.blessure <= 0 && S.etats.suspension <= 0, ref:{} };
+  const tout = [...g, moi];
   // le choix du coach : le niveau du jour, un peu de rotation, moins la rancune
-  g.forEach(x => x.choix = x.niv + rnd(-ROTATION, ROTATION) - (x.ref.rancune || 0));
+  tout.forEach(x => x.choix = x.niv + rnd(-ROTATION, ROTATION) - (x.ref.rancune || 0));
   const tri = l => l.slice().sort((a, b) => b.choix - a.choix);
-  const jeJoue = statut === 'titulaire' || statut === 'banc';
-  const dispo = tri(g.filter(x => x.dispo));
-  const places = TAILLE_GROUPE - (jeJoue ? 1 : 0);
-  const conv = dispo.slice(0, places);          // convoqués
-  const reserve = dispo.slice(places);          // ils joueront avec la réserve
+  const dispo = tri(tout.filter(x => x.dispo));
+  /* On réserve d'abord de quoi aligner un onze à chaque poste, **plus un gardien
+     de rechange**, puis on complète le groupe au mérite. Sans cette garantie, un
+     gardien mal classé n'était pas convoqué et l'équipe partait sans personne
+     dans les buts : mesuré, huit cas sur huit cents. */
+  const conv = [];
+  Object.entries(FORMATION).forEach(([po, n]) => {
+    const besoin = n + (po === 'G' ? 1 : 0);
+    conv.push(...dispo.filter(x => x.poste === po).slice(0, besoin));
+  });
+  dispo.forEach(x => { if (conv.length < TAILLE_GROUPE && !conv.includes(x)) conv.push(x); });
+  const reserve = dispo.filter(x => !conv.includes(x));   // ils joueront avec la réserve
 
   const onze = [];
   let perte = 0;
   Object.entries(FORMATION).forEach(([po, n]) => {
-    let besoin = n;
-    if (po === S.moi.poste && statut === 'titulaire') besoin--;   // ta place est prise
-    if (besoin <= 0) return;
-    const pris = tri(conv.filter(x => x.poste === po)).slice(0, besoin);
-    const ideal = tri(g.filter(x => x.poste === po)).slice(0, besoin);
+    const pris = tri(conv.filter(x => x.poste === po)).slice(0, n);
+    const ideal = tri(tout.filter(x => x.poste === po)).slice(0, n);
     onze.push(...pris);
     /* Chacun contre celui qu'il remplace, rang par rang : le cinquième défenseur
        se compare au quatrième, pas à zéro. Comparer les sommes brutes faisait
@@ -682,15 +712,17 @@ function equipeDuJour(statut){
     for (let i = 0; i < pris.length; i++) perte += pris[i].niv - ideal[i].niv;
     /* Pas assez d'hommes à ce poste : quelqu'un dépanne. Un onze reste un onze.
        Mais **un joueur de champ peut aller dans les buts, l'inverse jamais**. */
-    if (pris.length < besoin){
-      const trou = besoin - pris.length;
+    if (pris.length < n){
+      const trou = n - pris.length;
       perte -= trou * 7;
       const reste = tri(conv.filter(x => !onze.includes(x) && (po === 'G' || x.poste !== 'G')));
       onze.push(...reste.slice(0, trou));
     }
   });
   const banc = conv.filter(x => !onze.includes(x));
-  return { onze, banc, reserve, absents, ecart: perte / 11 };
+  const statut = S.etats.blessure > 0 ? 'blesse' : S.etats.suspension > 0 ? 'suspendu'
+    : onze.includes(moi) ? 'titulaire' : banc.includes(moi) ? 'banc' : 'hors';
+  return { onze, banc, reserve, absents, ecart: perte / 11, statut, moi };
 }
 
 /* LES CHANGEMENTS. Le propriétaire, 27/09/2026 : « l'entraîneur, à chaque match,
@@ -712,7 +744,11 @@ function planChangements(m, onze, banc){
     chg.push({ min: ri(20, 70), entrant: gBanc, sortant: gOnze, gardien: true });
 
   const mene = etat(62) < 0;
-  const envie = x => x.niv + (mene ? { A:5, M:3, D:0, G:-99 }[x.poste] : { D:3.5, M:3, A:1, G:-99 }[x.poste]);
+  /* On juge sur `choix`, la lecture du coach **de ce jour-là**, et non sur le
+     niveau brut : sinon le plus faible du onze — toi, à dix-huit ans — sortait
+     systématiquement et n'entrait presque jamais. Mesuré avec `niv` : 62 % de
+     sorties avant la fin et 55 % d'entrées depuis le banc. */
+  const envie = x => x.choix + (mene ? { A:5, M:3, D:0, G:-99 }[x.poste] : { D:3.5, M:3, A:1, G:-99 }[x.poste]);
   const champ = banc.filter(x => x.poste !== 'G' && !chg.some(c => c.entrant === x));
   const nb = Math.min(champ.length, 3 + (Math.random() < .5 ? 1 : 0) + (Math.random() < .25 ? 1 : 0));
   const entrants = champ.slice().sort((a, b) => envie(b) - envie(a)).slice(0, nb);
@@ -722,7 +758,7 @@ function planChangements(m, onze, banc){
      autres, le tirage en tient lieu. Sans ce tirage, le coach sortait toujours
      les mêmes et tu ne sortais jamais : mesuré, 14 sorties sur 900 titularisations. */
   const jambes = mene ? .05 : .08;
-  const laisse = x => x.niv + rnd(-4, 4)
+  const laisse = x => x.choix + rnd(-3, 3)
     + (mene ? { D:3, M:1, A:0, G:99 }[x.poste] : { A:3, M:1, D:0, G:99 }[x.poste])
     - (x.moi ? (100 - S.etats.fraicheur) * jambes : 0);
   const sur = onze.filter(x => x.poste !== 'G' && !chg.some(c => c.sortant === x))
@@ -739,8 +775,8 @@ function planChangements(m, onze, banc){
 
 function lancerMatch(){
   const adv = adversaire(S.journee);
-  const statut = monStatut(adv);
-  const eq = equipeDuJour(statut);
+  const eq = equipeDuJour();
+  const statut = eq.statut;
   const nous = S.club.force + eq.ecart + (vestiaire() - 50) * .04
     + (statut === 'titulaire' ? (niveauJour() - S.club.force) * .12 : 0);
   const eux = adv.force;
@@ -776,10 +812,7 @@ function lancerMatch(){
   /* TON TEMPS DE JEU SORT DES MÊMES CHANGEMENTS QUE CELUI DES AUTRES. Tu es une
      ligne du banc comme les autres si tu n'es pas titulaire, et une ligne du onze
      si tu l'es : tu peux donc sortir avant l'heure, comme n'importe qui. */
-  const toi = { moi:true, nom:S.moi.nom, poste:S.moi.poste, niv:niveauJour(), ref:{} };
-  const onzeC = statut === 'titulaire' ? [toi, ...eq.onze] : eq.onze;
-  const bancC = statut === 'banc' ? [toi, ...eq.banc] : eq.banc;
-  const chg = planChangements(m, onzeC, bancC);
+  const chg = planChangements(m, eq.onze, eq.banc);
   m.chg = chg;
   let entree = 0, sortie = 90;
   const monEntree = chg.find(c => c.entrant && c.entrant.moi);
@@ -954,7 +987,12 @@ function finirMatch(){
     m.note = Math.round(m.note * 10) / 10;
     S.stats.matchs++; S.stats.minutes += m.minutes; S.stats.buts += m.buts; S.stats.passes += m.passes;
     S.stats.notes.push(m.note); if (m.statut === 'titulaire') S.stats.titus++;
-    S.etats.fraicheur = clamp(S.etats.fraicheur - (m.minutes / 90) * ri(10, 16) * (1 - S.etats.fond * .0022));
+    /* Entrer en jeu coûte moins que commencer : on arrive frais, sur une demi-heure.
+       Depuis que tu entres 71 % des fois où tu es sur le banc, le total de minutes
+       a bondi et la fraîcheur s'effondrait — « lever le pied » redevenait la
+       meilleure politique partout, ce qui tue le choix de la semaine. */
+    S.etats.fraicheur = clamp(S.etats.fraicheur
+      - (m.minutes / 90) * ri(10, 16) * (m.entree ? .7 : 1) * (1 - S.etats.fond * .0022));
     S.etats.corps = clamp(S.etats.corps - (m.minutes / 90) * .4);
     let dCoach = clamp((m.note - 6.2) * 2.4, -4, 4);
     if (dCoach < 0){
@@ -1008,6 +1046,17 @@ function finirMatch(){
      sur les notes des coéquipiers valait donc toujours zéro. */
   m.res = res;
   notesEquipe(m);
+  /* Hors du groupe mais valide : tu as joué avec la réserve. Ça ne compte pas
+     dans tes statistiques de première, mais une bonne sortie se voit — c'est la
+     route du retour, celle qui manquait à un jeune écarté du groupe. */
+  if (m.noteReserve != null){
+    S.reserveMatchs = (S.reserveMatchs || 0) + 1;
+    S.liens.coach = clamp(S.liens.coach + (m.noteReserve - 6.1) * .5);
+    S.etats.fraicheur = clamp(S.etats.fraicheur - ri(4, 8));
+    S.etats.forme = clamp(S.etats.forme + (m.noteReserve >= 7 ? 3 : m.noteReserve >= 6 ? 1 : -2));
+    m.mvtReserve = m.noteReserve >= 7 ? "Le coach a eu un retour sur ton match."
+      : m.noteReserve >= 6 ? "Une sortie correcte, rien de plus." : "Même là, tu n'as pas existé.";
+  }
   autresMatchs();
   S.dernier = m;
   // ce qui a bougé, en direction seulement : l'écran n'aura jamais le chiffre
@@ -1029,8 +1078,10 @@ function finirMatch(){
     m.coupsTete = S.coupsTete.slice();
   }
   S.coupsTete = [];
+  if (m.noteReserve != null) m.mvt.push({ k:'reserve', up: m.noteReserve >= 6.1, mot: m.mvtReserve });
   jrn('match', `J${S.journee + 1} · ${m.adv.dom ? S.club.nom + ' – ' + m.adv.nom : m.adv.nom + ' – ' + S.club.nom} ${m.adv.dom ? m.bn + '-' + m.be : m.be + '-' + m.bn}`
     + (m.minutes ? ` · toi : ${m.minutes} min, note ${nb(m.note)}${m.buts ? `, ${m.buts} but${m.buts > 1 ? 's' : ''}` : ''}${m.passes ? `, ${m.passes} passe${m.passes > 1 ? 's' : ''}` : ''}` : ` · ${m.statut === 'banc' ? 'resté sur le banc' : m.statut === 'blesse' ? "à l'infirmerie" : m.statut === 'suspendu' ? 'suspendu' : 'hors du groupe'}`)
+    + (m.noteReserve != null ? ` · match avec la réserve, note ${nb(m.noteReserve)}` : '')
     + (m.blessure ? ` · sorti touché, ${m.blessure} journée${m.blessure > 1 ? 's' : ''} d'absence` : '')
     + (m.suspendu ? ` · suspendu ${m.suspendu} match${m.suspendu > 1 ? 's' : ''}` : ''));
   decouverte(m);
@@ -1086,13 +1137,19 @@ function notesEquipe(m){
      avec le onze. » Elle est comptée à part (`sumR`/`nbR`) et pèse un tiers sur
      la forme : c'est la route lente vers le groupe, et elle existe. */
   (m.reserve || []).forEach(x => {
+    if (x.moi){
+      // hors du groupe mais valide : toi aussi, tu joues avec la réserve
+      m.noteReserve = Math.round(clamp(6.1 + (x.niv - S.club.force) * .04 + rnd(-1.5, 1.5), 3, 10) * 10) / 10;
+      return;
+    }
     if (!x.ref) return;
     const n = clamp(6.1 + (x.niv - S.club.force) * .04 + rnd(-1.5, 1.5), 3, 10);
     x.ref.noteR = Math.round(n * 10) / 10;
     x.ref.sumR = (x.ref.sumR || 0) + x.ref.noteR; x.ref.nbR = (x.ref.nbR || 0) + 1;
     bougerForme(x.ref, (x.ref.noteR - 6.1) * .3);
   });
-  m.reserveVue = (m.reserve || []).filter(x => x.ref).map(x => ({ nom:x.nom, poste:x.poste, note:x.ref.noteR }));
+  m.reserveVue = (m.reserve || []).filter(x => x.ref && !x.moi)
+    .map(x => ({ nom:x.nom, poste:x.poste, note:x.ref.noteR }));
 
   // sortir tôt, c'est une vexation : on s'en souvient deux ou trois journées
   (m.chg || []).forEach(c => { if (c.sortant && c.sortant.ref && !c.sortant.moi) vexer(c.sortant.ref, c.min); });
@@ -1185,7 +1242,7 @@ function apresMatch(){
   if (S.moi.base.ment < S.moi.pic.ment - .2)
     bougerAxe('ment', Math.min(.12, S.moi.pic.ment - S.moi.base.ment));
   S.etats.fond = clamp(S.etats.fond - 1.5);                 // le fond s'use si on ne l'entretient pas
-  S.etats.fraicheur = clamp(S.etats.fraicheur + (S.etats.blessure ? 14 : 9) + S.etats.fond * .05);
+  S.etats.fraicheur = clamp(S.etats.fraicheur + (S.etats.blessure ? 14 : 9.6) + S.etats.fond * .05);
   S.journee++;
   if (S.journee >= JOURNEES) return finSaison();
   S.arrets = 0; S.semaine = null; S.seance = null; S.match = null;
@@ -1303,22 +1360,26 @@ function direInfirmerie(){
    vingt-deux est censé faire. */
 function direProfondeur(){
   const abs = groupe().filter(x => !x.dispo).length;
-  const e = equipeDuJour(monStatutSec()).ecart;
+  const e = equipeDuJour().ecart;
   if (!abs) return "Tout le monde est là : le coach a le choix.";
   return e > -.25 ? "Le groupe absorbe : le onze ne s'en ressent pas."
     : e > -.8 ? "Le coach bricole un peu, sans plus."
     : e > -1.8 ? "Deux ou trois remplaçants entrent : ça se sentira."
     : "Le groupe est à l'os. Ce match part de plus loin.";
 }
-// une lecture sans tirage au sort, pour l'affichage : on suppose que tu joues
-function monStatutSec(){ return S.etats.blessure > 0 || S.etats.suspension > 0 ? 'banc' : 'titulaire'; }
 function direPlace(){
-  const d = devantToi();
-  if (!d) return "Personne ne te passe devant en ce moment.";
-  const ecart = (d.niv + d.forme) - valeurAuPoste();
-  return ecart < 2.5 ? `${d.nom} est devant toi, mais ça se joue à rien.`
-    : ecart < 8 ? `${d.nom} est devant toi, et le coach ne doute pas.`
-    : `${d.nom} est loin devant. Tu n'es pas dans ses plans.`;
+  const l = monPoste(), places = FORMATION[S.moi.poste];
+  const dispo = l.filter(x => x.dispo);
+  const rang = dispo.findIndex(x => x.moi);
+  const manquent = l.length - dispo.length;
+  const dit = manquent ? ` ${manquent} manque${manquent > 1 ? 'nt' : ''} à ton poste.` : '';
+  if (rang < 0) return "Tu n'es pas disponible cette semaine.";
+  const devant = dispo.slice(0, rang).map(x => x.nom);
+  if (rang < places) return (rang === 0 ? "Personne ne te passe devant."
+    : `Tu es dans le onze, derrière ${devant.slice(-1)[0]}.`) + dit;
+  if (rang === places) return `${devant.slice(-1)[0]} te passe devant, mais ça se joue à rien.` + dit;
+  if (rang <= places + 1) return `${devant.slice(-2).join(' et ')} sont devant toi.` + dit;
+  return `Tu es loin dans la hiérarchie du poste. Tu n'es pas dans ses plans.` + dit;
 }
 function direCorps(){ const v = S.etats.corps;
   return v > 85 ? "Rien ne te fait mal." : v > 72 ? "Quelques douleurs, rien de sérieux." : v > 58 ? "Tu récupères moins vite qu'avant." : "Ton corps commence à te lâcher."; }
@@ -1383,6 +1444,21 @@ function charger(){
       d.equipe.forEach(j => { j.rancune = 0; j.sumR = j.sumR || 0; j.nbR = j.nbR || 0; });
       (d.concurrents || []).forEach(c => { c.rancune = 0; c.sumR = c.sumR || 0; c.nbR = c.nbR || 0; });
       d.v = 8;
+    }
+    /* MIGRATION 8 → 9 : ta place se décide maintenant dans le même classement que
+       celui de tout l'effectif, et cela suppose une hiérarchie par poste. Un
+       effectif tiré à l'ancienne (force du club ±7) ferait de toi un titulaire du
+       jour au lendemain. On relève donc les titulaires de chaque poste au niveau
+       qui est désormais le leur, et on ne touche à personne d'autre. */
+    if (d.v === 8 && d.equipe && d.club){
+      const f = d.club.force;
+      Object.entries(FORMATION).forEach(([po, n]) => {
+        const l = d.equipe.filter(j => j.poste === po)
+          .concat(po === d.moi.poste ? (d.concurrents || []) : [])
+          .sort((a, b) => b.niv - a.niv).slice(0, n);
+        l.forEach(j => { if (j.niv < f + 2) j.niv = Math.round(f + rnd(2, 8)); });
+      });
+      d.v = 9;
     }
     if (d.v !== VERSION) return null;
     return d;
