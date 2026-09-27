@@ -36,16 +36,18 @@ const POSTES = [
   { id:'M', nom:"Milieu de terrain",  spec:"Vision",    w:{ tech:.32, phys:.22, ment:.24, spec:.22 } },
   { id:'A', nom:"Attaquant",          spec:"Finition",  w:{ tech:.30, phys:.24, ment:.20, spec:.26 } },
 ];
+/* Les trois origines, recalées par le propriétaire le 27/09/2026. L'ordre des
+   clés est l'ordre des pastilles : les forces d'abord, le défaut en dernier. */
 const ORIGINES = [
   { id:'academie', ico:'🏛️', nom:"La grande académie",
-    sub:"Formé au centre d'un club pro. On t'a appris à jouer, on t'a aussi appris à attendre.",
-    axes:{ tech:12, ment:4 }, liens:{ agent:15, vestiaire:-5 }, u0:{ tech:.5, phys:1.1, ment:.8, spec:.8 } },
+    sub:"Formé au centre d'un club pro. On t'a appris à jouer et à préparer ton corps. On t'a aussi appris à attendre.",
+    axes:{ tech:12, phys:8, ment:-6 }, liens:{ vestiaire:10 }, u0:{ tech:.5, phys:.6, ment:1.1, spec:.8 } },
   { id:'quartier', ico:'🧱', nom:"Le terrain du quartier",
-    sub:"Repéré tard, sur du bitume. Personne ne t'a rien appris, et ça se voit dans les deux sens.",
-    axes:{ phys:12, ment:8, tech:-6 }, liens:{ supporters:8 }, u0:{ tech:1.2, phys:.5, ment:.6, spec:1 } },
+    sub:"Repéré tard, sur du bitume. Le geste, tu l'as depuis toujours ; le corps, personne ne l'a jamais préparé.",
+    axes:{ tech:12, ment:8, phys:-8 }, liens:{ supporters:8 }, u0:{ tech:.6, phys:1.2, ment:.6, spec:1 } },
   { id:'etranger', ico:'✈️', nom:"Arrivé de l'étranger",
-    sub:"Un pari de recruteur, une langue à apprendre, une famille à six mille kilomètres.",
-    axes:{ tech:8, phys:4, ment:-4 }, liens:{ vestiaire:-10 }, u0:{ tech:.7, phys:.8, ment:1.1, spec:.9 } },
+    sub:"Un pari de recruteur, une langue à apprendre, une famille à six mille kilomètres. Il en a fallu, du caractère.",
+    axes:{ ment:12, phys:4, tech:-6 }, liens:{ agent:15 }, u0:{ tech:1.1, phys:.8, ment:.5, spec:.9 } },
 ];
 const AMBITIONS = [
   { id:'gagner', ico:'🏆', nom:"Tout gagner", sub:"Les trophées, les grands soirs. Le reste attendra." },

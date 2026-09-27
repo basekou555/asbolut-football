@@ -123,6 +123,24 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
   sheet, +0,35 à un but, −0,5 à partir de quatre). Mesuré après, seize saisons par poste :
   **6,3 / 6,4 / 6,5 / 6,8** et 18 à 22 matchs. Et un gardien ne délivre plus trois passes décisives
   par saison (`chancePasse` par poste).
+- **Les trois origines, recalées par le propriétaire (27/09/2026)** : « le terrain du quartier a la
+  technique en bas alors que c'est le physique qui est plus juste ; pour celui qui arrive de
+  l'étranger c'est l'inverse, le mental en haut et la technique en bas, et agent en positif à la
+  place de vestiaire en négatif ; tu as mis agent dans la grande académie, mets le physique à la
+  place et mets vestiaire en positif. » Sa lecture du football est plus juste que la mienne : **la
+  rue donne le geste, pas le corps préparé** (le quartier passe de physique +12 / technique −6 à
+  technique +12 / physique −8), et **partir à six mille kilomètres est d'abord du mental**
+  (l'étranger passe de technique +8 / mental −4 à mental +12 / technique −6). L'académie prend le
+  physique que lui donnait le centre et garde son vestiaire, en positif cette fois. **Un choix que
+  j'ai fait seul et qu'il faut savoir** : le mental de l'académie passe en négatif — sans lui
+  l'académie n'avait plus aucun défaut et dominait les deux autres ; c'est l'axe que dit déjà son
+  sous-titre (« on t'a aussi appris à attendre »). Chaque origine a donc deux forces, un défaut et
+  un lien positif, et un seul agent dans tout l'écran. L'ordre des clés de `axes` est l'ordre des
+  pastilles : les forces d'abord, le défaut en dernier. Mesuré après, douze saisons par croisement
+  origine × poste : niveau de départ **51,9 à 54,8**, 16,6 à 24,8 matchs, **aucune saison à zéro
+  match**, et les origines ne se valent plus indifféremment selon le poste — l'académie est la
+  meilleure au milieu (24,8 matchs), l'étranger la meilleure dans les buts (le mental pèse 0,30 au
+  poste de gardien) et la plus dure devant (16,6 matchs, la technique en défaut).
 - **Ce qui n'est pas encore là** : la trêve, les offres, la progression d'une saison sur l'autre,
   l'usure, la vie et ses chantiers, la boutique, le mercato, le mode entraîneur·euse, la coupe et
   l'Europe. Les **contenus** sont volontairement repoussés après le moteur (décision du propriétaire) :
