@@ -599,6 +599,30 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
   Mesuré à 430 px, même carrière : quatre cartes sur six tombent à **87 px** (une rangée de
   pastilles), la carte « Ta semaine » entière passe de **1 123 à 757 px (−33 %)**, et surtout
   **L'EFFECTIF remonte de 2 279 à 1 896 px** — 383 pixels de défilement en moins pour l'atteindre.
+- **L'ÉCRAN DE RÉSULTAT SE CONTREDISAIT** (le propriétaire, 27/09/2026 : « dans ma semaine, il n'y a
+  que l'impact de mon choix d'entraînement… le joueur qui met un triplé ou un doublé, dans la note
+  du match, ça va pas se ressentir… dans les notes de match, il y a des joueurs qui n'ont pas de
+  temps de jeu noté et d'autres qui en ont, on comprend pas »). Sondé sur **1 700 matchs** avant de
+  toucher à quoi que ce soit, et le résultat a **corrigé ma lecture** : les minutes du film et
+  celles des notes sont **cohérentes à 100 %** (0 écart sur 1 700 matchs), et aucun buteur ne manque
+  à la liste des notes. Deux vrais défauts, et un défaut de lisibilité.
+  1. **Un but ne se voyait pas dans la note du buteur.** Mesuré : 6,15 sans but, **6,48** avec un
+     but, 7,22 avec trois — et encore, seulement parce qu'une équipe qui marque gagne, ce qui donne
+     +0,55 à tout le monde. **Rien ne reliait le film à la note.** Les buts, les passes et les
+     cartons des coéquipiers y entrent maintenant (`POIDS_BUT_AUTRE = [1.2, .85, .6, .4]`, même
+     rendement décroissant que pour toi ; passe +0,4, jaune −0,25, rouge −1,3). Mesuré après :
+     **6,15 / 7,63 / 8,47 / 8,72**. Un doublé vaut enfin un 8,5.
+  2. **Les coéquipiers marquaient tout seuls** : seule *ta* passe décisive existait. Un but a
+     maintenant 55 % de chances d'avoir un passeur nommé, le film le dit (« But de Garnier, servi
+     par Nguyen ») et la note le compte.
+  3. **La moitié des lignes n'affichait pas de minutes** (celles à 90), ce qui se lisait comme une
+     incohérence alors que c'était une économie d'affichage. **Tout le monde a ses minutes.**
+  Et **« Ta semaine » rappelle la décision de la semaine**, pas seulement le compte rendu de
+  séance : `S.semaineArret` garde le titre de l'arrêt et l'option choisie, et l'écran l'affiche
+  au-dessus (« *Nguyen a fait une séance énorme* — tu as choisi : « Rester une heure de plus,
+  seul » »). Vérifié que rien ne se dérègle : tes notes restent à 10ᵉ **4,7**, médiane **6,3**,
+  90ᵉ **8,1**, ton rang moyen dans la liste est **7,7 sur ~15**, et les quatre jugements se
+  répartissent 399 / 383 / 137 / 128.
 - **Le banc d'essai (`v2/labo.html`)**, demandé par le propriétaire : « le tableau que tu m'as
   partagé, je sais pas ce que ça représente… j'aimerais bien aussi que je puisse faire [les
   simulations] sur le nombre de matchs en fonction des choix qu'on a fait. » La page rejoue des

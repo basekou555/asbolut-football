@@ -296,7 +296,9 @@ function ecranResultat(){
   return `<div class="card">
     <div class="step">${ordinal(S.journee + 1)} journée · terminé</div>
     <div class="score"><span class="big">${score}</span><div><b>${esc(gauche)}</b> – ${esc(droite)}<br><span class="sub">${maLigne}</span></div></div>
-    ${m.seance ? `<h3>Ta semaine</h3><p class="narr">${esc(m.seance.texte)}</p>` : ''}
+    ${m.arret || m.seance ? `<h3>Ta semaine</h3>
+      ${m.arret ? `<p class="narr" style="margin-bottom:6px"><b>${esc(m.arret.titre)}</b> \u2014 tu as choisi : \u00ab ${esc(m.arret.choix)} \u00bb.</p>` : ''}
+      ${m.seance ? `<p class="narr">${esc(m.seance.texte)}</p>` : ''}` : ''}
     <h3>Le film du match</h3>
     <div class="tl">${filmHTML(m)}</div>
     ${m.decouverte ? `<h3>${m.decouverte.bon ? "Ce qu'on a vu en toi" : "Ce qui s'est vu aussi"}</h3>
@@ -306,7 +308,7 @@ function ecranResultat(){
     ${m.notes && m.notes.length > 1 ? `<h3>Les notes du match</h3>
       ${m.jugement ? `<p class="narr">${esc(m.jugement)}</p>` : ''}
       <div class="notes">${m.notes.map(j => `<div${j.moi ? ' class="me"' : ''}>
-        <span class="p">${j.poste}</span><span>${esc(j.nom)}${j.rival ? ' <i>(ton poste)</i>' : ''}${j.min && j.min < 90 ? ` <i>${j.min} min</i>` : ''}</span>
+        <span class="p">${j.poste}</span><span>${esc(j.nom)}${j.rival ? ' <i>(ton poste)</i>' : ''}${j.min ? ` <i>${j.min} min</i>` : ''}</span>
         <span class="n">${virg(j.note)}</span></div>`).join('')}</div>` : ''}
     ${m.reserveVue && m.reserveVue.length ? `<h3>Avec la réserve</h3>
       <div class="notes">${m.reserveVue.map(j => `<div>
@@ -325,7 +327,8 @@ function filmHTML(m){
     const eux = !e.nous, qui = e.qui || (eux ? `un joueur de ${m.adv.nom}` : "un coéquipier");
     if (e.type === 'but') lignes.push({ min:e.min, moi:!!(e.moi || e.passeMoi), ico:'⚽',
       t: e.moi ? `<b>Ton but</b>` : e.passeMoi ? `But de ${esc(qui)}, <b>sur ta passe</b>`
-        : eux ? `But de ${esc(m.adv.nom)}` : `But de ${esc(qui)}` });
+        : eux ? `But de ${esc(m.adv.nom)}`
+        : e.passe ? `But de ${esc(qui)}, servi par ${esc(e.passe)}` : `But de ${esc(qui)}` });
     if (e.type === 'jaune') lignes.push({ min:e.min, moi:!!e.moi, ico:'🟨', t: `${esc(e.moi ? S.moi.nom : qui)} averti` });
     if (e.type === 'rouge') lignes.push({ min:e.min, moi:!!e.moi, ico:'🟥', t: `${esc(e.moi ? S.moi.nom : qui)} exclu` });
     if (e.type === 'penalty') lignes.push({ min:e.min, moi:false, ico:'🎪', t: `Penalty pour ${esc(e.nous ? S.club.nom : m.adv.nom)}` });
