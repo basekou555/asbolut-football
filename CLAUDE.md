@@ -723,9 +723,69 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
   - **Mesuré avant/après dans la queue** : les décisions « tu ne joues pas » passent de **5,3 à
     4,7 par saison** (29 % → **25 % des écrans**) — le volume tient, et chacune dit maintenant vrai.
     Diversité générale : 18,3 arrêts par saison, **seize familles**, la plus fréquente à 12 %.
-- **Ce qui n'est pas encore là** : la trêve, les offres, la progression d'une saison sur l'autre,
-  l'usure, la vie et ses chantiers, la boutique, le mercato, le mode entraîneur·euse, la coupe et
-  l'Europe. Les **contenus** sont volontairement repoussés après le moteur (décision du propriétaire) :
+- **LA CARRIÈRE CONTINUE** (le propriétaire, 27/09/2026 : « j'aimerais bien qu'on avance un peu dans
+  le process de construction du jeu, parce qu'il reste plein d'autres éléments. Et sortir un peu de
+  la phase labo dans laquelle on est »). Le jeu s'arrêtait au bout d'une saison : c'est la pièce qui
+  débloque tout le reste, parce que **la trace qu'une carrière doit laisser n'avait nulle part où
+  s'inscrire**. L'enchaînement est : bilan → **l'été** → **les offres** → la saison suivante, et au
+  bout, le **bilan de carrière**.
+  - **L'été est une décision** (`ETE`, quatre options, chacune avec un effet tout de suite et un qui
+    dure, aucune n'a les deux) : *rentrer chez toi* (le mental remonte à son pic — ce que la saison
+    n'offre jamais — et le corps se répare, mais rien de gagné sur le terrain), *passer l'été à
+    travailler* (ton axe le plus loin de son plafond monte, tu arrives à 78 % de fraîcheur en août),
+    *réparer ton corps* (du fond d'avance, tu te blesses moins toute l'année), *te montrer* (l'agent,
+    les supporters, et de meilleures propositions).
+  - **LE PLAFOND EST TON POTENTIEL, ET IL NE MONTE JAMAIS.** Première version : il montait de la
+    courbe d'âge chaque saison — mesuré sur 40 carrières entières, **toutes** finissaient au maximum
+    (niveau max moyen 99,4, médiane 100). Un potentiel qui se rattrape n'est pas un potentiel. Il est
+    tiré à la création, il ne bouge qu'à la baisse (`usureAge()`, à partir de 29 ans), et toute la
+    carrière consiste à savoir **quelle part tu en auras révélée et combien de temps tu l'auras
+    tenue**. La base monte vers lui d'autant plus vite qu'on a joué et bien joué (`.09 + .26 × part`,
+    plus la note), et en redescend sans rien demander à personne.
+  - **Le tirage du potentiel était trop haut** (`ri(72, 96)`), ce qui ne se voyait pas sur une seule
+    saison puisque `plafondReel` le borne de toute façon à « la moyenne des autres axes + 25 », donc
+    à 75 en août. Sur une carrière : niveau médian **88 pour un championnat dont le meilleur club
+    vaut 78**. Resserré à `ri(62, 88)` — la première saison ne bouge pas, le sommet oui (niveau max
+    médian **78**, de 67 à 88 selon le tirage).
+  - **Les offres, une à la fois** (`genererOffres()`), comme il l'avait demandé pour la 1.0 : refuser
+    la fait disparaître, la suivante peut être pire ou ne pas venir. Le club est décrit **en mots**
+    (`motClub()`, `motPlace()`) : jamais sa force. Ton club peut ne pas prolonger (33 ans et moins de
+    dix matchs, ou une saison blanche) — c'est la seule chose qui t'oblige à partir, et si personne
+    n'appelle, la carrière s'arrête là.
+  - **Le vestiaire n'est pas le même d'une année sur l'autre** (`renouvelerEffectif()`) : chacun
+    prend un an et suit sa courbe, les plus de 35 ans s'en vont, le club recrute à ton poste. Changer
+    de club refait un effectif entier (`creerEffectif()`, extrait de `nouvellePartie()`) et remet les
+    ententes et la confiance du coach à zéro : tout est à refaire ailleurs.
+  - **Le club dérivait en marche aléatoire**, donc il s'échappait vers le haut sur vingt saisons :
+    mesuré, une carrière sur quarante gagnait **dix-sept titres sur vingt saisons** — exactement ce
+    qu'il reprochait à la 1.0 (« j'ai tout gagné pendant 10 ans »). Il est maintenant **rappelé vers
+    ce qu'il vaut dans le championnat de cette année-là** (`.55` de lui-même, `.45` du tirage).
+    Mesuré après : **3,0 titres** par carrière de vingt saisons, médiane 3, maximum 7.
+  - **Un gardien marquait trois buts par saison.** Le bonus de `spec` sur la chance de marquer était
+    **additif** (`+ (spec−50) × .002`), donc il s'appliquait même à un poste dont la chance est zéro :
+    63 buts en carrière pour un gardien. Il est devenu multiplicatif (`× clamp(1 + (spec−50)×.006,
+    .7, 1.3)`) : il amplifie ce que ton poste permet, il ne crée rien, et **à spec 50 il ne change
+    rien du tout**, donc la première saison est intacte. Mesuré après : gardien **0**, défenseur 4 buts
+    par saison, milieu 13, attaquant 32.
+  - **Le bilan de carrière** (`ecranCarriere`) : saisons, matchs, buts, passes, moyenne, titres, la
+    meilleure saison nommée, et **saison par saison** — le club, les matchs, les buts, la place et la
+    note. C'est là que la trace se lit. La carte porte `no-sticky` : le bouton collant coupait la
+    liste en deux.
+  - **Le bandeau ne ment plus hors saison** : pendant l'été, le mercato et la fin de carrière, il
+    affichait encore « 34ᵉ journée sur 34 » et le classement de l'année passée ; il dit maintenant
+    où on en est, avec l'âge et le nombre de saisons.
+  - **Vérifié** : 40 carrières jouées de 18 à 38 ans sans une erreur ; l'équilibre de la semaine tient
+    aux trois croisements (aucune politique ne prend à la fois les matchs et la trace) ; et une vraie
+    partie de la version déployée, reprise à la 17ᵉ journée, finit sa saison, passe la trêve, signe
+    ailleurs et **rejoue une saison entière** — `VERSION` 10, migration sans rien à reconstruire.
+  - **Ce qui reste haut, et qu'il faudra peut-être resserrer** : un attaquant médian finit à **32 buts
+    par saison** au sommet de sa carrière et 653 sur l'ensemble. Les chiffres de **première** saison,
+    eux, sont justes (11,6 buts pour un attaquant, 5,3 pour un milieu, 1,3 pour un défenseur) : c'est
+    donc le nombre de buts d'une **équipe dominante** qui gonfle, pas la part que tu en prends. Le
+    levier serait `tameXG`, et il touche tous les scores : à mesurer avant d'y toucher.
+- **Ce qui n'est pas encore là** : la vie et ses chantiers, la boutique, le mercato, la sélection
+  nationale, le mode entraîneur·euse, la coupe et l'Europe. (La trêve, les offres, la progression
+  d'une saison sur l'autre et l'usure sont livrées — voir « La carrière continue ».) Les **contenus** sont volontairement repoussés après le moteur (décision du propriétaire) :
   un contenu n'est une donnée qu'une fois les quatre canaux d'impact et le `ctx` figés. Les quatre
   `ARRETS` et les huit `MOMENTS` en place sont des marqueurs de forme, pas le contenu final.
 

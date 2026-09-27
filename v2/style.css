@@ -153,6 +153,9 @@ details.fold[open] summary{margin-bottom:10px}
 @media(max-width:900px){
   .card:last-child > .btn-row:last-child{position:sticky;bottom:0;background:var(--panel);
     padding-block:10px;margin-bottom:-4px}
+  /* une carte qu'on lit de bout en bout (le bilan de carrière) : le bouton
+     collant coupait la liste des saisons en deux */
+  .card.no-sticky:last-child > .btn-row:last-child{position:static;background:none;padding-block:0}
 }
 
 /* ---- création ---- */
