@@ -348,7 +348,7 @@ function filmHTML(m){
     const eux = !e.nous, qui = e.qui || (eux ? `un joueur de ${m.adv.nom}` : "un coéquipier");
     if (e.type === 'but') lignes.push({ min:e.min, moi:!!(e.moi || e.passeMoi), ico:'⚽',
       t: e.moi ? `<b>Ton but</b>` : e.passeMoi ? `But de ${esc(qui)}, <b>sur ta passe</b>`
-        : eux ? `But de ${esc(m.adv.nom)}`
+        : eux ? `But de ${esc(qui)} <i>(${esc(m.adv.nom)})</i>`
         : e.passe ? `But de ${esc(qui)}, servi par ${esc(e.passe)}` : `But de ${esc(qui)}` });
     if (e.type === 'jaune') lignes.push({ min:e.min, moi:!!e.moi, ico:'🟨', t: `${esc(e.moi ? S.moi.nom : qui)} averti` });
     if (e.type === 'rouge') lignes.push({ min:e.min, moi:!!e.moi, ico:'🟥', t: `${esc(e.moi ? S.moi.nom : qui)} exclu` });
