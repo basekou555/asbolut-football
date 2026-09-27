@@ -98,6 +98,13 @@ function setAmbition(i){
 
 /* ---------------- bandeau ---------------- */
 const LIEN_NOM = { coach:"Le coach", vestiaire:"Le vestiaire", club:"Le club", supporters:"Le stade", agent:"Ton agent" };
+/* LES CASES RÉELLEMENT AFFICHÉES. « Le vestiaire » n'en est plus une : c'est, au
+   mot près, **la moyenne des trois ententes de ligne**, déjà lisibles dans « Ta
+   ligne » et dans l'effectif — et il ne pèse que −0,43 à +0,77 sur la force de
+   l'équipe quand l'avantage du terrain en vaut 2,40. Une case qui redit une
+   moyenne et ne décide de rien n'a pas sa place. Le moteur, lui, garde
+   `vestiaire()` : deux familles d'arrêts s'y accrochent. */
+const LIENS_VUS = ['coach', 'club', 'supporters', 'agent'];
 const LIEN_ICO = { coach:"🎽", vestiaire:"✊", club:"🏟️", supporters:"📣", agent:"🤝",
   fraicheur:"🫁", blessure:"🩼", suspension:"🟥",
   def:"🛡️", mil:"🧭", att:"🎯", reserve:"🧱" };
@@ -127,7 +134,7 @@ function celSit(ico, nom, txt, cle){
     <span class="v">${esc(txt)}</span></div>`;
 }
 function situationHTML(ouvert){
-  const gens = Object.keys(LIEN_NOM).map(k => celSit(LIEN_ICO[k], LIEN_NOM[k], dire(k))).join('');
+  const gens = LIENS_VUS.map(k => celSit(LIEN_ICO[k], LIEN_NOM[k], dire(k))).join('');
   /* Une seule ligne ici : celle qui te sert, avec son enjeu. Les trois ententes
      sont avec les joueurs, dans l'effectif — c'est là qu'elles ont des noms. */
   /* Le propriétaire, 27/09/2026 : « il y a un onglet attaque à côté de le club,
@@ -141,8 +148,8 @@ function situationHTML(ouvert){
      « Je comprends pas pourquoi on a des mots différents. » */
   /* Le groupe : c'est ce qui rend vingt-deux joueurs utiles plut\u00f4t que d\u00e9coratifs.
      Qui manque, et ce que \u00e7a co\u00fbte au onze de samedi. */
-  const grp = celSit('\u{1F3E5}', "L'infirmerie", direInfirmerie())
-    + celSit('\u{1F465}', "Le groupe", direProfondeur());
+  // une seule case : qui manque, et ce que \u00e7a co\u00fbte au onze
+  const grp = celSit('\u{1F465}', "Le groupe", direGroupe());
   /* Le rang dans la hi\u00e9rarchie du poste, et la phrase qui nomme le levier le plus
      court : \u00ab je sais pas trop quoi faire pour entrer dedans \u00bb. */
   const toi = celSit('\u{1FAC1}', "Fra\u00eecheur", direFraicheur() + " avant le match.")
@@ -181,12 +188,13 @@ function effectifHTML(){
     return `<div class="lineHead">${ico} ${esc(nom)}<span>${k ? esc(direLigne(k)) : ''}</span></div>
       <div class="lineup">${j.map(x => `<div class="${x.moi ? 'me' : ''}${x.blesse || x.susp ? ' out' : ''}">
         <b>${esc(x.nom)}</b><span class="n">${x.moy == null ? (x.res == null ? '\u2014' : virg(x.res)) : virg(x.moy)}</span>
-        <span class="s">${x.moy == null && x.res != null ? `${x.age} ans \u00b7 ${x.nbR} m en r\u00e9serve` : `${x.age} ans \u00b7 ${x.nb} m${x.nbR ? ` \u00b7 ${x.nbR} en r\u00e9serve` : ''}`}${x.moi ? ' \u00b7 toi' : x.rival ? ' \u00b7 ton poste' : x.monte ? ' \u00b7 il monte' : ''}${x.blesse ? ' \u00b7 \u{1FA7C} bless\u00e9' : x.susp ? ' \u00b7 \u{1F7E5} suspendu' : x.boude ? ' \u00b7 \u{1F624} il boude' : ''}</span>
+        <span class="s">${x.moy == null && x.res != null ? `${x.age} ans \u00b7 ${x.nbR} m en r\u00e9serve` : `${x.age} ans \u00b7 ${x.nb} m${x.nbR ? ` \u00b7 ${x.nbR} r\u00e9s.` : ''}`}${x.moi ? ' \u00b7 toi' : x.rival ? ' \u00b7 ton poste' : x.monte ? ' \u00b7 il monte' : ''}${x.blesse ? ' \u00b7 \u{1FA7C}' : x.susp ? ' \u00b7 \u{1F7E5}' : x.boude ? ' \u00b7 \u{1F624}' : ''}</span>
       </div>`).join('')}</div>`;
   };
   return `<details class="fold"><summary>L'effectif</summary>
     ${GROUPES.map(bloc).join('')}
-    <p class="sub">Vingt-deux joueurs, onze titulaires. La moyenne de chacun sur la saison, et le nombre de matchs not\u00e9s.</p>
+    <p class="sub">Vingt-deux joueurs, onze titulaires. La moyenne de chacun sur la saison, et le nombre de matchs not\u00e9s.<br>
+      L'entente du vestiaire, c'est la moyenne de ces trois lignes.</p>
   </details>`;
 }
 const virg = v => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');

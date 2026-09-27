@@ -1425,7 +1425,12 @@ function direGeste(){ const v = S.moi.base.tech + S.moi.boost.tech;
 function direTete(){ const v = S.moi.base.ment + S.moi.boost.ment;
   return v > 68 ? "Tu as déjà vécu ça." : v > 54 ? "Tu respires, et tu joues."
     : v > 42 ? "Tes jambes se font lourdes d'un coup." : "Le stade hurle et tu ne l'entends plus."; }
-/* L'infirmerie, en mots : c'est ce qui justifie un groupe de vingt-deux. */
+/* LE GROUPE, EN UNE SEULE PHRASE : qui manque **et** ce que ça coûte au onze.
+   Le propriétaire, 27/09/2026 : « c'est quoi la différence entre le groupe et le
+   vestiaire ? Ça se superpose un peu… il y a un truc à fusionner. » Il avait
+   raison sur la superposition, mais pas là où il croyait : « L'infirmerie » et
+   « Le groupe » étaient deux cases pour **le même événement vu sous deux
+   angles**. Elles n'en font plus qu'une. */
 function direInfirmerie(){
   const a = groupe().filter(x => !x.dispo);
   if (!a.length) return "Tout le monde est valide.";
@@ -1435,6 +1440,7 @@ function direInfirmerie(){
     : n === 2 ? `${qui} manquent ce samedi.`
     : `${n} absents, dont ${qui}.`;
 }
+function direGroupe(){ return direInfirmerie() + ' ' + direProfondeur(); }
 /* Ce que la profondeur du groupe absorbe. Il faut le dire en tenant compte des
    absents : « quatre absents » à côté de « le onze est au complet » se lisait
    comme une contradiction, alors que c'est justement ce qu'un groupe de
@@ -1443,10 +1449,10 @@ function direProfondeur(){
   const abs = groupe().filter(x => !x.dispo).length;
   const e = equipeDuJour().ecart;
   if (!abs) return "Tout le monde est là : le coach a le choix.";
-  return e > -.25 ? "Le groupe absorbe : le onze ne s'en ressent pas."
+  return e > -.25 ? "Ça s'absorbe : le onze ne s'en ressent pas."
     : e > -.8 ? "Le coach bricole un peu, sans plus."
     : e > -1.8 ? "Deux ou trois remplaçants entrent : ça se sentira."
-    : "Le groupe est à l'os. Ce match part de plus loin.";
+    : "On est à l'os. Ce match part de plus loin.";
 }
 /* Le propriétaire, 27/09/2026 : « on peut mettre le numéro qu'on est dans la
    hiérarchie… je sais pas trop quoi faire pour entrer dedans ». Le rang, et la

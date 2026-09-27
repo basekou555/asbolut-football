@@ -560,6 +560,27 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
   dans la fiche et la **liste du poste** sur la carte de la semaine. Les deux sont réunies en une
   section **Ta place** dans « Ta situation » — le rang et le levier en tête, la hiérarchie complète
   en dessous. L'écran de la semaine ne garde que **la décision**, ce qui est sa fonction.
+- **LE GROUPE ET LE VESTIAIRE : UN VRAI DOUBLON, MAIS PAS CELUI QU'IL CROYAIT** (le propriétaire,
+  27/09/2026 : « c'est quoi la différence entre le groupe et le vestiaire ? Ça se superpose un peu
+  les deux… il y a un truc à fusionner. Je sais plus c'est quoi leur utilité »). Mesuré sur 2 040
+  semaines, ce que chacun pèse sur la force de l'équipe (l'avantage du terrain vaut **2,40**) :
+  | case | ce que ça pèse | ce que c'est |
+  |---|---|---|
+  | **Le vestiaire** | −0,43 à **+0,77** | la **moyenne des trois ententes de ligne** |
+  | **Le groupe** | **−2,44** à 0 | ce que l'infirmerie coûte au onze |
+  | **Ta ligne** (gardien, défenseur) | −0,89 à **+1,84** | plus son effet direct sur les buts |
+  Deux conclusions, toutes deux appliquées.
+  1. **Le vrai doublon était ailleurs** : « L'infirmerie » et « Le groupe » étaient **deux cases
+     pour le même événement vu sous deux angles** (qui manque / ce que ça coûte). Elles n'en font
+     plus qu'une, **Le groupe** : « 5 absents, dont Hernandez et Nguyen. On est à l'os. Ce match
+     part de plus loin. »
+  2. **« Le vestiaire » disparaît des cases** (`LIENS_VUS`). Ce n'est pas une jauge à part : c'est,
+     au mot près, la moyenne de trois ententes déjà lisibles dans « Ta ligne » et dans l'effectif,
+     et elle pèse un tiers d'un avantage du terrain. Par la règle du projet — *chaque chiffre
+     affiché doit avoir une conséquence visible* — elle n'avait pas sa place. Le moteur garde
+     `vestiaire()` : il décide encore de deux familles d'arrêts et d'une ligne du bilan. Et
+     l'effectif répond une fois pour toutes à la question : « L'entente du vestiaire, c'est la
+     moyenne de ces trois lignes. »
 - **Le banc d'essai (`v2/labo.html`)**, demandé par le propriétaire : « le tableau que tu m'as
   partagé, je sais pas ce que ça représente… j'aimerais bien aussi que je puisse faire [les
   simulations] sur le nombre de matchs en fonction des choix qu'on a fait. » La page rejoue des
