@@ -610,6 +610,10 @@ function choisirArret(i){
   const a = S.arret, o = a.options[i]; if (!o) return;
   appliquer(o);
   jrn('arret', `${a.titre} → ${o.l}`);
+  /* Le propriétaire, 27/09/2026 : « dans ma semaine, il n'y a que l'impact de
+     mon choix d'entraînement. » La décision de la semaine y manquait : on la
+     garde pour l'afficher à côté du compte rendu de séance. */
+  S.semaineArret = { titre: a.titre, choix: o.l };
   S.arret = null; lancerMatch();
 }
 function appliquer(o){
@@ -730,6 +734,9 @@ const TAILLE_GROUPE = 18;
    deuxième fait raté ne coûte pas autant que le premier non plus. */
 const POIDS_FAIT = [1, .75, .5, .35];
 const POIDS_BUT = [.7, .5, .35, .25];
+/* Pour un coéquipier, un but pèse plus que pour toi : sa note n'a pas de faits
+   de match pour la porter, seulement ce que le film raconte de lui. */
+const POIDS_BUT_AUTRE = [1.2, .85, .6, .4];
 function cumul(n, table){
   let t = 0;
   for (let i = 0; i < n; i++) t += table[i] != null ? table[i] : table[table.length - 1];
@@ -904,6 +911,12 @@ function lancerMatch(){
     if (surLeTerrain && Math.random() < chance + (S.moi.base.spec - 50) * .002){ e.moi = true; m.buts++; }
     else if (surLeTerrain && Math.random() < chancePasse){ e.passeMoi = true; m.passes++; }
     e.qui = e.moi ? S.moi.nom : surLeBanc(m, e.min, 'but');
+    /* Un but a souvent un passeur, et jusqu'ici seul le tien existait : les
+       coéquipiers marquaient tout seuls. Le film le dit, et la note le compte. */
+    if (!e.passeMoi && Math.random() < .55){
+      const p = surLeBanc(m, e.min, 'but');
+      if (p !== e.qui) e.passe = p;
+    }
   });
   evs.filter(e => e.type === 'but' && !e.nous).forEach(e => e.qui = adv.nom);
   // un carton peut être le mien : c'est lui qui compte pour la suspension
@@ -941,6 +954,7 @@ function lancerMatch(){
     });
   }
   m.entree = entree;
+  m.arret = S.semaineArret || null; S.semaineArret = null;
   S.match = m; S.momentIdx = 0;
   suiteMatch();
 }
@@ -1192,6 +1206,20 @@ function notesEquipe(m){
   const sorti = new Map();
   (m.chg || []).forEach(c => { if (c.sortant) sorti.set(c.sortant, c.min); });
 
+  /* CE QU'ILS ONT FAIT DOIT SE VOIR DANS LEUR NOTE (le propriétaire, 27/09/2026 :
+     « le joueur qui met un triplé ou un doublé, dans la note du match, ça va pas
+     se ressentir »). Mesuré avant : un buteur tournait à 6,48 contre 6,15 sans
+     but, et un triplé à 7,22 — et encore, seulement parce qu'une équipe qui
+     marque gagne. Rien ne reliait le film à la note. Les buts, les passes et les
+     cartons des coéquipiers y entrent maintenant, avec le même rendement
+     décroissant que pour toi. */
+  const faits = {};
+  const compte = (nom, k) => { if (!nom) return; faits[nom] = faits[nom] || { b:0, p:0, j:0, r:0 }; faits[nom][k]++; };
+  (m.evs || []).filter(e => e.nous).forEach(e => {
+    if (e.type === 'but'){ compte(e.qui, 'b'); compte(e.passe, 'p'); }
+    if (e.type === 'jaune') compte(e.qui, 'j');
+    if (e.type === 'rouge') compte(e.qui, 'r');
+  });
   const noter = (x, minutes) => {
     if (x.moi || !x.ref) return;
     const derriere = x.poste === 'G' || x.poste === 'D';
@@ -1199,8 +1227,10 @@ function notesEquipe(m){
        ni un 3, sa note colle à la moyenne. C'est aussi ce qui fait que la note
        d'un remplaçant ne pèse pas comme celle d'un titulaire. */
     const a = minutes >= 70 ? 1 : minutes >= 30 ? .72 : .45;
+    const f = faits[x.nom] || { b:0, p:0, j:0, r:0 };
     const n = 6.1 + (bonus + (x.niv - S.club.force) * .05 + rnd(-1.3, 1.3)
-      + (derriere ? (m.be === 0 ? .8 : m.be >= 4 ? -.7 : 0) : 0)) * a;
+      + (derriere ? (m.be === 0 ? .8 : m.be >= 4 ? -.7 : 0) : 0)) * a
+      + cumul(f.b, POIDS_BUT_AUTRE) + f.p * .4 - f.j * .25 - f.r * 1.3;
     x.ref.note = Math.round(clamp(n, 3, 10) * 10) / 10;
     x.ref.sum = (x.ref.sum || 0) + x.ref.note; x.ref.nb = (x.ref.nb || 0) + 1;
     // une bonne note, c'est une place la semaine prochaine
