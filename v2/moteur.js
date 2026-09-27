@@ -414,12 +414,43 @@ function choisirSemaine(id){
     S.etats.corps = clamp(S.etats.corps + 1);
   }
   jrn('semaine', `${s.nom}${S.seance ? ` — séance ${S.seance.mot}` : ''}.`);
+  /* LE COACH ANNONCE SON GROUPE AVANT LE WEEK-END, ET LES ARRÊTS LE SAVENT.
+     Le propriétaire, 27/09/2026 : « je suis tombé sur un fait d'avant-match qui
+     disait que j'étais pas dans le groupe, mais en fait j'ai joué le match ».
+     Le groupe se décidait dans `lancerMatch()`, donc **après** l'arrêt : un
+     écran pouvait affirmer une chose que le match démentait cinq secondes plus
+     tard. Il se décide maintenant ici, juste après la séance (elle pèse sur ta
+     fraîcheur, donc sur le choix du coach) et il est figé pour la journée. */
+  poserEquipeDuJour();
   ouvrirArrets();
+}
+/* Le groupe du jour, gelé en noms pour tenir dans la sauvegarde : les objets du
+   groupe portent une référence vers l'effectif, et les sérialiser en ferait des
+   copies. `equipeDuJourLue()` les retrouve par leur nom. */
+function poserEquipeDuJour(){
+  const eq = equipeDuJour();
+  const geler = l => l.map(x => ({ n:x.nom, c:x.choix }));
+  S.eqJour = { statut: eq.statut, ecart: eq.ecart,
+    onze: geler(eq.onze), banc: geler(eq.banc), reserve: geler(eq.reserve) };
+  return S.eqJour;
+}
+function equipeDuJourLue(){
+  if (!S.eqJour) return equipeDuJour();
+  const g = groupe();
+  const moi = { moi:true, nom:S.moi.nom, poste:S.moi.poste, niv:valeurAuPoste(),
+    dispo: S.etats.blessure <= 0 && S.etats.suspension <= 0, ref:{} };
+  const tous = [...g, moi];
+  const lire = l => l.map(e => { const x = tous.find(y => y.nom === e.n);
+    if (x) x.choix = e.c; return x; }).filter(Boolean);
+  return { statut: S.eqJour.statut, ecart: S.eqJour.ecart,
+    onze: lire(S.eqJour.onze), banc: lire(S.eqJour.banc), reserve: lire(S.eqJour.reserve),
+    absents: g.filter(x => !x.dispo) };
 }
 
 /* ---------- les arrêts (placeholders : le contenu viendra après) ---------- */
 const ARRETS = [
-  { id:'banc', quand: () => S.liens.coach < 46 && S.journee >= 2,
+  // il ne peut plus te dire ça si tu commences le match : le groupe est déjà connu
+  { id:'banc', quand: () => S.journee >= 2 && S.eqJour && S.eqJour.statut === 'banc',
     titre:"Le coach t'attend dans son bureau",
     texte:"« Je vais être direct : samedi, tu commences sur le banc. Ce n'est pas contre toi. »",
     options:[
@@ -457,7 +488,8 @@ const ARRETS = [
       { l:"Ne pas répondre tout de suite", ment:-.8, coup:"cette décision que tu repousses",
         dit:[{c:'risk',t:"🧠 ça te travaille"},{c:'neutre',t:"🤝 il rappellera"}] },
     ] },
-  { id:'tempsLibre', quand: () => (S.sansJouer || 0) >= 2,
+  // « Tu n'es même pas dans le groupe » : désormais c'est vrai quand ça s'affiche
+  { id:'tempsLibre', quand: () => S.eqJour && S.eqJour.statut === 'hors',
     titre:"Un week-end à toi",
     texte:"Tu n'es même pas dans le groupe. Pour la première fois depuis longtemps, samedi t'appartient.",
     options:[
@@ -467,6 +499,23 @@ const ARRETS = [
         dit:[{c:'foot',t:"🎽 il t'a vu dans les tribunes"},{c:'foot',t:"✊ le groupe aussi"}] },
       { l:"Travailler seul au centre", fit:-6, axes:{ spec:1.4 }, ment:-.6, coup:"ce samedi à t'entraîner seul",
         dit:[{c:'foot',t:"🎯 personne ne te le demandait"},{c:'risk',t:"🫁 tu y laisses ta semaine"},{c:'risk',t:"🧠 le stade te manque"}] },
+    ] },
+  /* LA VRAIE SITUATION QUAND ON NE JOUE PAS, MESURÉE. Dans la queue des
+     carrières (dix matchs ou moins sur la saison), on est **hors du groupe 2,9 %
+     des semaines et sur le banc 79,2 %** : « tu n'es même pas dans le groupe »
+     ne pouvait donc presque jamais être vrai — c'était le défaut que le
+     propriétaire a vu. La vie qu'il réclamait s'accroche donc au banc, là où elle
+     se passe vraiment : le week-end n'est pas libre, mais le dimanche l'est. */
+  { id:'bancLong', quand: () => S.eqJour && S.eqJour.statut === 'banc' && (S.sansJouer || 0) >= 3,
+    titre:"Encore un survêtement",
+    texte:"Tu voyages, tu t'échauffes, tu t'assois. Il ne se retourne pas. Dimanche, en revanche, t'appartient.",
+    options:[
+      { l:"Le passer avec les tiens", axes:{ ment:1.5 }, corps:3, fit:3,
+        dit:[{c:'vie',t:"🏡 on ne te parle pas de foot"},{c:'foot',t:"🧠 tu reviens entier"}] },
+      { l:"Rester seul sur le terrain après le match", fit:-7, axes:{ spec:1.3 }, liens:{ coach:3 },
+        dit:[{c:'foot',t:"🎯 personne ne te le demandait"},{c:'foot',t:"🎽 l'adjoint l'a noté"},{c:'risk',t:"🫁 tu y laisses ta semaine"}] },
+      { l:"Demander à l'adjoint ce qu'il regarde chez toi", liens:{ coach:6, vestiaire:2 }, axes:{ ment:.8 },
+        dit:[{c:'foot',t:"🎽 il te répond franchement"},{c:'foot',t:"✊ ça circule dans le vestiaire"}] },
     ] },
   { id:'presse', quand: () => S.stats.notes.length >= 3 && moyenneNotes() >= 6.8,
     titre:"Un journaliste t'attend à la sortie",
@@ -855,7 +904,7 @@ function planChangements(m, onze, banc){
 
 function lancerMatch(){
   const adv = adversaire(S.journee);
-  const eq = equipeDuJour();
+  const eq = equipeDuJourLue();
   const statut = eq.statut;
   const nous = S.club.force + eq.ecart + (vestiaire() - 50) * .04
     + (statut === 'titulaire' ? (niveauJour() - S.club.force) * .12 : 0);
@@ -1335,6 +1384,7 @@ function decouverte(m){
 /* ---------- la suite ---------- */
 function apresMatch(){
   const d = S.dernier;
+  S.eqJour = null;                 // le groupe de samedi ne vaut que pour samedi
   vivreConcurrents(); vivreEquipe();
   S.equipe.forEach(j => { if (j.monte) j.niv = Math.min(j.niv + .35, S.club.force + 12); });
   /* Une entente qui ne bouge pas n'existe pas — mais elle ne doit pas s'échapper
@@ -1477,7 +1527,7 @@ function direGroupe(){ return direInfirmerie() + ' ' + direProfondeur(); }
    vingt-deux est censé faire. */
 function direProfondeur(){
   const abs = groupe().filter(x => !x.dispo).length;
-  const e = equipeDuJour().ecart;
+  const e = (S.eqJour ? equipeDuJourLue() : equipeDuJour()).ecart;
   if (!abs) return "Tout le monde est là : le coach a le choix.";
   return e > -.25 ? "Ça s'absorbe : le onze ne s'en ressent pas."
     : e > -.8 ? "Le coach bricole un peu, sans plus."
