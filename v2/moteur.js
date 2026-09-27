@@ -440,8 +440,11 @@ function equipeDuJourLue(){
   const moi = { moi:true, nom:S.moi.nom, poste:S.moi.poste, niv:valeurAuPoste(),
     dispo: S.etats.blessure <= 0 && S.etats.suspension <= 0, ref:{} };
   const tous = [...g, moi];
-  const lire = l => l.map(e => { const x = tous.find(y => y.nom === e.n);
-    if (x) x.choix = e.c; return x; }).filter(Boolean);
+  // chaque nom n'est rendu qu'une fois : personne ne peut se retrouver à la fois
+  // dans le onze et sur le banc, ni deux fois dans la même liste
+  const reste = new Map(tous.map(x => [x.nom, x]));
+  const lire = l => l.map(e => { const x = reste.get(e.n); if (!x) return null;
+    reste.delete(e.n); x.choix = e.c; return x; }).filter(Boolean);
   return { statut: S.eqJour.statut, ecart: S.eqJour.ecart,
     onze: lire(S.eqJour.onze), banc: lire(S.eqJour.banc), reserve: lire(S.eqJour.reserve),
     absents: g.filter(x => !x.dispo) };
@@ -830,6 +833,7 @@ function equipeDuJour(){
 
   const onze = [];
   let perte = 0;
+  const trous = [];
   Object.entries(FORMATION).forEach(([po, n]) => {
     const pris = tri(conv.filter(x => x.poste === po)).slice(0, n);
     const ideal = tri(tout.filter(x => x.poste === po)).slice(0, n);
@@ -839,14 +843,20 @@ function equipeDuJour(){
        compter un absent pour tout son niveau — mesuré, le onze perdait jusqu'à
        onze points de force pour trois blessés. */
     for (let i = 0; i < pris.length; i++) perte += pris[i].niv - ideal[i].niv;
-    /* Pas assez d'hommes à ce poste : quelqu'un dépanne. Un onze reste un onze.
-       Mais **un joueur de champ peut aller dans les buts, l'inverse jamais**. */
-    if (pris.length < n){
-      const trou = n - pris.length;
-      perte -= trou * 7;
-      const reste = tri(conv.filter(x => !onze.includes(x) && (po === 'G' || x.poste !== 'G')));
-      onze.push(...reste.slice(0, trou));
-    }
+    if (pris.length < n) trous.push({ po, n: n - pris.length });
+  });
+  /* Pas assez d'hommes à ce poste : quelqu'un dépanne. Un onze reste un onze, et
+     **un joueur de champ peut aller dans les buts, l'inverse jamais**.
+     LES TROUS SE BOUCHENT UNE FOIS TOUS LES POSTES SERVIS. Quand ça se faisait
+     poste par poste, le dépanneur était pris dans un poste **pas encore traité**
+     — et ce poste le reprenait ensuite, donc il était **deux fois dans le onze**.
+     C'est ce que le propriétaire a vu à l'écran : plus de onze joueurs sans temps
+     de jeu affiché (un titulaire compté deux fois à 90) et un nombre impair de
+     joueurs sortis (un sortant compté deux fois). */
+  trous.forEach(t => {
+    perte -= t.n * 7;
+    const reste = tri(conv.filter(x => !onze.includes(x) && (t.po === 'G' || x.poste !== 'G')));
+    onze.push(...reste.slice(0, t.n));
   });
   const banc = conv.filter(x => !onze.includes(x));
   const statut = S.etats.blessure > 0 ? 'blesse' : S.etats.suspension > 0 ? 'suspendu'
@@ -878,27 +888,68 @@ function planChangements(m, onze, banc){
      systématiquement et n'entrait presque jamais. Mesuré avec `niv` : 62 % de
      sorties avant la fin et 55 % d'entrées depuis le banc. */
   const envie = x => x.choix + (mene ? { A:5, M:3, D:0, G:-99 }[x.poste] : { D:3.5, M:3, A:1, G:-99 }[x.poste]);
-  const champ = banc.filter(x => x.poste !== 'G' && !chg.some(c => c.entrant === x));
-  const nb = Math.min(champ.length, 3 + (Math.random() < .5 ? 1 : 0) + (Math.random() < .25 ? 1 : 0));
-  const entrants = champ.slice().sort((a, b) => envie(b) - envie(a)).slice(0, nb);
-  /* Qui sort : celui qui rend le moins, le poste qu'on sacrifie, et **les jambes**.
-     « Une équipe qui gagne va faire rentrer des joueurs frais, faire sortir les
-     joueurs les plus fatigués. » Pour toi la fraîcheur est connue ; pour les
-     autres, le tirage en tient lieu. Sans ce tirage, le coach sortait toujours
-     les mêmes et tu ne sortais jamais : mesuré, 14 sorties sur 900 titularisations. */
+  /* Qui sort : celui qui rend le moins, et **les jambes**. « Une équipe qui gagne
+     va faire entrer des joueurs frais, faire sortir les joueurs les plus
+     fatigués. » Pour toi la fraîcheur est connue ; pour les autres, le tirage en
+     tient lieu. Sans ce tirage, le coach sortait toujours les mêmes et tu ne
+     sortais jamais : mesuré, 14 sorties sur 900 titularisations. */
   const jambes = mene ? .05 : .08;
-  const laisse = x => x.choix + rnd(-3, 3)
-    + (mene ? { D:3, M:1, A:0, G:99 }[x.poste] : { A:3, M:1, D:0, G:99 }[x.poste])
-    - (x.moi ? (100 - S.etats.fraicheur) * jambes : 0);
-  const sur = onze.filter(x => x.poste !== 'G' && !chg.some(c => c.sortant === x))
-    .slice().sort((a, b) => laisse(a) - laisse(b));
-  entrants.forEach((e, i) => {
-    if (!sur[i]) return;
+  const laisse = x => x.choix + rnd(-3, 3) - (x.moi ? (100 - S.etats.fraicheur) * jambes : 0);
+  /* ON REMPLACE UN JOUEUR PAR UN JOUEUR DE SON POSTE (le propriétaire, 27/09/2026,
+     capture à l'appui : « les deux attaquants ont joué 90 minutes, mais moi j'en
+     ai joué que 34, et il n'y en a aucun qui est sorti »). Le coach appariait
+     entrants et sortants par ordre de mérite, sans regarder le poste : il faisait
+     donc entrer un attaquant à la place d'un défenseur, et le 4-4-2 finissait en
+     4-3-3 sans que personne ne l'ait décidé. Désormais on cherche d'abord son
+     poste, puis un poste voisin, et le changement **tactique** — pousser devant
+     quand on est mené, refermer derrière quand on mène — reste **un par match**. */
+  const VOISIN = { D:['M'], M:['D', 'A'], A:['M'] };
+  const TACTIQUE = mene ? { A:['D'], M:['D'] } : { D:['A'], M:['A'] };
+  const dedans = new Set(chg.map(c => c.entrant));
+  const dehors = new Set(chg.map(c => c.sortant));
+  const nb = 3 + (Math.random() < .5 ? 1 : 0) + (Math.random() < .25 ? 1 : 0);
+  /* Le changement tactique doit être **voulu**, pas un dernier recours : en
+     dernier recours il ne sortait jamais (0 sur 6 250 mesurés), alors que le
+     propriétaire l'avait demandé (« une équipe qui perd va faire des changements
+     plus tôt et des changements tactiques »). Mené, le coach passe à trois devant
+     une fois sur deux — et le film le dit, pour que ça se lise comme une
+     décision et non comme une erreur de poste. */
+  let tactiques = mene && Math.random() < .35 ? 0 : 1;
+  /* Un changement hors poste dégarnit une ligne : sans garde-fou, deux d'affilée
+     finissaient le match à deux défenseurs (mesuré : 2-5-3 et 2-6-2 dans 7 % des
+     matchs). Une ligne ne peut perdre qu'un homme sur son effectif nominal. */
+  const surPoste = { G:0, D:0, M:0, A:0 };
+  onze.forEach(x => { if (surPoste[x.poste] != null) surPoste[x.poste]++; });
+  chg.forEach(c => { if (c.sortant) surPoste[c.sortant.poste]--; if (c.entrant) surPoste[c.entrant.poste]++; });
+  const peutSortir = po => surPoste[po] >= (FORMATION[po] || 0);
+  for (let i = 0; i < nb; i++){
+    const banc2 = banc.filter(x => x.poste !== 'G' && !dedans.has(x))
+      .slice().sort((a, b) => envie(b) - envie(a));
+    const sur = onze.filter(x => x.poste !== 'G' && !dehors.has(x))
+      .slice().sort((a, b) => laisse(a) - laisse(b));
+    let e = null, s = null;
+    for (const cand of banc2){
+      const pool = po => sur.filter(x => po.includes(x.poste));
+      const ailleurs = po => pool(po).filter(x => peutSortir(x.poste));
+      const veutTactique = tactiques < 1 && (TACTIQUE[cand.poste] || []).length
+        && chg.filter(c => !c.gardien).length >= 1;
+      const cible = (veutTactique ? ailleurs(TACTIQUE[cand.poste])[0] : null)
+        || pool([cand.poste])[0]
+        || ailleurs(VOISIN[cand.poste] || [])[0]
+        || (tactiques < 1 ? ailleurs(TACTIQUE[cand.poste] || [])[0] : null);
+      if (cible){ e = cand; s = cible;
+        if (cible.poste !== cand.poste && !(VOISIN[cand.poste] || []).includes(cible.poste)) tactiques++;
+        break; }
+    }
+    if (!e) break;
+    dedans.add(e); dehors.add(s);
+    surPoste[s.poste]--; surPoste[e.poste]++;
+    const tact = s.poste !== e.poste && !(VOISIN[e.poste] || []).includes(s.poste);
     let min;
-    if (i < 3){ const b = ri(56, 68); min = etat(b) < 0 ? Math.max(45, b - ri(6, 12)) : b; }
+    if (chg.filter(c => !c.gardien).length < 3){ const b = ri(56, 68); min = etat(b) < 0 ? Math.max(45, b - ri(6, 12)) : b; }
     else min = ri(74, 86);
-    chg.push({ min, entrant: e, sortant: sur[i] });
-  });
+    chg.push({ min, entrant: e, sortant: s, tactique: tact });
+  }
   return chg.sort((a, b) => a.min - b.min);
 }
 
@@ -928,7 +979,7 @@ function lancerMatch(){
 
   // les buts, répartis dans le temps
   const mins = shuffle([...Array(90).keys()].map(i => i + 1));
-  const evs = [];
+  let evs = [];
   for (let i = 0; i < bn; i++) evs.push({ min: mins.pop(), type:'but', nous:true });
   for (let i = 0; i < be; i++) evs.push({ min: mins.pop(), type:'but', nous:false });
   if (Math.random() < .14) evs.push({ min: mins.pop(), type:'penalty', nous: Math.random() < .5 });
@@ -950,6 +1001,53 @@ function lancerMatch(){
   else if (statut === 'banc' && monEntree){ entree = monEntree.min; m.minutes = 90 - entree; }
   m.sorti = statut === 'titulaire' && !!maSortie ? sortie : 0;
 
+  // un carton peut être le mien : c'est lui qui compte pour la suspension
+  const pCarton = { G:.04, D:.30, M:.26, A:.16 }[S.moi.poste];
+  evs.filter(e => (e.type === 'jaune' || e.type === 'rouge') && e.nous).forEach(e => {
+    if (m.minutes && e.min >= entree && e.min <= sortie && Math.random() < pCarton) e.moi = true;
+    e.qui = e.moi ? S.moi.nom : surLeBanc(m, e.min, 'carton');
+  });
+  /* UN EXPULSÉ NE FINIT PAS LE MATCH, ET C'EST LA SEULE FAÇON D'AVOIR UN NOMBRE
+     IMPAIR DE JOUEURS SORTIS (le propriétaire, 27/09/2026 : « c'est forcément un
+     nombre pair sauf s'il y a un carton rouge — mais c'est pas indiqué »). Le
+     rouge ne changeait rien : l'expulsé gardait ses 90 minutes, et pouvait même
+     être remplacé après coup. On le choisit donc parmi ceux qui devaient finir le
+     match, et son temps de jeu s'arrête là. */
+  const finissent = new Set((m.onze || []).filter(x => !chg.some(c => c.sortant === x)));
+  m.expulses = [];
+  evs.filter(e => e.type === 'rouge' && e.nous).forEach(e => {
+    // un rouge à la 90ᵉ laissait l'expulsé à 90 minutes, donc invisible au compte
+    if (e.min > 88) e.min = 88;
+    if (!e.moi){
+      const l = [...finissent].filter(x => !x.moi);
+      if (!l.length){ e.nous = false; e.qui = adv.nom; return; }
+      const x = pick(l); finissent.delete(x); e.qui = x.nom;
+    }
+    m.expulses.push({ nom: e.qui, min: e.min });
+  });
+  /* « Sortie sur blessure » doit être une vraie sortie : l'événement nommait
+     quelqu'un qui restait sur le terrain jusqu'à la fin. On l'accroche désormais
+     à un changement réel — le film, les minutes et la pastille disent la même
+     chose — et s'il n'y en a aucun, il n'y a pas de blessé. */
+  m.evs = evs = evs.filter(e => {
+    if (e.type !== 'blessure' || !e.nous) return true;
+    const l = chg.filter(c => c.sortant && !c.sortant.moi);
+    if (!l.length) return false;
+    const c = pick(l); e.min = c.min; e.qui = c.sortant.nom; e.sortie = true;
+    return true;
+  });
+  evs.sort((a, b) => a.min - b.min);   // la blessure a changé de minute
+  /* Ton propre rouge arrête ton match ici, avant les buts et les faits de match :
+     sinon tu marquais à la 80ᵉ après avoir été expulsé à la 60ᵉ. */
+  const monRouge = evs.find(e => e.type === 'rouge' && e.nous && e.moi);
+  if (monRouge && m.minutes){
+    /* Expulsé, tu n'es pas remplacé : le changement prévu n'a pas lieu. Sans ça,
+       le film disait « tu sors à la 79ᵉ » après t'avoir exclu à la 67ᵉ, et ton
+       remplaçant prenait une note pour un temps de jeu qui n'existait pas. */
+    for (let i = chg.length - 1; i >= 0; i--) if (chg[i].sortant && chg[i].sortant.moi) chg.splice(i, 1);
+    sortie = monRouge.min; m.minutes = sortie - entree; m.sorti = 0;
+  }
+
   // qui marque chez nous : moi si je suis sur le terrain, sinon un coéquipier
   const chance = { G:0, D:.07, M:.20, A:.38 }[S.moi.poste]
     * (S.moi.poste === 'A' ? 1 + ent * .012 : 1);
@@ -968,15 +1066,7 @@ function lancerMatch(){
     }
   });
   evs.filter(e => e.type === 'but' && !e.nous).forEach(e => e.qui = adv.nom);
-  // un carton peut être le mien : c'est lui qui compte pour la suspension
-  const pCarton = { G:.04, D:.30, M:.26, A:.16 }[S.moi.poste];
-  evs.filter(e => (e.type === 'jaune' || e.type === 'rouge') && e.nous).forEach(e => {
-    if (m.minutes && e.min >= entree && e.min <= sortie && Math.random() < pCarton) e.moi = true;
-    e.qui = e.moi ? S.moi.nom : surLeBanc(m, e.min, 'carton');
-  });
-  evs.filter(e => e.type === 'blessure' && e.nous).forEach(e => e.qui = surLeBanc(m, e.min, 'but'));
-
-  // faits de match : zéro à deux, seulement si je suis sur le terrain
+  // faits de match  // faits de match : zéro à deux, seulement si je suis sur le terrain
   if (m.minutes){
     const n = Math.random() < .45 ? 0 : Math.random() < .8 ? 1 : 2;
     for (let i = 0; i < n; i++){
@@ -1254,6 +1344,10 @@ function notesEquipe(m){
   S.concurrents.forEach(c => { c.note = null; c.noteR = null; });
   const sorti = new Map();
   (m.chg || []).forEach(c => { if (c.sortant) sorti.set(c.sortant, c.min); });
+  // un expulsé s'arrête à la minute de son rouge : c'est ce qui rend le nombre
+  // de joueurs sortis impair, et la pastille 🟥 le dit à côté de sa note
+  const expulse = new Map((m.expulses || []).map(x => [x.nom, x.min]));
+  const blesses = new Set((m.evs || []).filter(e => e.nous && e.type === 'blessure').map(e => e.qui));
 
   /* CE QU'ILS ONT FAIT DOIT SE VOIR DANS LEUR NOTE (le propriétaire, 27/09/2026 :
      « le joueur qui met un triplé ou un doublé, dans la note du match, ça va pas
@@ -1284,9 +1378,16 @@ function notesEquipe(m){
     x.ref.sum = (x.ref.sum || 0) + x.ref.note; x.ref.nb = (x.ref.nb || 0) + 1;
     // une bonne note, c'est une place la semaine prochaine
     bougerForme(x.ref, (x.ref.note - 6.1) * .9 * a);
-    joueurs.push({ nom:x.nom, poste:x.poste, note:x.ref.note, rival: !!x.rival, min: minutes });
+    /* CE QU'ILS ONT FAIT SE LIT À CÔTÉ DE LEUR NOTE (le propriétaire, 27/09/2026 :
+       « sur les notes des joueurs, ceux qui ont marqué un but, ceux qui ont fait
+       une passe décisive, ceux qui ont pris des cartons, ceux qui se sont blessés,
+       comme on avait fait avant »). Les mêmes faits que ceux qui nourrissent la
+       note, donc le film et la note ne peuvent pas se contredire. */
+    joueurs.push({ nom:x.nom, poste:x.poste, note:x.ref.note, rival: !!x.rival, min: minutes,
+      f: { b:f.b, p:f.p, j:f.j, r:f.r, bl: blesses.has(x.nom) ? 1 : 0 } });
   };
-  (m.onze || []).forEach(x => noter(x, sorti.has(x) ? sorti.get(x) : 90));
+  (m.onze || []).forEach(x => noter(x,
+    expulse.has(x.nom) ? expulse.get(x.nom) : sorti.has(x) ? sorti.get(x) : 90));
   (m.chg || []).forEach(c => { if (c.entrant) noter(c.entrant, 90 - c.min); });
 
   /* LA RÉSERVE. « Ceux qui sont pas dans le groupe, s'ils sont pas blessés ou
@@ -1312,8 +1413,12 @@ function notesEquipe(m){
   // sortir tôt, c'est une vexation : on s'en souvient deux ou trois journées
   (m.chg || []).forEach(c => { if (c.sortant && c.sortant.ref && !c.sortant.moi) vexer(c.sortant.ref, c.min); });
 
-  if (m.minutes && m.note != null)
-    joueurs.push({ nom:S.moi.nom, poste:S.moi.poste, note:m.note, moi:true, min:m.minutes });
+  if (m.minutes && m.note != null){
+    const mien = faits[S.moi.nom] || { b:0, p:0, j:0, r:0 };
+    joueurs.push({ nom:S.moi.nom, poste:S.moi.poste, note:m.note, moi:true, min:m.minutes,
+      // ta passe décisive ne passe pas par `faits` : elle est marquée `passeMoi`
+      f: { b:mien.b, p:m.passes || 0, j:mien.j, r:mien.r, bl:0 } });
+  }
   joueurs.sort((a, b) => b.note - a.note);
   m.notes = joueurs;
   if (m.note != null && joueurs.length > 1){
@@ -1330,7 +1435,8 @@ function notesEquipe(m){
      ferait des copies — deux joueurs pour un seul nom au rechargement. */
   m.chgVus = (m.chg || []).map(c => ({ min:c.min,
     e: c.entrant ? c.entrant.nom : '', s: c.sortant ? c.sortant.nom : '',
-    moiE: !!(c.entrant && c.entrant.moi), moiS: !!(c.sortant && c.sortant.moi) }));
+    moiE: !!(c.entrant && c.entrant.moi), moiS: !!(c.sortant && c.sortant.moi),
+    tact: !!c.tactique, pe: c.entrant ? c.entrant.poste : '', ps: c.sortant ? c.sortant.poste : '' }));
   delete m.onze; delete m.banc; delete m.reserve; delete m.chg;
 }
 /* Qui tourne bien, qui décroche, et où tu te situes là-dedans. */

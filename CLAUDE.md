@@ -623,6 +623,62 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
   seul » »). Vérifié que rien ne se dérègle : tes notes restent à 10ᵉ **4,7**, médiane **6,3**,
   90ᵉ **8,1**, ton rang moyen dans la liste est **7,7 sur ~15**, et les quatre jugements se
   répartissent 399 / 383 / 137 / 128.
+- **LES MINUTES DU MATCH DEVIENNENT POSSIBLES** (le propriétaire, 27/09/2026, capture à l'appui :
+  « tu peux laisser l'économie d'affichage, je trouve que c'est une bonne idée. C'est juste que dans
+  le cas sur lequel je suis tombé, il y avait plus que 11 joueurs sans information de temps — c'est
+  pas possible — et 7 joueurs avec des durées affichées, c'est forcément un nombre pair sauf s'il y a
+  un carton rouge, mais c'est pas indiqué »). Il avait raison sur les trois points, et il m'avait
+  aussi repris sur la correction précédente : afficher « 90 min » pour tout le monde était la
+  mauvaise réponse à une vraie incohérence. Les minutes ne s'affichent à nouveau que quand elles ne
+  valent pas 90 — et derrière, **quatre défauts, une seule cause pour les deux premiers**.
+  1. **Un joueur pouvait être deux fois dans le onze.** `equipeDuJour()` bouchait les trous **poste
+     par poste** : le dépanneur était pris dans un poste **pas encore traité**, et ce poste le
+     reprenait ensuite. D'où exactement ce qu'il a vu — douze joueurs à 90 minutes (un titulaire
+     compté deux fois) et un nombre impair de sortants (un sortant compté deux fois). Les trous se
+     bouchent maintenant **une fois tous les postes servis**. Mesuré, 2 040 matchs : **29 doublons de
+     nom → 0**, jamais plus de onze joueurs à 90 minutes.
+  2. **La relecture du groupe se faisait par nom** (`tous.find(y => y.nom === e.n)`) : deux entrées
+     pouvaient désigner le même objet. Chaque nom n'est plus rendu qu'une fois.
+  3. **Un rouge ne changeait rien** : l'expulsé gardait ses 90 minutes et pouvait même être remplacé
+     après coup — y compris toi (« tu sors à la 79ᵉ » après une exclusion à la 67ᵉ). Il est
+     désormais choisi parmi ceux qui devaient finir le match, son temps de jeu s'arrête là, son
+     changement est annulé, et son rouge ne tombe plus à la 90ᵉ (où il serait invisible). C'est la
+     seule façon d'avoir un nombre impair de sortants, exactement comme il le dit.
+  4. **« Sortie sur blessure » nommait quelqu'un qui restait sur le terrain.** L'événement s'accroche
+     maintenant à un changement réel : le film, les minutes et la pastille disent la même chose.
+  **Les pastilles sont de retour** (« j'aimerais bien que sur les notes, à côté des joueurs, ceux qui
+  ont marqué un but, ceux qui ont fait une passe décisive, ceux qui ont pris des cartons, ceux qui se
+  sont blessés, comme on avait fait avant ») : `faitsHTML()` avec le vocabulaire de la 1.0
+  (⚽ 🅰️ 🟨 🟥 🩼), alimenté par **les mêmes faits que ceux qui nourrissent la note**, donc le film et
+  la note ne peuvent plus se contredire.
+  **Six invariants vérifiés sur 2 040 matchs, tous à zéro écart** : le nombre de notes vaut onze
+  titulaires plus un entrant par changement ; jamais plus de onze joueurs à 90 minutes ; les sortants
+  valent deux par changement plus les expulsés qui devaient finir ; chaque pastille correspond à un
+  événement du film ; un blessé est un vrai sortant à la bonne minute ; un expulsé n'est jamais
+  remplacé.
+- **ON REMPLACE UN JOUEUR PAR UN JOUEUR DE SON POSTE** (le propriétaire, 27/09/2026, sur la même
+  capture : « les deux attaquants, ils ont joué 90 minutes, mais moi j'en ai joué que 34 et il n'y en
+  a aucun qui est sorti. Donc là-dessus, c'est incohérent »). `planChangements()` appariait entrants
+  et sortants **par ordre de mérite, sans regarder le poste** : le coach faisait donc entrer un
+  attaquant à la place d'un défenseur, et le 4-4-2 finissait en 4-3-3 sans que personne ne l'ait
+  décidé. Désormais on cherche d'abord **son poste**, puis un **poste voisin** (D↔M, M↔A), et le
+  changement **tactique** — pousser devant quand on est mené — est **voulu et unique**.
+  - Première version, le tactique en dernier recours : **0 sur 6 250 changements**. Il ne sortait
+    jamais, alors qu'il avait été demandé (« une équipe qui perd va faire des changements plus tôt et
+    des changements tactiques »). Rendu volontaire (mené, une fois sur trois), il est passé à 5 % —
+    mais **deux d'affilée finissaient le match à deux défenseurs** (2-5-3 et 2-6-2 dans 7 % des
+    matchs). Garde-fou : une ligne ne peut perdre qu'un homme sur son effectif nominal.
+  - Mesuré après, 6 201 changements sur 1 632 matchs : **93,7 % même poste, 3,7 % poste voisin,
+    2,6 % tactique**, et le onze finit le match en **4-4-2 dans 76 %** des cas (contre une dérive
+    permanente avant). Le film nomme le changement tactique (« — trois devant »).
+  - **L'équilibre de la semaine tient.** À 40 saisons par ligne, un croisement semblait basculé
+    (« lever le pied » repassant devant « deux séances puis un repos ») ; à **150 saisons par ligne**
+    l'écart disparaît (25,4 contre 24,6 matchs, 13,0 contre 11,1 titularisations) — c'était le bruit,
+    et la bande de bruit du banc à 40 saisons est de ±1,6 match. Aux trois croisements, l'or des
+    matchs et l'or de la trace restent sur deux lignes différentes.
+  - **Pas de migration** : rien de tout cela ne vit dans la sauvegarde longue. Vérifié en reprenant
+    une vraie partie de la version déployée à la 17ᵉ journée — saison terminée, 17 matchs, zéro
+    écart de comptage, zéro erreur.
 - **Le banc d'essai (`v2/labo.html`)**, demandé par le propriétaire : « le tableau que tu m'as
   partagé, je sais pas ce que ça représente… j'aimerais bien aussi que je puisse faire [les
   simulations] sur le nombre de matchs en fonction des choix qu'on a fait. » La page rejoue des

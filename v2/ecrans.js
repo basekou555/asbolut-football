@@ -308,7 +308,7 @@ function ecranResultat(){
     ${m.notes && m.notes.length > 1 ? `<h3>Les notes du match</h3>
       ${m.jugement ? `<p class="narr">${esc(m.jugement)}</p>` : ''}
       <div class="notes">${m.notes.map(j => `<div${j.moi ? ' class="me"' : ''}>
-        <span class="p">${j.poste}</span><span>${esc(j.nom)}${j.rival ? ' <i>(ton poste)</i>' : ''}${j.min ? ` <i>${j.min} min</i>` : ''}</span>
+        <span class="p">${j.poste}</span><span>${esc(j.nom)}${j.rival ? ' <i>(ton poste)</i>' : ''}${faitsHTML(j.f)}${j.min && j.min < 90 ? ` <i>${j.min} min</i>` : ''}</span>
         <span class="n">${virg(j.note)}</span></div>`).join('')}</div>` : ''}
     ${m.reserveVue && m.reserveVue.length ? `<h3>Avec la réserve</h3>
       <div class="notes">${m.reserveVue.map(j => `<div>
@@ -320,6 +320,21 @@ function ecranResultat(){
     <div class="btn-row"><button class="btn" onclick="apresMatch()">${fin ? "Le bilan de la saison" : "La semaine suivante"}</button></div>
   </div>
   ${classementHTML()}${liensJournal()}`;
+}
+/* Ce qu'un joueur a fait, à côté de sa note. Les minutes ne s'affichent que
+   quand elles ne valent pas 90 — « l'économie d'affichage, je trouve que c'est
+   une bonne idée » (le propriétaire, 27/09/2026) — donc ces pastilles sont la
+   seule chose qui explique un joueur sorti sans remplaçant : l'expulsé.
+   Le vocabulaire est celui de la 1.0 (⚽ 🅰️ 🟨 🟥 🩼) : « comme on avait fait avant ». */
+function faitsHTML(f){
+  if (!f) return '';
+  const l = [];
+  if (f.b) l.push('⚽'.repeat(Math.min(f.b, 3)) + (f.b > 3 ? `×${f.b}` : ''));
+  if (f.p) l.push('🅰️'.repeat(Math.min(f.p, 3)));
+  if (f.j) l.push('🟨');
+  if (f.r) l.push('🟥');
+  if (f.bl) l.push('🩼');
+  return l.length ? ` <span class="fa">${l.join('')}</span>` : '';
 }
 function filmHTML(m){
   const lignes = [];
@@ -335,10 +350,14 @@ function filmHTML(m){
     if (e.type === 'blessure') lignes.push({ min:e.min, moi:false, ico:'🩼', t: `Sortie sur blessure — ${esc(qui)}` });
   });
   // le coach change : ça fait vivre le groupe, et ça te concerne quand c'est toi
-  (m.chgVus || []).forEach(c => lignes.push({ min:c.min, moi: c.moiE || c.moiS, ico:'🔄',
-    t: c.moiE ? `<b>Tu entres</b>, ${esc(c.s)} sort`
-      : c.moiS ? `<b>Tu sors</b>, ${esc(c.e)} entre`
-      : `${esc(c.e)} entre, ${esc(c.s)} sort` }));
+  (m.chgVus || []).forEach(c => {
+    // un changement de poste à poste ne se commente pas ; un changement tactique si
+    const tact = c.tact ? ` <i>— ${c.pe === 'A' ? 'trois devant' : c.pe === 'D' ? 'on referme' : 'il change de plan'}</i>` : '';
+    lignes.push({ min:c.min, moi: c.moiE || c.moiS, ico:'🔄',
+      t: (c.moiE ? `<b>Tu entres</b>, ${esc(c.s)} sort`
+        : c.moiS ? `<b>Tu sors</b>, ${esc(c.e)} entre`
+        : `${esc(c.e)} entre, ${esc(c.s)} sort`) + tact });
+  });
   m.moments.forEach(f => lignes.push({ min:f.min, moi:true, ico: f.reussi ? '🎯' : '💨',
     t: `${f.chaud ? '<b>' + (f.reussi ? 'Sous pression' : 'Sous pression') + '</b> · ' : ''}${esc(f.choix)} — ${esc(f.reussi ? f.ok : f.ko)}` }));
   if (m.perduLeFil) lignes.push({ min:m.perduLeFil + 1, moi:true, ico:'🌫️',
