@@ -641,8 +641,17 @@ function onzeDuJour(statut){
        compter un absent pour tout son niveau — mesuré, le onze perdait jusqu'à
        onze points de force pour trois blessés. */
     for (let i = 0; i < pris.length; i++) perte += pris[i].niv - ideal[i].niv;
-    // pas assez d'hommes à ce poste : on dépanne à dix, et ça se voit
-    if (pris.length < besoin) perte -= (besoin - pris.length) * 7;
+    /* Pas assez d'hommes à ce poste : quelqu'un dépanne. Un onze reste un onze —
+       sinon l'écran des notes en affichait neuf ou dix. Mais **un joueur de champ
+       peut aller dans les buts, l'inverse jamais** : un gardien ne dépanne pas en
+       défense. Mesuré avant cette règle : douze matchs à deux gardiens. */
+    if (pris.length < besoin){
+      const trou = besoin - pris.length;
+      perte -= trou * 7;
+      const reste = tri(g.filter(x => x.dispo && !onze.includes(x)
+        && (po === 'G' || x.poste !== 'G')));
+      onze.push(...reste.slice(0, trou));
+    }
   });
   return { onze, absents, ecart: perte / 11 };
 }
@@ -943,7 +952,10 @@ function notesEquipe(m){
     x.ref.sum = (x.ref.sum || 0) + x.ref.note; x.ref.nb = (x.ref.nb || 0) + 1;
     joueurs.push({ nom:x.nom, poste:x.poste, note:x.ref.note, rival: !!x.rival });
   });
-  if (m.note != null) joueurs.push({ nom:S.moi.nom, poste:S.moi.poste, note:m.note, moi:true });
+  /* Tu n'entres dans les notes que si tu as joué. Le garde-fou est doublé :
+     `m.note` n'est calculée que sous `if (m.minutes)`, et on le revérifie ici. */
+  if (m.minutes && m.note != null)
+    joueurs.push({ nom:S.moi.nom, poste:S.moi.poste, note:m.note, moi:true });
   joueurs.sort((a, b) => b.note - a.note);
   m.notes = joueurs;
   if (m.note != null && joueurs.length > 1){
@@ -1040,19 +1052,21 @@ function avancerVite(n){
 }
 function finSaison(){
   const pos = classementTrie().findIndex(x => x.nom === S.club.nom) + 1;
-  const note = moyenneNotes();
+  /* `moyenneNotes()` renvoie 6 quand on n'a aucune note : c'est commode pour les
+     calculs, mais le bilan ne doit pas parler d'une moyenne qui n'existe pas. */
+  const note = S.stats.notes.length ? moyenneNotes() : null;
   S.bilan = {
-    pos, note: Math.round(note * 100) / 100,
+    pos, note: note == null ? null : Math.round(note * 100) / 100,
     gagne: bilanGagne(note, pos), perdu: bilanPerdu(note), suite: bilanSuite(pos, note),
   };
-  jrn('saison', `Saison terminée : ${S.stats.matchs} matchs, ${S.stats.buts} buts, note ${nb(S.bilan.note)}. ${S.club.nom} ${pos}ᵉ.`);
+  jrn('saison', `Saison terminée : ${S.stats.matchs} matchs, ${S.stats.buts} buts${S.bilan.note == null ? '' : `, note ${nb(S.bilan.note)}`}. ${S.club.nom} ${pos}ᵉ.`);
   S.ecran = 'bilan'; sauver(); rendre();
 }
 function bilanGagne(note, pos){
   const t = [];
   if (S.stats.titus >= 15) t.push(`Tu as gagné ta place : ${S.stats.titus} titularisations, et plus personne ne discute.`);
   if (S.stats.buts >= 8) t.push(`${S.stats.buts} buts, ce qui ne s'était jamais vu pour toi.`);
-  if (note >= 6.8) t.push(`Une moyenne que le staff a remarquée avant les journalistes.`);
+  if (note != null && note >= 6.8) t.push(`Une moyenne que le staff a remarquée avant les journalistes.`);
   if (vestiaire() > 62) t.push(`Le vestiaire est avec toi, et ça se sent sur le terrain.`);
   if (pos <= 5) t.push(`Le club a fini dans le haut du tableau, ce que personne n'attendait en août.`);
   return t.length ? t : [`Une saison d'apprentissage. Tu es encore là, c'est déjà quelque chose.`];
@@ -1062,13 +1076,13 @@ function bilanPerdu(note){
   if (S.stats.matchs < 12) t.push(`Une saison passée à regarder : ${S.stats.matchs} matchs seulement.`);
   if (S.etats.corps < 78) t.push(`Ton corps a payé. Tu le sentiras l'an prochain.`);
   if (S.liens.coach < 42) t.push(`Le coach ne compte plus vraiment sur toi.`);
-  if (note < 6) t.push(`Trop de matchs où tu n'as pas existé.`);
+  if (note != null && note < 6) t.push(`Trop de matchs où tu n'as pas existé.`);
   if (S.liens.supporters < 40) t.push(`Le stade ne connaît toujours pas ton nom.`);
   return t.length ? t : [`Rien de grave, cette fois.`];
 }
 function bilanSuite(pos, note){
   const t = [];
-  t.push(note >= 6.6 ? `Ton agent dit que des clubs regardent.` : `Personne n'a appelé.`);
+  t.push(note != null && note >= 6.6 ? `Ton agent dit que des clubs regardent.` : `Personne n'a appelé.`);
   if (S.etats.corps < 80) t.push(`Ton corps demande un été calme.`);
   if (S.liens.coach >= 58) t.push(`Le coach veut construire autour de toi.`);
   return t;
@@ -1109,9 +1123,15 @@ function direEncaisse(){ const v = S.moi.base.ment + S.moi.boost.ment;
     : v > 54 ? "Quand ça se tend, tu restes dans ton match."
     : v > 42 ? "Quand ça se tend, tu joues petit."
     : "Un but encaissé et tu sors du match pendant vingt minutes."; }
+/* Le propriétaire, 27/09/2026 : « "le geste sort le plus souvent", c'est mal
+   formulé ; ce que tu essayes de dire, c'est tu fais le bon geste au bon
+   moment. » C'est exactement ça : la technique ne se juge pas à l'entraînement
+   mais à l'instant où il faut la sortir. */
 function direGeste(){ const v = S.moi.base.tech + S.moi.boost.tech;
-  return v > 68 ? "Quand il faut faire le geste, il sort." : v > 54 ? "Le geste sort le plus souvent."
-    : v > 42 ? "Le geste te trahit encore." : "Dans les moments qui comptent, tu rates le geste."; }
+  return v > 68 ? "Tu fais le bon geste au bon moment, presque à chaque fois."
+    : v > 54 ? "Tu fais le bon geste au bon moment, le plus souvent."
+    : v > 42 ? "Le bon geste, tu le fais une fois sur deux."
+    : "Au moment de faire le bon geste, tu le rates."; }
 /* Ce que ta tête va faire dans le moment qui vient. Dit avant le clic, pour que
    le mental se sente au lieu de s'expliquer. */
 function direTete(){ const v = S.moi.base.ment + S.moi.boost.ment;
