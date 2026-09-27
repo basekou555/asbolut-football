@@ -203,6 +203,43 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
   **Limite connue du banc** : il ne joue qu'une saison, donc il sous-estime structurellement tout
   entraînement (le coût est immédiat, le gain différé). C'est écrit sous le tableau. Le vrai test
   viendra avec l'intersaison.
+- **Ta place se dispute à des gens, pas à un nombre** (le propriétaire, 27/09/2026 : « pour le poste,
+  ce qui peut être plus juste, c'est de se dire que plus on est fort au poste, plus on a de chances
+  d'être titulaire **par rapport à ses concurrents**, aux autres joueurs du même poste. C'est une
+  stat que le coach peut prendre en compte »). `monStatut()` comparait `niveauJour()` à
+  `S.club.force + rnd(-4,4)` — un nombre abstrait. Désormais `S.concurrents` porte **un rival pour un
+  gardien, deux pour les autres postes**, chacun avec un nom, un niveau (le titulaire en place démarre
+  2 à 7 points **au-dessus** de la force du club, le second est à portée), une forme qui dérive
+  (`vivreConcurrents()`, rappel vers zéro, borné à ±5) et un risque de blessure (3,5 % par journée) —
+  et une absence t'ouvre la porte, ce qui est une des vraies façons d'entrer dans le onze.
+  `valeurAuPoste()` rassemble ce que le coach regarde (niveau du jour, `spec` à `.09`, sa confiance,
+  l'âge) et se mesure au meilleur rival disponible : au-dessus tu joues, à moins de 2,5 ça se joue à
+  pile ou face, au-delà de 8 tu n'es pas dans ses plans. `direPlace()` et `concurrenceHTML()` le
+  disent par leur nom, sur l'écran de la semaine : « Bamba est largement devant toi · Ferreira est à
+  l'infirmerie ». **Effet secondaire mesuré, et important** : « toujours lever le pied » n'est plus
+  la meilleure politique nulle part (11 à 14 matchs, contre 15 à 18 pour « deux séances puis un
+  repos ») — quand il faut dépasser quelqu'un, ne rien travailler te laisse derrière lui.
+- **Le mental ne se voyait pas, donc il n'existait pas** (le propriétaire, même jour : « on a mis que
+  ça permet d'encaisser un mauvais soir, mais c'est pas palpable dans le jeu. Qu'est-ce qu'un mauvais
+  soir, et comment le mental vient limiter cet impact ? C'est pas clair, c'est pour ça que je n'étais
+  pas sûr du choix »). Il avait raison : le mental amortissait un aléa (`aleaNote()`) que le joueur ne
+  voit jamais. Un « mauvais soir » est maintenant **une situation nommée, datée et affichée** :
+  1. Chaque fait de match reçoit `f.chaud` — vous êtes menés **après la 55ᵉ**, ou c'est une fin de
+     match à un but près. (Sans le seuil de la 55ᵉ, sept faits sur dix étaient « chauds » et le mot
+     ne voulait plus rien dire ; mesuré à 5,2-5,8 par saison après.) Le contexte s'affiche **avant le
+     clic** (« Vous êtes menés et il ne reste presque plus rien »), suivi de `direTete()`, qui dit ce
+     que ta tête va en faire (« Le stade hurle et tu ne l'entends plus » / « Tu as déjà vécu ça »).
+  2. Un moment chaud coûte **12 points de réussite**, et le mental les rend ou les aggrave :
+     `pression = .12 × (1 − encaisse())`.
+  3. Rater un fait chaud peut te faire **perdre le fil** : `0,5 − encaisse() × .42`. C'est une ligne
+     dans le film du match (« 🌫️ Tu as perdu le fil — vingt minutes à côté de la partie »), −0,5 sur
+     la note, et une ligne dans « ce que ça change ». Tenir un moment chaud vaut +0,25.
+  4. Quand le mental amortit la chute de confiance du coach, **on le dit** (`m.amortiCoach`) :
+     « Mauvais soir, mais tu n'as rien lâché : le coach t'en tient moins rigueur. »
+  Mesuré à **niveau égal** (la première sonde comparait des joueurs de niveaux différents et ne
+  montrait rien — les autres axes ont été ajustés pour garder `niveau()` constant), 60 saisons par
+  ligne : l'écart de réussite entre un fait chaud et un fait froid passe de **−12 points à mental 35
+  à −2 à mental 80**, et le risque de perdre le fil après un raté chaud descend de **64 % à 24 %**.
 - **Le banc d'essai (`v2/labo.html`)**, demandé par le propriétaire : « le tableau que tu m'as
   partagé, je sais pas ce que ça représente… j'aimerais bien aussi que je puisse faire [les
   simulations] sur le nombre de matchs en fonction des choix qu'on a fait. » La page rejoue des

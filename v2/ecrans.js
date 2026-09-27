@@ -125,6 +125,7 @@ function situationHTML(ouvert){
       <div><span class="i">💪</span><span>${esc(direFond())}</span></div>
       <div><span class="i">⚡</span><span>${esc(direGeste())}</span></div>
       <div><span class="i">🛡️</span><span>${esc(direEncaisse())}</span></div>
+      <div><span class="i">⚔️</span><span>${esc(direPlace())}</span></div>
       ${d.join('')}
     </div>
     <p class="narr" style="margin-top:10px">${esc(direStaff())}</p>
@@ -156,10 +157,29 @@ function ecranSemaine(){
     <p class="narr">Trois jours de travail, et une seule chose que tu peux vraiment décider.</p>
     ${empeche === 'blessure' ? `<div class="lack"><b>Tu es à l'infirmerie.</b> Encore ${S.etats.blessure} journée${S.etats.blessure > 1 ? 's' : ''}. Ce que tu fais de la semaine compte quand même.</div>` : ''}
     ${empeche === 'suspension' ? `<div class="lack"><b>Tu es suspendu.</b> Encore ${S.etats.suspension} match${S.etats.suspension > 1 ? 's' : ''}. Tu t'entraînes sans jouer.</div>` : ''}
+    ${concurrenceHTML()}
     <h3>Ce que tu travailles</h3>
     ${SEMAINES.map(s => optHTML(s.ico, s.nom, s.sub, s.dit, `choisirSemaine('${s.id}')`)).join('')}
   </div>
   ${situationHTML(false)}${classementHTML()}${liensJournal()}`;
+}
+
+/* Qui se bat avec toi pour la place. Des noms, pas un nombre : c'est ce que le
+   coach compare quand il fait son onze. */
+function concurrenceHTML(){
+  if (!S.concurrents || !S.concurrents.length) return '';
+  const moi = valeurAuPoste();
+  const l = S.concurrents.map(c => {
+    if (c.blesse > 0) return { i:'🩼', t:`${c.nom} est à l'infirmerie` };
+    const e = (c.niv + c.forme) - moi;
+    return { i: e > 0 ? '🔺' : '🔻',
+      t: e > 6 ? `${c.nom} est largement devant toi`
+        : e > 2 ? `${c.nom} passe devant toi`
+        : e > -2 ? `${c.nom} et toi, c'est au coude à coude`
+        : e > -6 ? `tu passes devant ${c.nom}` : `${c.nom} n'est plus une menace` };
+  });
+  return `<h3>Ta place</h3><div class="words">${l.map(x =>
+    `<div><span class="i">${x.i}</span><span>${esc(x.t)}</span></div>`).join('')}</div>`;
 }
 
 /* ---------------- un arrêt ---------------- */
@@ -184,6 +204,7 @@ function ecranMoment(){
   return `<div class="card">
     <div class="step">${esc(gauche)} – ${esc(droite)} · ${ordinal(f.min)} minute · ${score}</div>
     <h2>${esc(f.q)}</h2>
+    ${f.ctx ? `<div class="lack"><b>${esc(f.ctx)}</b> ${esc(direTete())}</div>` : ''}
     <p class="narr">${m.entree ? `Tu es entré à la ${ordinal(m.entree)}. ` : ''}Une seconde pour décider.</p>
     ${f.opts.map((o, i) => `<button class="opt" onclick="choisirMoment(${i})"><span class="ico">⚡</span><span><b>${esc(o.l)}</b></span></button>`).join('')}
     <p class="sub">Tes axes et le hasard trancheront. Tu ne sauras jamais si l'autre option aurait marché.</p>
@@ -230,7 +251,9 @@ function filmHTML(m){
     if (e.type === 'blessure') lignes.push({ min:e.min, moi:false, ico:'🩼', t: `Sortie sur blessure — ${esc(qui)}` });
   });
   m.moments.forEach(f => lignes.push({ min:f.min, moi:true, ico: f.reussi ? '🎯' : '💨',
-    t: `${esc(f.choix)} — ${esc(f.reussi ? f.ok : f.ko)}` }));
+    t: `${f.chaud ? '<b>' + (f.reussi ? 'Sous pression' : 'Sous pression') + '</b> · ' : ''}${esc(f.choix)} — ${esc(f.reussi ? f.ok : f.ko)}` }));
+  if (m.perduLeFil) lignes.push({ min:m.perduLeFil + 1, moi:true, ico:'🌫️',
+    t: "<b>Tu as perdu le fil</b> — vingt minutes à côté de la partie" });
   lignes.sort((a, b) => a.min - b.min);
   if (!lignes.length) return `<div><span class="min">—</span><span>😐</span><span>Rien à raconter. Ça arrive.</span></div>`;
   return lignes.map(l => `<div${l.moi ? ' class="me"' : ''}><span class="min">${ordinal(l.min)}</span><span>${l.ico}</span><span>${l.t}</span></div>`).join('');
