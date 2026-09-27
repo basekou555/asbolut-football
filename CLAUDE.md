@@ -261,6 +261,49 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
   êtes menés après la 55ᵉ ou dans une fin à un but près, le contexte s'affiche avant le clic suivi de
   `direTete()`, la pression coûte 12 points de réussite amortis par le mental, et perdre le fil
   s'écrit dans le film du match.
+- **Une première saison jouée par le propriétaire, et six corrections** (27/09/2026, en gardien :
+  « franchement c'est pas mal, mais ça manque de contenu »). Chacune est traitée ci-dessous.
+  1. **Un effectif nommé et stable.** `S.equipe` porte dix coéquipiers avec un nom, un poste, un
+     niveau, un âge et une **relation** avec toi qui dérive d'une journée à l'autre ; l'un d'eux est
+     un jeune qui `monte`. Sans eux, « un coéquipier progresse », « ça se tend avec ton attaquant »
+     et les notes du match n'avaient personne de qui parler — `coequipier()` tirait un nom au hasard
+     à chaque ligne, donc les gens changeaient d'un match à l'autre.
+  2. **Douze familles d'arrêts au lieu de quatre, et une anti-répétition qui marche.** « L'événement
+     du kiné apparaît un peu tout le temps » : `ouvrirArrets()` faisait `pick()` sur les familles
+     applicables, sans mémoire, et celle qui l'est toujours sortait sans cesse. Deux garde-fous : les
+     **trois derniers genres** sont écartés, et le tirage est **pondéré par le nombre de passages**
+     (`1/(1+n)^1,8`). Les nouvelles familles viennent de ses exemples : `rival` (ton concurrent a fait
+     une séance énorme — tu restes une heure de plus, tu vas lui demander, tu laisses couler),
+     `jeune` (le gamin progresse — tu passes du temps avec lui ?), `tension` (ça se tend avec un
+     coéquipier nommé, dont la relation est passée sous 44), `agent` (il t'appelle, il bouge ou il
+     attend juin), `coachPlan` (la vidéo et le retard d'une demi-seconde), `capitaine` (la réunion
+     sans le staff), `serie` (quatre matchs sans se reconnaître), `famille`, `supporters`. Les
+     familles qui visent quelqu'un portent `sujet()` et leurs textes sont des fonctions qui le
+     **nomment**. Mesuré, 50 saisons : **18,1 arrêts par saison**, douze familles vues, la plus
+     fréquente à **13 %** et le kiné retombé à 5 %.
+  3. **Les notes des coéquipiers.** « On ne connaît pas la note de ses coéquipiers, du coup on ne sait
+     pas si on a fait un bon match par rapport à l'ensemble de l'équipe. » `notesEquipe(m)` note tous
+     ceux qui ont joué, l'écran les classe, marque la tienne, et `m.jugement` tranche en une phrase
+     (« Le meilleur des tiens ce soir », « Sous le niveau de tes coéquipiers »).
+  4. **Les notes osent les extrêmes.** « On fait quasiment que des matchs corrects… on peut appuyer
+     un peu plus sur l'impact des faits de match sur la note, avec un point en plus ou en moins. »
+     Un fait de match vaut désormais **0,95** au lieu de 0,3 ; perdre le fil coûte 0,7. Mesuré sur 600
+     notes : médiane **6,1**, dixième centile **4,6**, quatre-vingt-dixième **8,1**, et **15,5 % de
+     matchs sous 5,0** contre **17,5 % au-dessus de 7,5**. Il y a enfin des soirs de gala et des soirs
+     qu'on veut oublier.
+  5. **Un gardien ne rentre pas en cours de match.** « Normalement on ne fait pas de changement de
+     gardien pendant les matchs. » Un gardien sur le banc a désormais **5 % de chances d'entrer**, et
+     seulement pour la vraie raison : le titulaire sort blessé. Mesuré : 18 entrées sur 355 journées
+     passées sur le banc.
+  6. **« Ta situation » porte ses libellés.** « Les icônes, on ne sait pas toujours ce que ça
+     représente, il y a plein d'infos. » Chaque ligne annonce de quoi elle parle (LE COACH, TON
+     AGENT, TA PLACE, FRAÎCHEUR, TON FOND, TON GESTE, TA TÊTE…) et elles sont rangées en trois blocs :
+     **les gens**, **ton corps**, **ton jeu**.
+  Et, demandé dans la foulée : le **classement affiche les victoires, nuls et défaites** à côté des
+  points, des journées et de la différence de buts.
+  **Un piège d'outillage à retenir** : `io.open(p,'w')` vide le fichier *avant* que `write()`
+  échoue — une erreur d'encodage a donc effacé `v2/ecrans.js` en entier. Les écritures de fichier
+  passent maintenant par un temporaire suivi d'un `os.replace`.
 - **Le banc d'essai (`v2/labo.html`)**, demandé par le propriétaire : « le tableau que tu m'as
   partagé, je sais pas ce que ça représente… j'aimerais bien aussi que je puisse faire [les
   simulations] sur le nombre de matchs en fonction des choix qu'on a fait. » La page rejoue des

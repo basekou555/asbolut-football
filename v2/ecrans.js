@@ -112,23 +112,27 @@ function topHTML(){
 }
 function maPlace(){ return classementTrie().findIndex(x => x.nom === S.club.nom) + 1; }
 
+/* Chaque ligne porte son libellé : « les icônes, on ne sait pas toujours ce que
+   ça représente » (le propriétaire, 27/09/2026). Et elles sont rangées en trois
+   blocs — les gens, ton corps, ton jeu — pour qu'on s'y retrouve. */
+function ligneSit(ico, nom, txt){
+  return `<div><span class="i">${ico}</span><span><b class="qui">${esc(nom)}</b>${esc(txt)}</span></div>`;
+}
 function situationHTML(ouvert){
-  const l = Object.keys(LIEN_NOM).map(k =>
-    `<div><span class="i">${LIEN_ICO[k]}</span><span>${esc(dire(k))}</span></div>`).join('');
-  const d = [];
-  if (S.moi.qual.vu){ const q = QUALITES.find(x => x.id === S.moi.qual.id); d.push(`<div><span class="i">✨</span><span><b>${esc(q.nom)}</b> — ${esc(q.dit)}</span></div>`); }
-  if (S.moi.def.vu){ const f = DEFAUTS.find(x => x.id === S.moi.def.id); d.push(`<div><span class="i">⚠️</span><span><b>${esc(f.nom)}</b> — ${esc(f.dit)}</span></div>`); }
+  const gens = Object.keys(LIEN_NOM).map(k => ligneSit(LIEN_ICO[k], LIEN_NOM[k], dire(k))).join('')
+    + ligneSit('⚔️', "Ta place", direPlace());
+  const corps = ligneSit('🫁', "Fraîcheur", direFraicheur() + " avant le match.")
+    + ligneSit('🩹', "Ton corps", direCorps())
+    + ligneSit('💪', "Ton fond", direFond());
+  let jeu = ligneSit('⚡', "Ton geste", direGeste())
+    + ligneSit('🛡️', "Ta tête", direEncaisse());
+  if (S.moi.qual.vu){ const q = QUALITES.find(x => x.id === S.moi.qual.id); jeu += ligneSit('✨', q.nom, q.dit); }
+  if (S.moi.def.vu){ const f = DEFAUTS.find(x => x.id === S.moi.def.id); jeu += ligneSit('⚠️', f.nom, f.dit); }
   return `<details class="fold"${ouvert ? ' open' : ''}><summary>Ta situation</summary>
-    <div class="words">${l}
-      <div><span class="i">🫁</span><span>${esc(direFraicheur())} avant le match.</span></div>
-      <div><span class="i">🩹</span><span>${esc(direCorps())}</span></div>
-      <div><span class="i">💪</span><span>${esc(direFond())}</span></div>
-      <div><span class="i">⚡</span><span>${esc(direGeste())}</span></div>
-      <div><span class="i">🛡️</span><span>${esc(direEncaisse())}</span></div>
-      <div><span class="i">⚔️</span><span>${esc(direPlace())}</span></div>
-      ${d.join('')}
-    </div>
-    <p class="narr" style="margin-top:10px">${esc(direStaff())}</p>
+    <h3>Les gens</h3><div class="words">${gens}</div>
+    <h3>Ton corps</h3><div class="words">${corps}</div>
+    <h3>Ton jeu</h3><div class="words">${jeu}</div>
+    <p class="narr" style="margin-top:12px">${esc(direStaff())}</p>
     <p class="sub">${S.stats.matchs} match${S.stats.matchs > 1 ? 's' : ''} joué${S.stats.matchs > 1 ? 's' : ''}${S.stats.titus ? `, dont ${S.stats.titus} comme titulaire` : ''}${S.stats.buts ? ` · ${S.stats.buts} but${S.stats.buts > 1 ? 's' : ''}` : ''}${S.stats.notes.length ? ` · moyenne ${virg(moyenneNotes())}` : ''}.</p>
   </details>`;
 }
@@ -139,7 +143,7 @@ function classementHTML(){
   return `<details class="fold"><summary>Le classement</summary><div class="rank">
     ${t.map((e, i) => `<div${e.nom === S.club.nom ? ' style="border-color:var(--gold-dim)"' : ''}>
       <span class="m">${i + 1}</span><span>${esc(e.nom)}</span>
-      <span class="tag">${e.pts} pts · ${e.j} j · ${e.bp - e.bc > 0 ? '+' : ''}${e.bp - e.bc}</span></div>`).join('')}
+      <span class="tag">${e.pts} pts · ${e.j} j · ${e.v || 0}V ${e.n || 0}N ${e.d || 0}D · ${e.bp - e.bc > 0 ? '+' : ''}${e.bp - e.bc}</span></div>`).join('')}
   </div></details>`;
 }
 function liensJournal(){
@@ -231,6 +235,11 @@ function ecranResultat(){
       <div class="bloc ${m.decouverte.bon ? 'gagne' : 'perdu'}"><span class="i">${m.decouverte.ico}</span>
         <div><h4>${esc(m.decouverte.nom)}</h4><p class="narr" style="margin:0">${esc(m.decouverte.dit)}</p>
         <p class="sub" style="margin:4px 0 0">${esc(m.decouverte.axe)} · c'était dans tes chiffres depuis le premier jour.</p></div></div>` : ''}
+    ${m.notes && m.notes.length > 1 ? `<h3>Les notes du match</h3>
+      ${m.jugement ? `<p class="narr">${esc(m.jugement)}</p>` : ''}
+      <div class="notes">${m.notes.map(j => `<div${j.moi ? ' class="me"' : ''}>
+        <span class="p">${j.poste}</span><span>${esc(j.nom)}${j.rival ? ' <i>(ton poste)</i>' : ''}</span>
+        <span class="n">${virg(j.note)}</span></div>`).join('')}</div>` : ''}
     ${m.mvt && m.mvt.length ? `<h3>Ce que ça change</h3><div class="mvt">${m.mvt.map(x =>
       `<div><span class="${x.up ? 'up' : 'dn'}">${LIEN_ICO[x.k] || '•'}</span><span>${esc(x.mot)}</span></div>`).join('')}</div>` : ''}
     <div class="btn-row"><button class="btn" onclick="apresMatch()">${fin ? "Le bilan de la saison" : "La semaine suivante"}</button></div>

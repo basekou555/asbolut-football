@@ -161,3 +161,15 @@ button.chip.on{border-color:var(--gold);color:var(--gold);background:color-mix(i
 .opt.on{border-color:var(--gold);background:color-mix(in srgb,var(--gold) 10%,transparent)}
 :focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ---- les notes du match, et les libellés de « Ta situation » ---- */
+.notes{display:grid;gap:3px;margin:4px 0 2px}
+.notes div{display:grid;grid-template-columns:22px 1fr auto;gap:9px;align-items:baseline;
+  font-size:13px;padding:5px 9px;border-radius:7px;background:var(--panel-2)}
+.notes .p{font-size:10px;font-weight:700;color:var(--muted);text-align:center}
+.notes .n{font-variant-numeric:tabular-nums;color:var(--gold);font-weight:600}
+.notes i{color:var(--muted);font-style:normal;font-size:11.5px}
+.notes .me{outline:1px solid var(--gold-dim)}
+.notes .me .n{font-size:15px}
+.words .qui{color:var(--muted);font-weight:600;font-size:11px;letter-spacing:.06em;
+  text-transform:uppercase;display:block;margin-bottom:1px}
