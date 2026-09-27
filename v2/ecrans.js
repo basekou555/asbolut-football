@@ -122,6 +122,7 @@ function situationHTML(ouvert){
     <div class="words">${l}
       <div><span class="i">🫁</span><span>${esc(direFraicheur())} avant le match.</span></div>
       <div><span class="i">🩹</span><span>${esc(direCorps())}</span></div>
+      <div><span class="i">💪</span><span>${esc(direFond())}</span></div>
       ${d.join('')}
     </div>
     <p class="narr" style="margin-top:10px">${esc(direStaff())}</p>
@@ -284,6 +285,8 @@ function ecranJournal(){
       <div class="jrn">${g.lignes.map(x =>
         `<div><span>${JRN_ICO[x.type] || '•'}</span><span>${esc(x.txt)}</span></div>`).join('')}</div>`).join('')}
     <div class="btn-row"><button class="btn" onclick="fermerJournal()">Revenir</button></div>
+    <p class="sub" style="margin:12px 0 0">Les coulisses : <a href="labo.html" style="color:var(--gold-dim)">le banc d'essai</a>,
+      qui rejoue des saisons en accéléré pour vérifier qu'aucune option n'écrase les autres.</p>
   </div>`;
 }
 let RETOUR = 'semaine';

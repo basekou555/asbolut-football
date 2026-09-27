@@ -14,8 +14,11 @@
    - tout ce qui arrive est écrit dans `S.journal`, seule mémoire du jeu.
    ============================================================ */
 
-const VERSION = 1;
+const VERSION = 2;
 let S = null;
+/* Mis à true par le banc d'essai (labo.html) : les milliers de saisons qu'il
+   simule ne doivent pas écraser la carrière rangée dans localStorage. */
+let SIM = false;
 
 /* ---------- petits outils ---------- */
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -38,16 +41,21 @@ const POSTES = [
 ];
 /* Les trois origines, recalées par le propriétaire le 27/09/2026. L'ordre des
    clés est l'ordre des pastilles : les forces d'abord, le défaut en dernier. */
+/* Les trois origines. C'est le PRESET : ce que l'origine donne est un socle
+   qui tient toute la carrière — « j'ai toujours eu un gros mental ». Deux axes
+   à 60, un à 40, le quatrième (celui du poste) à 50 : rien d'autre, pour que
+   le départ soit lisible d'un coup d'œil. L'ordre des clés est l'ordre des
+   pastilles : les forces d'abord, le défaut en dernier. */
 const ORIGINES = [
   { id:'academie', ico:'🏛️', nom:"La grande académie",
     sub:"Formé au centre d'un club pro. On t'a appris à jouer et à préparer ton corps. On t'a aussi appris à attendre.",
-    axes:{ tech:12, phys:8, ment:-6 }, liens:{ vestiaire:10 }, u0:{ tech:.5, phys:.6, ment:1.1, spec:.8 } },
+    axes:{ tech:10, phys:10, ment:-10 }, liens:{ vestiaire:10 }, u0:{ tech:.5, phys:.6, ment:1.1, spec:.8 } },
   { id:'quartier', ico:'🧱', nom:"Le terrain du quartier",
     sub:"Repéré tard, sur du bitume. Le geste, tu l'as depuis toujours ; le corps, personne ne l'a jamais préparé.",
-    axes:{ tech:12, ment:8, phys:-8 }, liens:{ supporters:8 }, u0:{ tech:.6, phys:1.2, ment:.6, spec:1 } },
+    axes:{ tech:10, ment:10, phys:-10 }, liens:{ supporters:8 }, u0:{ tech:.6, phys:1.2, ment:.6, spec:1 } },
   { id:'etranger', ico:'✈️', nom:"Arrivé de l'étranger",
     sub:"Un pari de recruteur, une langue à apprendre, une famille à six mille kilomètres. Il en a fallu, du caractère.",
-    axes:{ ment:12, phys:4, tech:-6 }, liens:{ agent:15 }, u0:{ tech:1.1, phys:.8, ment:.5, spec:.9 } },
+    axes:{ ment:10, phys:10, tech:-10 }, liens:{ agent:15 }, u0:{ tech:1.1, phys:.8, ment:.5, spec:.9 } },
 ];
 const AMBITIONS = [
   { id:'gagner', ico:'🏆', nom:"Tout gagner", sub:"Les trophées, les grands soirs. Le reste attendra." },
@@ -71,12 +79,19 @@ const DEFAUTS = [
 ];
 
 const AXES = ['tech', 'phys', 'ment', 'spec'];
-/* Le poids d'une séance, calibré : `BOOST_SEANCE` est l'acquis récent (il se
-   divise par deux à chaque match, donc il porte sur deux ou trois matchs et
-   peut suffire à gagner une place de titulaire), `TRACE_SEANCE` est ce qui
-   reste pour toujours. Les deux sont multipliés par le rendement tiré, lui-même
-   proportionnel à la distance au plafond : près du plafond, insister ne paie plus. */
-const BOOST_SEANCE = 9;
+/* Le poids d'une séance, et l'arbitrage qu'elle porte.
+   Les deux couches ne répondent PAS à la même chose, et c'est tout le sujet :
+   - `BOOST_SEANCE` est l'acquis récent (divisé par deux à chaque match, donc il
+     porte sur deux ou trois matchs). Il est proportionnel à ce que tu **maîtrises
+     déjà** : travailler ta force répond tout de suite ;
+   - `TRACE_SEANCE` est ce qui reste pour toujours. Il est proportionnel à la
+     **distance au plafond** : travailler ta faiblesse rentre lentement, mais ça
+     reste.
+   Sans ça, travailler son point faible gagnait sur les deux tableaux à la fois
+   (mesuré au banc d'essai : « toujours le mental » donnait 22,3 matchs et +8,3
+   de trace quand « toujours la technique » donnait 18,8 et +2,7) — donc le choix
+   de la semaine n'en était pas un. */
+const BOOST_SEANCE = 3.5;
 const TRACE_SEANCE = .55;
 const AXE_NOM = { tech:"Technique", phys:"Physique", ment:"Mental", spec:"Au poste" };
 /* « Au poste » est un nom de code : à l'écran, c'est Vision, Finition, Réflexes
@@ -93,6 +108,11 @@ function nouvellePartie(c){
   base[f.axe] = clamp(base[f.axe] - 15);
 
   const plafond = {}; AXES.forEach(a => plafond[a] = ri(72, 96));
+  /* Le socle : le plancher de chaque axe pour le reste de la carrière. C'est ce
+     que l'origine t'a donné — une carrière peut t'abîmer, elle ne peut pas
+     effacer d'où tu viens. Borné par le départ réel pour que la qualité et le
+     défaut tirés restent sous lui sans le contredire. */
+  const socle = {}; AXES.forEach(a => socle[a] = Math.min(50 + (c.origine.axes[a] || 0), base[a]));
   const liens = { coach:50, vestiaire:50, club:50, supporters:45, agent:50, selection:0 };
   Object.entries(c.origine.liens || {}).forEach(([k, v]) => liens[k] = clamp(liens[k] + v));
 
@@ -102,13 +122,18 @@ function nouvellePartie(c){
   S = {
     v: VERSION, mode: 'joueur', annee: c.annee,
     moi: { nom: c.nom, poste: poste.id, posteNom: poste.nom, specNom: poste.spec,
-      age: 18, base, boost: { tech:0, phys:0, ment:0, spec:0 }, plafond,
+      age: 18, base, boost: { tech:0, phys:0, ment:0, spec:0 }, plafond, socle,
       u0: c.origine.u0, origine: c.origine.id, ambition: c.ambition.id,
       qual: { id:q.id, vu:false }, def: { id:f.id, vu:false },
       histo: {} },
     club: { nom: club.nom, force: club.force },
     ligue, liens,
-    etats: { fraicheur:100, forme:60, blessure:0, suspension:0, corps:88 },
+    /* `fond` est la réserve que construit le travail physique : on récupère plus
+       vite d'un match à l'autre, on se blesse moins, et on laisse moins de jambes
+       dans un match. Il s'use d'une journée sur l'autre : il faut l'entretenir.
+       Sans lui la séance physique était la plus chère sans aucune contrepartie,
+       et le banc d'essai la montrait dominée à tous les postes. */
+    etats: { fraicheur:100, forme:60, blessure:0, suspension:0, corps:88, fond:0 },
     journee: 0, arrets: 0, cartons: 0,
     semaine: null, seance: null, match: null, dernier: null, arret: null,
     stats: { matchs:0, titus:0, buts:0, passes:0, notes:[], minutes:0 },
@@ -142,6 +167,13 @@ function plafondReel(a){
   const moy = autres.reduce((n, v) => n + v, 0) / autres.length;
   return Math.min(S.moi.plafond[a], moy + 25);          // pas de 100 en physique avec 10 partout
 }
+/* La seule porte par laquelle un axe bouge. Une hausse est libre jusqu'au
+   plafond ; une baisse s'arrête au socle. L'usure, quand elle viendra, passera
+   par ici et n'aura rien de plus à savoir. */
+function bougerAxe(a, d){
+  const v = clamp(S.moi.base[a] + d);
+  S.moi.base[a] = d < 0 ? Math.max(v, S.moi.socle[a] == null ? 0 : S.moi.socle[a]) : v;
+}
 function niveau(){
   const p = POSTES.find(x => x.id === S.moi.poste);
   let n = 0; AXES.forEach(a => n += p.w[a] * (S.moi.base[a] + S.moi.boost[a]));
@@ -154,13 +186,13 @@ function niveauJour(){
 /* ---------- la semaine ---------- */
 const SEMAINES = [
   { id:'tech', ico:'⚽', nom:"Rester après l'entraînement", sub:"Frappes, centres, gestes répétés jusqu'à la nuit.",
-    axe:'tech', fit:-9, dit:[{c:'risk',t:"🫁 samedi : jambes lourdes"},{c:'vie',t:"🏡 tu rentres tard"}] },
+    axe:'tech', fit:-8, dit:[{c:'risk',t:"🫁 samedi : jambes lourdes"},{c:'vie',t:"🏡 tu rentres tard"}] },
   { id:'phys', ico:'💪', nom:"La salle et les sprints", sub:"Le préparateur t'a fait un programme. Il est violent.",
-    axe:'phys', fit:-11, dit:[{c:'risk',t:"🫁 samedi : fatigué"},{c:'foot',t:"💪 le corps encaissera mieux"}] },
+    axe:'phys', fit:-11, fond:3.5, dit:[{c:'risk',t:"🫁 samedi : fatigué"},{c:'foot',t:"💪 du fond, pour toute la saison"}] },
   { id:'ment', ico:'🧠', nom:"La vidéo et le calme", sub:"Tu revois tes matchs, tu parles au préparateur mental.",
-    axe:'ment', fit:-3, dit:[{c:'foot',t:"🎯 samedi : lucide"},{c:'vie',t:"🏡 du temps chez toi"}] },
+    axe:'ment', fit:-7, dit:[{c:'foot',t:"🎯 samedi : lucide"},{c:'vie',t:"🏡 du temps chez toi"}] },
   { id:'spec', ico:'🎯', nom:"Le travail de ton poste", sub:"Une heure seul avec l'adjoint, sur ce que ton poste demande.",
-    axe:'spec', fit:-6, dit:[{c:'foot',t:"🎯 samedi : juste à ton poste"},{c:'risk',t:"🫁 une heure de plus dans les jambes"}] },
+    axe:'spec', fit:-8, fond:1, dit:[{c:'foot',t:"🎯 samedi : juste à ton poste"},{c:'risk',t:"🫁 une heure de plus dans les jambes"}] },
   { id:'normale', ico:'🔁', nom:"La semaine normale", sub:"Ce que le coach demande, rien de plus, rien de moins.",
     axe:null, fit:-2, dit:[{c:'neutre',t:"↔️ un peu de tout, rien de marquant"}] },
   { id:'repos', ico:'🛌', nom:"Lever le pied", sub:"Le corps tire. Tu écoutes.",
@@ -170,14 +202,16 @@ function choisirSemaine(id){
   const s = SEMAINES.find(x => x.id === id); if (!s) return;
   S.semaine = s.id;
   S.etats.fraicheur = clamp(S.etats.fraicheur + s.fit);
+  if (s.fond) S.etats.fond = clamp(S.etats.fond + s.fond);
   S.seance = null;
   if (s.axe){
     const a = s.axe, pl = plafondReel(a);
-    const marge = clamp(1 - S.moi.base[a] / pl, .12, 1);
+    const marge = clamp(1 - S.moi.base[a] / pl, .12, 1);   // ce qu'il te reste à prendre
+    const acquis = clamp(1 - marge, .12, 1);               // ce que tu tiens déjà
     const tirage = pick([.4, .4, 1, 1, 1, 1.6]);
     const r = tirage * marge;
-    S.moi.boost[a] += BOOST_SEANCE * r;
-    S.moi.base[a] = clamp(S.moi.base[a] + TRACE_SEANCE * r);
+    S.moi.boost[a] += BOOST_SEANCE * tirage * acquis;
+    bougerAxe(a, TRACE_SEANCE * r);
     S.seance = {
       axe: a,
       mot: tirage >= 1.3 ? "excellente" : tirage >= .7 ? "correcte" : "pour rien",
@@ -185,8 +219,12 @@ function choisirSemaine(id){
            : tirage >= .7 ? `Du travail honnête, rien de spectaculaire.`
            : `Tu n'as rien senti passer. Certaines séances ne servent à rien.`,
       plafond: marge < .25,
+      terrain: acquis >= .6,
     };
-    if (S.seance.plafond) S.seance.texte += ` Et à ce niveau-là, tu ne gagnes plus grand-chose à insister.`;
+    /* Le compte rendu doit apprendre la règle en la faisant sentir, sans chiffre. */
+    if (S.seance.plafond) S.seance.texte += ` À ce niveau-là tu ne progresses plus vraiment, mais c'est prêt pour samedi.`;
+    else if (S.seance.terrain) S.seance.texte += ` C'est un terrain que tu connais : ça répondra vite, ça ne montera plus beaucoup.`;
+    else S.seance.texte += ` Tu pars de loin sur ce point-là : ça ne se verra pas samedi, mais ça reste.`;
   } else if (s.id === 'repos'){
     S.etats.corps = clamp(S.etats.corps + 1);
   }
@@ -241,7 +279,7 @@ function choisirArret(i){
 }
 function appliquer(o){
   Object.entries(o.liens || {}).forEach(([k, v]) => S.liens[k] = clamp(S.liens[k] + v));
-  Object.entries(o.axes || {}).forEach(([k, v]) => S.moi.base[k] = clamp(S.moi.base[k] + v));
+  Object.entries(o.axes || {}).forEach(([k, v]) => bougerAxe(k, v));
   if (o.fit) S.etats.fraicheur = clamp(S.etats.fraicheur + o.fit);
   if (o.corps) S.etats.corps = clamp(S.etats.corps + o.corps);
 }
@@ -387,13 +425,13 @@ function finirMatch(){
     m.note = Math.round(m.note * 10) / 10;
     S.stats.matchs++; S.stats.minutes += m.minutes; S.stats.buts += m.buts; S.stats.passes += m.passes;
     S.stats.notes.push(m.note); if (m.statut === 'titulaire') S.stats.titus++;
-    S.etats.fraicheur = clamp(S.etats.fraicheur - (m.minutes / 90) * ri(10, 16));
+    S.etats.fraicheur = clamp(S.etats.fraicheur - (m.minutes / 90) * ri(10, 16) * (1 - S.etats.fond * .0022));
     S.etats.corps = clamp(S.etats.corps - (m.minutes / 90) * .4);
     S.liens.coach = clamp(S.liens.coach + clamp((m.note - 6.2) * 2.4, -4, 4));
     S.liens.vestiaire = clamp(S.liens.vestiaire + (m.note >= 7 ? 1.2 : m.note < 5.5 ? -1 : 0));
     S.liens.supporters = clamp(S.liens.supporters + (m.buts ? 2 : 0) + (m.note >= 7.5 ? 1 : 0) - (m.note < 5.4 ? 1 : 0));
     S.etats.forme = clamp(S.etats.forme + (m.note >= 7 ? 5 : m.note >= 6 ? 1 : -4));
-    if (Math.random() < .05 + (S.moi.def.id === 'ischios' ? .04 : 0) + (S.etats.fraicheur < 60 ? .05 : 0)){
+    if (Math.random() < Math.max(.012, .05 - S.etats.fond * .0006) + (S.moi.def.id === 'ischios' ? .04 : 0) + (S.etats.fraicheur < 60 ? .05 : 0)){
       m.blessure = ri(1, 5); S.etats.corps = clamp(S.etats.corps - m.blessure);
     }
     m.jaunes = m.evs.filter(e => e.type === 'jaune' && e.moi).length + m.jaune;
@@ -464,7 +502,8 @@ function apresMatch(){
   if (S.etats.suspension > 0) S.etats.suspension--;
   if (d && d.blessure) S.etats.blessure = d.blessure;
   if (d && d.suspendu) S.etats.suspension = d.suspendu;
-  S.etats.fraicheur = clamp(S.etats.fraicheur + (S.etats.blessure ? 14 : 9));
+  S.etats.fond = clamp(S.etats.fond - 1.5);                 // le fond s'use si on ne l'entretient pas
+  S.etats.fraicheur = clamp(S.etats.fraicheur + (S.etats.blessure ? 14 : 9) + S.etats.fond * .05);
   S.journee++;
   if (S.journee >= JOURNEES) return finSaison();
   S.arrets = 0; S.semaine = null; S.seance = null; S.match = null;
@@ -532,6 +571,9 @@ const MOTS = {
   agent: ["Il ne répond plus.", "Il est évasif.", "Il dit ce qu'il veut bien dire.", "Il répond vite.", "Il te dit tout ce qu'il sait.", "Il travaille pour toi jour et nuit."],
 };
 function dire(lien){ return MOTS[lien] ? MOTS[lien][bande(S.liens[lien])] : ''; }
+function direFond(){ const v = S.etats.fond;
+  return v > 55 ? "Tu tiens les quatre-vingt-dix minutes sans y penser." : v > 32 ? "Tu as du fond."
+    : v > 14 ? "Tu tiens, sans plus." : "Tu manques de fond, et ça se paie en fin de match."; }
 function direCorps(){ const v = S.etats.corps;
   return v > 85 ? "Rien ne te fait mal." : v > 72 ? "Quelques douleurs, rien de sérieux." : v > 58 ? "Tu récupères moins vite qu'avant." : "Ton corps commence à te lâcher."; }
 function direJambes(){ const v = S.etats.fraicheur;
@@ -548,7 +590,7 @@ function direStaff(){
 /* ---------- journal, sauvegarde ---------- */
 const nb = v => (Math.round(v * 100) / 100).toString().replace('.', ',');
 function jrn(type, txt){ S.journal.push({ j: S.journee + 1, annee: S.annee, type, txt }); }
-function sauver(){ try { localStorage.setItem('ac2', JSON.stringify(S)); } catch(e){} }
+function sauver(){ if (SIM) return; try { localStorage.setItem('ac2', JSON.stringify(S)); } catch(e){} }
 function charger(){
   try {
     const d = JSON.parse(localStorage.getItem('ac2') || 'null');
