@@ -121,6 +121,7 @@ function maPlace(){ return classementTrie().findIndex(x => x.nom === S.club.nom)
    empilées à sept rangées.
    **Chaque icône est celle de la séance qui nourrit la chose** — ⚽ la technique,
    💪 le corps, 🧠 le mental, 🎯 ton poste — pour qu'on n'ait jamais à deviner. */
+const minuscule = t => t ? t.charAt(0).toLowerCase() + t.slice(1) : t;
 function celSit(ico, nom, txt, cle){
   return `<div${cle ? ' class="cle"' : ''}><span class="k">${ico} ${esc(nom)}</span>
     <span class="v">${esc(txt)}</span></div>`;
@@ -129,9 +130,13 @@ function situationHTML(ouvert){
   const gens = Object.keys(LIEN_NOM).map(k => celSit(LIEN_ICO[k], LIEN_NOM[k], dire(k))).join('');
   /* Une seule ligne ici : celle qui te sert, avec son enjeu. Les trois ententes
      sont avec les joueurs, dans l'effectif — c'est là qu'elles ont des noms. */
+  /* Le propriétaire, 27/09/2026 : « il y a un onglet attaque à côté de le club,
+     le vestiaire, etc., j'ai pas trop compris ce qu'il faisait là. » Le libellé
+     était le nom de la ligne, qui se lisait comme une jauge de plus ; c'est
+     **ta ligne** qu'il faut annoncer, et la phrase dit laquelle. */
   const cle = LIGNE_CLE[S.moi.poste];
-  const maLigne = celSit(LIEN_ICO[cle], LIGNE_NOM[cle],
-    direLigne(cle) + ' ' + ENJEU_LIGNE[S.moi.poste], true);
+  const maLigne = celSit(LIEN_ICO[cle], "Ta ligne",
+    `Avec ${LIGNE_LA[cle]} : ${minuscule(direLigne(cle))} ${ENJEU_LIGNE[S.moi.poste]}`, true);
   /* Les mots du joueur, pas les miens : blessure, corps, technique, mental.
      « Je comprends pas pourquoi on a des mots différents. » */
   /* Le groupe : c'est ce qui rend vingt-deux joueurs utiles plut\u00f4t que d\u00e9coratifs.
@@ -159,20 +164,25 @@ function situationHTML(ouvert){
    ligne par ligne qui prend beaucoup de place et qui fait beaucoup d\u00e9filer. »
    Treize rang\u00e9es pleine largeur deviennent trois blocs de tuiles \u00e0 trois colonnes —
    et chaque bloc porte l'entente de sa ligne, l\u00e0 o\u00f9 elle a enfin des noms. */
+const GROUPES = [['G', "Les gardiens", "\u{1F9E4}", null], ['D', "La d\u00e9fense", "\u{1F6E1}\ufe0f", 'def'],
+  ['M', "Le milieu", "\u{1F9ED}", 'mil'], ['A', "L'attaque", "\u{1F3AF}", 'att']];
 function effectifHTML(){
   if (!S.equipe || !S.equipe.length) return '';
   const l = effectifTrie();
-  const bloc = k => {
-    const j = l.filter(x => x.cle === k);
+  /* Quatre groupes, pas trois : « dans l'onglet effectif il n'y a pas la colonne
+     des gardiens » — ils étaient fondus dans la défense, dont ils partagent bien
+     l'entente, mais pas le poste. L'entente reste sur les trois lignes. */
+  const bloc = ([po, nom, ico, k]) => {
+    const j = l.filter(x => x.poste === po);
     if (!j.length) return '';
-    return `<div class="lineHead">${LIEN_ICO[k]} ${esc(LIGNE_NOM[k])}<span>${esc(direLigne(k))}</span></div>
+    return `<div class="lineHead">${ico} ${esc(nom)}<span>${k ? esc(direLigne(k)) : ''}</span></div>
       <div class="lineup">${j.map(x => `<div class="${x.moi ? 'me' : ''}${x.blesse || x.susp ? ' out' : ''}">
         <b>${esc(x.nom)}</b><span class="n">${x.moy == null ? '\u2014' : virg(x.moy)}</span>
         <span class="s">${x.age} ans \u00b7 ${x.nb} m${x.moi ? ' \u00b7 toi' : x.rival ? ' \u00b7 ton poste' : x.monte ? ' \u00b7 il monte' : ''}${x.blesse ? ' \u00b7 \u{1FA7C} bless\u00e9' : x.susp ? ' \u00b7 \u{1F7E5} suspendu' : ''}</span>
       </div>`).join('')}</div>`;
   };
   return `<details class="fold"><summary>L'effectif</summary>
-    ${LIGNES.map(bloc).join('')}
+    ${GROUPES.map(bloc).join('')}
     <p class="sub">Vingt-deux joueurs, onze titulaires. La moyenne de chacun sur la saison, et le nombre de matchs not\u00e9s.</p>
   </details>`;
 }

@@ -423,6 +423,36 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     après, lignes conservées, saison terminée sans erreur.
   - **L'équilibre ne bouge pas** : banc d'essai rejoué, « deux séances puis un repos » reste devant
     sur les matchs (17,3 / 16,3 / 15,2) et aucune politique ne prend à la fois les matchs et la trace.
+- **Quatre retours de partie, quatre corrections** (le propriétaire, 27/09/2026).
+  1. **« "Le geste sort le plus souvent", c'est mal formulé ; ce que tu essayes de dire, c'est
+     *tu fais le bon geste au bon moment*. »** C'était exactement ça, et sa phrase est meilleure :
+     la technique ne se juge pas à l'entraînement mais à l'instant où il faut la sortir. Les quatre
+     bandes de `direGeste()` sont réécrites sur ce modèle.
+  2. **« Il y a un onglet attaque à côté de le club, le vestiaire, etc., j'ai pas trop compris ce
+     qu'il faisait là. »** La case de ta ligne portait le **nom de la ligne** en libellé, donc elle
+     se lisait comme une jauge de plus — et pour un milieu c'était « L'ATTAQUE », ce qui n'a aucun
+     sens à côté de « LE CLUB ». Le libellé devient **« Ta ligne »** et la phrase dit laquelle :
+     « Avec l'attaque : un appel, un ballon. Plus tu les trouves, plus tu passes décisif. »
+  3. **« Dans l'onglet effectif il n'y a pas la colonne des gardiens. »** Ils étaient fondus dans
+     la défense, dont ils partagent bien l'entente mais pas le poste. L'effectif a maintenant
+     **quatre groupes** (`GROUPES`) — gardiens, défense, milieu, attaque — et l'entente reste
+     affichée sur les trois lignes.
+  4. **« J'ai une note alors que j'ai pas joué de match… il devrait y avoir que 11 joueurs ou 13
+     avec les remplaçants. »** Mesuré sur la version qu'il jouait : la liste de notes allait de
+     **6 à 13 entrées** (l'ancien `notesEquipe()` notait tout l'effectif avec 12 % de chance de
+     sauter quelqu'un). Le passage à vingt-deux l'avait déjà ramenée au onze ; il restait trois
+     défauts, tous corrigés et re-mesurés sur 2 720 matchs, quatre postes, la moitié des carrières
+     forcées sur le banc :
+     - un poste à court laissait le onze à **neuf ou dix** : on fait monter quelqu'un d'un autre
+       poste (la pénalité de −7 reste). **Un joueur de champ peut aller dans les buts, l'inverse
+       jamais** — sans cette règle, douze matchs à deux gardiens ;
+     - `moyenneNotes()` renvoie **6 quand on n'a aucune note**, commode pour les calculs mais le
+       bilan en parlait comme d'une moyenne réelle. `S.bilan.note` vaut `null` à zéro match, et les
+       trois textes du bilan ne se déclenchent plus sur ce 6 inventé (16 saisons à zéro match
+       vérifiées) ;
+     - garde-fou doublé dans `notesEquipe()` : tu n'entres dans les notes que si `m.minutes`.
+     Résultat mesuré : **11 notes quand tu ne joues pas, 12 quand tu entres**, jamais autre chose,
+     et **zéro note sans avoir joué** sur 2 720 matchs.
 - **Le banc d'essai (`v2/labo.html`)**, demandé par le propriétaire : « le tableau que tu m'as
   partagé, je sais pas ce que ça représente… j'aimerais bien aussi que je puisse faire [les
   simulations] sur le nombre de matchs en fonction des choix qu'on a fait. » La page rejoue des
