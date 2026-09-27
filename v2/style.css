@@ -173,3 +173,24 @@ button.chip.on{border-color:var(--gold);color:var(--gold);background:color-mix(i
 .notes .me .n{font-size:15px}
 .words .qui{color:var(--muted);font-weight:600;font-size:11px;letter-spacing:.06em;
   text-transform:uppercase;display:block;margin-bottom:1px}
+
+/* ---- la fiche « Ta situation » : un nom à gauche, la phrase en face ---- */
+.fiche{display:grid;gap:0;font-size:13.5px}
+.fiche div{display:grid;grid-template-columns:104px 1fr;gap:12px;align-items:baseline;
+  padding:7px 0;border-bottom:1px solid var(--line)}
+.fiche div:last-child{border-bottom:0}
+.fiche .k{color:var(--muted);font-size:12px}
+@media(max-width:430px){
+  .fiche div{grid-template-columns:1fr;gap:1px}
+  .fiche .k{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase}
+}
+/* ---- l'effectif ---- */
+.squad{display:grid;gap:3px}
+.squad div{display:grid;grid-template-columns:22px 1fr auto;gap:9px;align-items:center;
+  font-size:13px;padding:6px 9px;border-radius:7px;background:var(--panel-2)}
+.squad .p{font-size:10px;font-weight:700;color:var(--muted);text-align:center}
+.squad i{color:var(--muted);font-style:normal;font-size:11px}
+.squad .sub2{display:block;color:var(--muted);font-size:11px;margin-top:1px}
+.squad .n{font-variant-numeric:tabular-nums;color:var(--gold);font-weight:600;text-align:right}
+.squad .n i{display:block;font-weight:400;font-size:10.5px}
+.squad .me{outline:1px solid var(--gold-dim)}

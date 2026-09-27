@@ -304,6 +304,20 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
   **Un piège d'outillage à retenir** : `io.open(p,'w')` vide le fichier *avant* que `write()`
   échoue — une erreur d'encodage a donc effacé `v2/ecrans.js` en entier. Les écritures de fichier
   passent maintenant par un temporaire suivi d'un `os.replace`.
+- **Le contexte de l'équipe, et une fiche qui se lit** (le propriétaire, 27/09/2026, après la
+  deuxième passe : « le bilan est cool. Ça manque un petit peu de clarté dans la page Ta situation.
+  Et on a peu d'infos liées au reste de l'équipe : ça peut être cool d'avoir les moyennes de notes
+  des autres joueurs, ce genre d'infos, ça apporte un peu plus de contexte à la situation »).
+  - **`effectifHTML()`** : un repli qui liste tout le monde — coéquipiers, rivaux à ton poste et toi —
+    **classé par moyenne de saison**, avec le nombre de matchs notés, l'âge, l'état de la relation en
+    mots (`motRelation()` : proche, en bons termes, correct, un peu froid, tendu), et les marques
+    utiles (*toi*, *ton poste*, *il monte*, *à l'infirmerie*). `notesEquipe()` accumule `sum`/`nb`
+    sur chaque joueur pour que la moyenne existe. Ouvrable depuis l'écran de la semaine **et** depuis
+    le bilan de fin de saison.
+  - **« Ta situation » devient une fiche** : les libellés empilés au-dessus de chaque phrase
+    hachaient la lecture. Désormais un nom à gauche, la phrase en face (une seule colonne sous
+    430 px), trois sections — **Autour de toi**, **Toi**, **Ce qu'on sait de toi** — et le doublon
+    de « Ta place » disparaît de l'écran de la semaine puisqu'il est dans la fiche.
 - **Le banc d'essai (`v2/labo.html`)**, demandé par le propriétaire : « le tableau que tu m'as
   partagé, je sais pas ce que ça représente… j'aimerais bien aussi que je puisse faire [les
   simulations] sur le nombre de matchs en fonction des choix qu'on a fait. » La page rejoue des
