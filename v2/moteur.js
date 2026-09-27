@@ -277,6 +277,8 @@ function nouvellePartie(c){
        et le banc d'essai la montrait dominée à tous les postes. */
     etats: { fraicheur:100, forme:60, blessure:0, suspension:0, corps:88, fond:0 },
     journee: 0, arrets: 0, cartons: 0,
+    coupe: { vivant:true, tour:0, hist:[], gagnee:false },
+    euro: { engage:false, vivant:true, tour:0, pts:0, hist:[], gagnee:false },
     semaine: null, seance: null, match: null, dernier: null, arret: null,
     stats: { matchs:0, titus:0, buts:0, passes:0, notes:[], minutes:0 },
     journal: [], ecran: 'semaine',
@@ -606,6 +608,10 @@ function choisirSemaine(id){
      écran pouvait affirmer une chose que le match démentait cinq secondes plus
      tard. Il se décide maintenant ici, juste après la séance (elle pèse sur ta
      fraîcheur, donc sur le choix du coach) et il est figé pour la journée. */
+  /* MERCREDI AVANT SAMEDI. Le match de coupe ou d'Europe se joue **avant** qu'on
+     pose le groupe du week-end : ses minutes et sa fatigue entrent donc dans le
+     choix du onze de samedi, ce qui est exactement le coût qu'on veut. */
+  S.annexe = matchAnnexe(S.journee) ? jouerAnnexe(matchAnnexe(S.journee)) : null;
   poserEquipeDuJour();
   ouvrirArrets();
 }
@@ -983,7 +989,7 @@ function cumul(n, table){
    On compare le onze réellement alignable au meilleur onze possible si tout le
    monde était valide : l'écart, étalé sur onze joueurs, est ce que le match
    perd. Un groupe profond l'absorbe, un groupe court le prend en pleine figure. */
-function equipeDuJour(){
+function equipeDuJour(rot){
   const g = groupe();
   const absents = g.filter(x => !x.dispo);
   /* TU ES DANS LE MÊME POT QUE TOUT LE MONDE (le propriétaire, 27/09/2026 :
@@ -1001,7 +1007,8 @@ function equipeDuJour(){
     dispo: S.etats.blessure <= 0 && S.etats.suspension <= 0, ref:{} };
   const tout = [...g, moi];
   // le choix du coach : le niveau du jour, un peu de rotation, moins la rancune
-  tout.forEach(x => x.choix = x.niv + rnd(-ROTATION, ROTATION) - (x.ref.rancune || 0));
+  const R = rot == null ? ROTATION : rot;
+  tout.forEach(x => x.choix = x.niv + rnd(-R, R) - (x.ref.rancune || 0));
   const tri = l => l.slice().sort((a, b) => b.choix - a.choix);
   const dispo = tri(tout.filter(x => x.dispo));
   /* On réserve d'abord de quoi aligner un onze à chaque poste, **plus un gardien
@@ -1136,6 +1143,157 @@ function planChangements(m, onze, banc){
     chg.push({ min, entrant: e, sortant: s, tactique: tact });
   }
   return chg.sort((a, b) => a.min - b.min);
+}
+
+
+/* ================== LA COUPE ET L'EUROPE ==================
+   Le propriétaire, 21/09/2026 : « la **coupe doit devenir jouable** — comme suite
+   de décisions, pas de matchs à opérer » ; et le 27/09/2026 : « une fois qu'on a
+   vu ça, on peut passer à l'Europe aussi, et à la coupe ».
+   Elles se jouent **en milieu de semaine**, donc elles ne rallongent pas ta
+   semaine : elles la **coûtent**. Un mercredi européen, c'est des jambes en moins
+   samedi — c'est là qu'est l'arbitrage, et il n'a pas besoin d'un écran de plus.
+   Tu ne les opères pas : tu les lis, exactement comme il le demandait. Ce que tu
+   décides, c'est ta semaine en les sachant là, et ce que tu réponds au coach qui
+   te propose de te ménager.
+   Le coach **tourne davantage en coupe** (`ROTATION_COUPE`) : c'est la vérité du
+   football, et ça donne au remplaçant une porte d'entrée qui n'existait pas. */
+const J_COUPE = [8, 14, 20, 26, 31];
+/* Les libellés portent leur préposition : « éliminés en seizièmes » se dit,
+   « éliminés à les quarts » non. */
+const TOURS_COUPE = ["en seizièmes", "en huitièmes", "en quarts", "en demi-finale", "en finale"];
+const J_EURO = [3, 6, 10, 13, 17, 21, 24, 28, 33];
+const TOURS_EURO = ["1re journée", "2e journée", "3e journée", "4e journée", "5e journée",
+  "6e et dernière journée", "en quarts", "en demi-finale", "en finale"];
+const ROTATION_COUPE = 7;
+const PENTE_EURO = 4.2;   // un grand d'Europe est au-dessus d'un grand de France
+
+function matchAnnexe(j){
+  let i = J_COUPE.indexOf(j);
+  if (i >= 0 && S.coupe && S.coupe.vivant) return { c:'coupe', t:i };
+  i = J_EURO.indexOf(j);
+  if (i >= 0 && S.euro && S.euro.engage && S.euro.vivant) return { c:'euro', t:i };
+  return null;
+}
+/* Qui on affronte. En coupe, les premiers tours sont contre un petit club de
+   division inférieure — c'est là que les surprises arrivent ; à partir des quarts
+   c'est un club du championnat. En Europe, un club européen de l'époque. */
+function advAnnexe(info){
+  if (info.c === 'coupe'){
+    if (info.t <= 1){
+      const dedans = S.ligue.equipes.map(e => e.nom);
+      const petits = (typeof FR_LOWER !== 'undefined' ? FR_LOWER : []).filter(n => !dedans.includes(n));
+      const nom = petits.length ? pick(petits) : "un club de National";
+      return { nom, force: Math.round(clamp(S.club.force - rnd(5, 16), 38, 76)), petit:true };
+    }
+    const autres = S.ligue.equipes.filter(e => e.nom !== S.club.nom);
+    const e = pick(autres.slice(0, Math.max(4, Math.round(autres.length * (info.t >= 3 ? .35 : .6)))));
+    return { nom:e.nom, force:e.force };
+  }
+  const dk = typeof decadeKey === 'function' ? decadeKey(S.annee) : '10';
+  const eu = (typeof EU_CLUBS !== 'undefined' ? EU_CLUBS : []).filter(c => (c.s[dk] || 0) >= 2);
+  if (!eu.length) return { nom:"un club européen", force: S.club.force };
+  // plus on avance, plus on tombe sur du lourd
+  const tri = eu.slice().sort((a, b) => (b.s[dk] || 0) - (a.s[dk] || 0));
+  const c = pick(info.t >= 6 ? tri.slice(0, 10) : tri);
+  return { nom:c.n, force: Math.round(clamp(52 + (c.s[dk] || 2) * PENTE_EURO, 46, 80)), euro:true };
+}
+/* Le match de mercredi : on le joue, on ne l'opère pas. Même moteur de score,
+   même sélection (avec plus de rotation en coupe), mais pas de fait de match —
+   ceux-là restent pour samedi, pour que la semaine garde ses trois clics. */
+function jouerAnnexe(info){
+  const adv = advAnnexe(info);
+  const eq = equipeDuJour(info.c === 'coupe' ? ROTATION_COUPE : ROTATION);
+  const ent = S.lignes[LIGNE_CLE[S.moi.poste]] - 50;
+  const nous = S.club.force + eq.ecart + (vestiaire() - 50) * .04
+    + (eq.statut === 'titulaire' ? (niveauJour() - S.club.force) * .12 : 0) + 1.2;
+  const diff = nous - adv.force;
+  let bn = poisson(tameXG(1.35 * Math.exp(diff / 19)));
+  let be = poisson(tameXG(1.35 * Math.exp(-diff / 19)));
+  const m = { comp: info.c, tour: info.t, adv: adv.nom, bn, be, statut: eq.statut,
+    minutes: 0, note: null, buts: 0, passes: 0 };
+  // un match à élimination directe se décide, même mal
+  const groupe = info.c === 'euro' && info.t <= 5;
+  if (!groupe && bn === be){
+    m.prolong = true;
+    if (Math.random() < .5 + diff * .012) bn += 1; else be += 1;
+    m.bn = bn; m.be = be;
+  }
+  m.res = bn > be ? 'V' : bn < be ? 'D' : 'N';
+  // ton match : le même calcul de temps de jeu, en plus simple
+  if (eq.statut === 'titulaire') m.minutes = Math.random() < .25 ? ri(55, 80) : 90;
+  else if (eq.statut === 'banc' && Math.random() < (info.c === 'coupe' ? .6 : .45)) m.minutes = ri(12, 45);
+  if (m.minutes){
+    const derriere = S.moi.poste === 'G' || S.moi.poste === 'D';
+    const chance = { G:0, D:.055, M:.155, A:.28 }[S.moi.poste]
+      * clamp(1 + (S.moi.base.spec - 50) * .006, .7, 1.3) * (m.minutes / 90);
+    for (let k = 0; k < bn; k++){
+      if (Math.random() < chance) m.buts++;
+      else if (Math.random() < { G:0, D:.10, M:.24, A:.18 }[S.moi.poste] * (m.minutes / 90)) m.passes++;
+    }
+    m.note = Math.round(clamp(6.1 + (m.res === 'V' ? .5 : m.res === 'D' ? -.4 : 0)
+      + cumul(m.buts, POIDS_BUT) + m.passes * .4
+      + (derriere ? (be === 0 ? .8 : be >= 4 ? -.7 : 0) : 0)
+      + (niveauJour() - S.club.force) * .05 + aleaNote(), 3, 10) * 10) / 10;
+    S.stats.matchs++; S.stats.buts += m.buts; S.stats.passes += m.passes;
+    S.stats.minutes += m.minutes; S.stats.notes.push(m.note);
+    if (eq.statut === 'titulaire') S.stats.titus++;
+    bougerLigne(LIGNE_CLE[S.moi.poste], (m.note - 6.1) * .9);
+    if (m.note < 5.6) coutMental(1.2, `ce mercredi à ${adv.nom}`);
+  }
+  // mercredi coûte samedi : c'est tout l'intérêt
+  S.etats.fraicheur = clamp(S.etats.fraicheur - (m.minutes ? 7 + m.minutes * .14 : 4));
+  S.etats.fond = clamp(S.etats.fond - 1);
+  suiteAnnexe(info, m);
+  return m;
+}
+/* Ce que le résultat fait à la compétition : on avance, on sort, on compte. */
+function suiteAnnexe(info, m){
+  const nom = info.c === 'coupe' ? 'Coupe' : 'Europe';
+  if (info.c === 'coupe'){
+    S.coupe.hist.push({ t:info.t, adv:m.adv, bn:m.bn, be:m.be });
+    if (m.res === 'V'){
+      S.coupe.tour = info.t + 1;
+      if (info.t === TOURS_COUPE.length - 1){
+        S.coupe.vivant = false; S.coupe.gagnee = true;
+        jrn('trophee', `🏆 Vous gagnez la Coupe, ${m.bn}-${m.be} contre ${m.adv}.`);
+      } else jrn('coupe', `Coupe ${TOURS_COUPE[info.t]} : ${m.bn}-${m.be} contre ${m.adv}. Ça continue.`);
+    } else {
+      S.coupe.vivant = false;
+      jrn('coupe', `Coupe : éliminés ${TOURS_COUPE[info.t]}, ${m.bn}-${m.be} contre ${m.adv}.`);
+    }
+    return;
+  }
+  S.euro.hist.push({ t:info.t, adv:m.adv, bn:m.bn, be:m.be });
+  if (info.t <= 5){
+    S.euro.pts += m.res === 'V' ? 3 : m.res === 'N' ? 1 : 0;
+    if (info.t === 5){
+      // deux qualifiés sur quatre : huit points suffisent presque toujours
+      S.euro.vivant = S.euro.pts >= 8;
+      jrn('euro', S.euro.vivant
+        ? `Europe : qualifiés pour les quarts avec ${S.euro.pts} points.`
+        : `Europe : éliminés en phase de groupes avec ${S.euro.pts} points.`);
+    } else jrn('euro', `Europe, ${TOURS_EURO[info.t]} : ${m.bn}-${m.be} contre ${m.adv}.`);
+    return;
+  }
+  if (m.res === 'V'){
+    if (info.t === J_EURO.length - 1){
+      S.euro.vivant = false; S.euro.gagnee = true;
+      jrn('trophee', `🏆 Vous gagnez l'Europe, ${m.bn}-${m.be} contre ${m.adv}.`);
+    } else jrn('euro', `Europe ${TOURS_EURO[info.t]} : ${m.bn}-${m.be} contre ${m.adv}. Ça continue.`);
+  } else {
+    S.euro.vivant = false;
+    jrn('euro', `Europe : éliminés ${TOURS_EURO[info.t]}, ${m.bn}-${m.be} contre ${m.adv}.`);
+  }
+}
+/* Ce qu'on dit du mercredi qui vient, sur l'écran de la semaine : la décision
+   d'entraînement doit le savoir. */
+function direMercredi(){
+  const info = matchAnnexe(S.journee);
+  if (!info) return null;
+  return info.c === 'coupe'
+    ? `Mercredi, la Coupe ${TOURS_COUPE[info.t]}.`
+    : `Mercredi, l'Europe — ${TOURS_EURO[info.t]}.`;
 }
 
 function lancerMatch(){
@@ -1294,6 +1452,7 @@ function lancerMatch(){
   }
   m.entree = entree;
   m.arret = S.semaineArret || null; S.semaineArret = null;
+  m.annexe = S.annexe || null; S.annexe = null;
   S.match = m; S.momentIdx = 0;
   suiteMatch();
 }
@@ -1650,10 +1809,16 @@ function notesEquipe(m){
   (m.chg || []).forEach(c => { if (c.sortant && c.sortant.ref && !c.sortant.moi) vexer(c.sortant.ref, c.min); });
 
   if (m.minutes && m.note != null){
+    /* TES BUTS DE FAIT DE MATCH N'AVAIENT PAS DE PASTILLE (le propriétaire,
+       27/09/2026, capture à l'appui : l'entête dit « 1 but » et la ligne de notes
+       n'affiche que la passe). `faits` est construit depuis `m.evs`, or un but
+       marqué sur un fait de match fait `m.bn++ ; m.buts++` **sans créer
+       d'événement** : il était donc invisible. On lit `m.buts`, qui est le vrai
+       total, exactement comme la note le fait déjà. */
     const mien = faits[S.moi.nom] || { b:0, p:0, j:0, r:0 };
     joueurs.push({ nom:S.moi.nom, poste:S.moi.poste, note:m.note, moi:true, min:m.minutes,
       // ta passe décisive ne passe pas par `faits` : elle est marquée `passeMoi`
-      f: { b:mien.b, p:m.passes || 0, j:mien.j, r:mien.r, bl:0 } });
+      f: { b:m.buts || 0, p:m.passes || 0, j:mien.j, r:mien.r, bl:0 } });
   }
   joueurs.sort((a, b) => b.note - a.note);
   m.notes = joueurs;
@@ -1911,9 +2076,12 @@ function vieillir(){
   c.buts += S.stats.buts; c.passes += S.stats.passes;
   S.stats.notes.forEach(n => { c.sum += n; c.nbNotes++; });
   if (pos === 1) c.titres++;
+  if (S.coupe && S.coupe.gagnee) c.coupes = (c.coupes || 0) + 1;
+  if (S.euro && S.euro.gagnee) c.europes = (c.europes || 0) + 1;
   if (!c.clubs.includes(S.club.nom)) c.clubs.push(S.club.nom);
   c.annees.push({ annee:S.annee, club:S.club.nom, pos, matchs:S.stats.matchs,
-    buts:S.stats.buts, note: S.bilan ? S.bilan.note : null, niveau: Math.round(niveau()) });
+    buts:S.stats.buts, note: S.bilan ? S.bilan.note : null, niveau: Math.round(niveau()),
+    coupe: !!(S.coupe && S.coupe.gagnee), euro: !!(S.euro && S.euro.gagnee) });
   S.moi.age++; S.annee++;
   S.progres = progresserAxes();
 }
@@ -1989,6 +2157,13 @@ function demarrerSaison(club, reste){
   S.etats = { fraicheur: S.ete ? S.ete.fraicheur : 100, forme:60, blessure:0, suspension:0,
     corps: clamp((S.etats.corps || 88) + (S.ete ? S.ete.corps : 0)), fond: S.ete ? S.ete.fond : 0 };
   S.stats = { matchs:0, titus:0, buts:0, passes:0, notes:[], minutes:0 };
+  /* L'EUROPE SE GAGNE SUR LE TERRAIN. On y va si on a fini sur le podium ou si
+     on a gagné la coupe — donc jamais la première saison, en bas de tableau. */
+  const podium = S.bilan && S.bilan.pos <= 3;
+  const coupeGagnee = S.coupe && S.coupe.gagnee;
+  S.euro = { engage: !!(podium || coupeGagnee), vivant: true, tour: 0, pts: 0, hist: [], gagnee: false };
+  S.coupe = { vivant: true, tour: 0, hist: [], gagnee: false };
+  if (S.euro.engage) jrn('euro', `L'Europe cette saison : ${podium ? `${S.bilan.pos}ᵉ la saison passée` : 'vainqueurs de la Coupe'}.`);
   S.journee = 0; S.arrets = 0; S.sansJouer = 0; S.cartons = 0;
   S.semaine = null; S.seance = null; S.match = null; S.dernier = null; S.arret = null;
   S.eqJour = null; S.bilan = null; S.offres = null; S.vuArrets = {}; S.recentArrets = [];
