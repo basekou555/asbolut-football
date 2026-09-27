@@ -292,6 +292,7 @@ function nouvellePartie(c){
       age: 18, base, boost: { tech:0, phys:0, ment:0, spec:0 }, plafond, socle,
       u0: c.origine.u0, origine: c.origine.id, ambition: c.ambition.id, pic,
       qual: { id:q.id, vu:true }, def: { id:f.id, vu:true },
+      an0: { ...base },   // la photo des axes en août : ce qui a bougé se lit contre elle
       histo: {} },
     club: { nom: club.nom, force: club.force }, concurrents, equipe,
     ligue, liens, lignes, ligneRef: { ...lignes },
@@ -2181,6 +2182,7 @@ function demarrerSaison(club, reste){
   S.euro = { engage: !!(podium || coupeGagnee), vivant: true, tour: 0, pts: 0, hist: [], gagnee: false };
   S.coupe = { vivant: true, tour: 0, hist: [], gagnee: false };
   if (S.euro.engage) jrn('euro', `L'Europe cette saison : ${podium ? `${S.bilan.pos}ᵉ la saison passée` : 'vainqueurs de la Coupe'}.`);
+  S.moi.an0 = { tech:S.moi.base.tech, phys:S.moi.base.phys, ment:S.moi.pic.ment, spec:S.moi.base.spec };
   S.journee = 0; S.arrets = 0; S.sansJouer = 0; S.cartons = 0;
   S.semaine = null; S.seance = null; S.match = null; S.dernier = null; S.arret = null;
   S.eqJour = null; S.bilan = null; S.offres = null; S.vuArrets = {}; S.recentArrets = [];
@@ -2268,11 +2270,28 @@ function direFond(){ const v = S.etats.fond;
     : v > 32 ? "Ton corps suit, et récupère entre deux matchs."
     : v > 14 ? "Tu tiens, sans plus."
     : "Tu lâches en fin de match, et tu récupères mal."; }
-function direEncaisse(){ const v = S.moi.base.ment + S.moi.boost.ment;
-  return v > 68 ? "Menés à dix minutes de la fin, tu joues comme à l'entraînement."
-    : v > 54 ? "Quand ça se tend, tu restes dans ton match."
-    : v > 42 ? "Quand ça se tend, tu joues petit."
-    : "Un but encaissé et tu sors du match pendant vingt minutes."; }
+/* LE MENTAL DIT DEUX CHOSES, ET IL FAUT LES DEUX (le propriétaire, 27/09/2026 :
+   « malgré le fait que j'ai un bon mental, je suis toujours, depuis le début de
+   ma carrière, dans un mental de “quand ça se tend, tu joues petit”. Du coup je ne
+   sais pas si c'est positif ou négatif. J'ai l'impression que mon mental n'évolue
+   pas alors que je l'ai quand même pas mal entraîné »). La phrase ne lisait que la
+   **réserve du moment**, qui se vide à chaque coup dur : un joueur avec quinze
+   points de mental en plus restait toute sa carrière dans la bande basse, sans
+   jamais savoir que c'était sa force. Elle dit maintenant **ce que tu vaux quand
+   tu vas bien** (`pic`, ce que lit déjà `niveau()`) **et où en est ta réserve** —
+   donc elle bouge chaque semaine, et la séance mentale se voit. */
+function direEncaisse(){
+  const pic = S.moi.pic.ment, v = S.moi.base.ment + S.moi.boost.ment;
+  const niv = pic > 68 ? "Une tête au-dessus de la moyenne"
+    : pic > 54 ? "Une tête dans la moyenne"
+    : pic > 42 ? "Une tête un cran en dessous"
+    : "Une tête qui lâche vite";
+  const etat = v >= pic - 2 ? ", et elle est entière."
+    : v >= pic - 7 ? ", un peu entamée en ce moment."
+    : v >= pic - 14 ? " — mais la saison l'a entamée : la séance mentale la répare."
+    : " — et là elle est à plat : seule la séance mentale la remonte.";
+  return niv + etat;
+}
 /* Le propriétaire, 27/09/2026 : « "le geste sort le plus souvent", c'est mal
    formulé ; ce que tu essayes de dire, c'est tu fais le bon geste au bon
    moment. » C'est exactement ça : la technique ne se juge pas à l'entraînement
@@ -2360,10 +2379,42 @@ function direJambes(){ const v = S.etats.fraicheur;
     : v > 58 ? "Tu as fini sur les nerfs." : "Tes jambes ont pris cher."; }
 function direFraicheur(){ const v = S.etats.fraicheur;
   return v > 88 ? "Frais" : v > 72 ? "En jambes" : v > 58 ? "Émoussé" : "Vidé"; }
+/* CE QUE LE STAFF DIT DE TOI. Deux défauts, tous deux relevés par le propriétaire
+   le 27/09/2026 :
+   1. « La finition : c'est ce qui te fait jouer. Mental : tu es en retard sur le
+      groupe — alors que depuis le début j'ai plus quinze de mental ». La phrase
+      classait les axes sur `base.ment`, **la réserve qui se vide** : un joueur au
+      mental fort y passait dernier dès le premier coup dur. Elle lit maintenant
+      `pic.ment`, comme `niveau()`.
+   2. « Cette phrase, elle n'évolue pas, et c'est dommage : ce qui me fait jouer au
+      début, c'est peut-être pas ce qui me fait jouer après. » Elle comparait tes
+      axes **entre eux**, un classement qui ne se réordonne presque jamais. Elle
+      les pèse désormais par ce que **ton poste** en demande et les compare au
+      **niveau du club**, et elle nomme ce qui a bougé depuis août. */
 function direStaff(){
-  const l = AXES.map(a => ({ a, v: S.moi.base[a] })).sort((x, y) => y.v - x.v);
+  const p = POSTES.find(x => x.id === S.moi.poste);
+  const val = a => (a === 'ment' ? S.moi.pic.ment : S.moi.base[a]) + S.moi.boost[a];
+  const l = AXES.map(a => ({ a, v: val(a), poids: (val(a) - S.club.force) * p.w[a] }))
+    .sort((x, y) => y.poids - x.poids);
   const f = l[0], d = l[l.length - 1];
-  return `« ${axeNom(f.a)} : c'est ce qui te fait jouer. ${axeNom(d.a)} : tu es en retard sur le groupe. »`;
+  /* Ce qui a bougé depuis août : c'est ça qui fait vivre la phrase. On ne nomme
+     jamais deux fois le même axe — sinon elle se contredisait toute seule
+     (« Mental : tu es en retard sur le groupe. Mental a pris un cran »). */
+  const a0 = S.moi.an0;
+  let b = null;
+  if (a0){
+    const m = AXES.map(a => ({ a, d: val(a) - (a0[a] == null ? val(a) : a0[a]) }))
+      .sort((x, y) => Math.abs(y.d) - Math.abs(x.d))[0];
+    if (Math.abs(m.d) >= 2) b = m;
+  }
+  const mot = x => b && b.a === x ? (b.d > 0 ? ", et ça monte" : ", et ça s'en va") : '';
+  const t = [`${axeNom(f.a)} : c'est ce qui te fait jouer${mot(f.a)}.`];
+  t.push(d.v < S.club.force - 4 ? `${axeNom(d.a)} : tu es en retard sur le groupe${mot(d.a)}.`
+    : d.v < S.club.force + 3 ? `${axeNom(d.a)} : c'est ce qu'il te reste à prendre${mot(d.a)}.`
+    : `${axeNom(d.a)} : même là, tu tiens le niveau${mot(d.a)}.`);
+  if (b && b.a !== f.a && b.a !== d.a)
+    t.push(b.d > 0 ? `${axeNom(b.a)} a pris un cran depuis août.` : `${axeNom(b.a)} s'en va.`);
+  return `« ${t.join(' ')} »`;
 }
 
 /* ---------- journal, sauvegarde ---------- */
