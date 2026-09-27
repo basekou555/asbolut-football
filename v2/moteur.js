@@ -993,7 +993,7 @@ function choisirSemaine(id){
     else if (S.seance.terrain) S.seance.texte += ` C'est un terrain que tu connais : ça répondra vite, ça ne montera plus beaucoup.`;
     else S.seance.texte += ` Tu pars de loin sur ce point-là : ça ne se verra pas samedi, mais ça reste.`;
   } else if (s.id === 'repos'){
-    S.etats.corps = clamp(S.etats.corps + 1);
+    S.etats.corps = clamp(S.etats.corps + .8, 0, 100);
   }
   jrn('semaine', `${s.nom}${S.seance ? ` — séance ${S.seance.mot}` : ''}.`);
   /* LE COACH ANNONCE SON GROUPE AVANT LE WEEK-END, ET LES ARRÊTS LE SAVENT.
@@ -1269,7 +1269,7 @@ function appliquer(o){
     else bougerAxe(k, v);
   });
   if (o.fit) S.etats.fraicheur = clamp(S.etats.fraicheur + o.fit);
-  if (o.corps) S.etats.corps = clamp(S.etats.corps + o.corps);
+  if (o.corps) S.etats.corps = clamp(S.etats.corps + o.corps, 0, 100);
 }
 
 /* ---------- le match ---------- */
@@ -1374,7 +1374,12 @@ const POIDS_FAIT = [1, .75, .5, .35];
 const POIDS_BUT = [.7, .5, .35, .25];
 /* Pour un coéquipier, un but pèse plus que pour toi : sa note n'a pas de faits
    de match pour la porter, seulement ce que le film raconte de lui. */
-const POIDS_BUT_AUTRE = [1.2, .85, .6, .4];
+/* CE QU'UN BUT VAUT DANS LA NOTE D'UN COÉQUIPIER. Mesuré sur 14 387 notes : à 1,2,
+   un but rapportait +1,5 quand le tirage de la note en valait 2,6 d'amplitude — donc
+   un buteur pouvait finir sous un défenseur qui n'avait rien fait, et c'est ce que le
+   propriétaire a vu (« certaines notes un peu trop justes »). Le fait pèse plus, la
+   chance pèse moins. */
+const POIDS_BUT_AUTRE = [1.5, 1, .7, .45];
 function cumul(n, table){
   let t = 0;
   for (let i = 0; i < n; i++) t += table[i] != null ? table[i] : table[table.length - 1];
@@ -2043,7 +2048,8 @@ function finirMatch(){
        meilleure politique partout, ce qui tue le choix de la semaine. */
     S.etats.fraicheur = clamp(S.etats.fraicheur
       - (m.minutes / 90) * ri(10, 16) * (m.entree ? .7 : 1) * (1 - S.etats.fond * .0022));
-    S.etats.corps = clamp(S.etats.corps - (m.minutes / 90) * .4);
+    /* L'USURE S'ACCUMULE, ET ELLE COÛTE PLUS CHER QUAND ON FINIT SUR LES JAMBES. */
+    S.etats.corps = clamp(S.etats.corps - (m.minutes / 90) * .4 * (S.etats.fraicheur < 55 ? 1.6 : 1), 0, 100);
     let dCoach = clamp((m.note - 6.2) * 2.4, -4, 4);
     if (dCoach < 0){
       const amorti = encaisse() * .5;
@@ -2069,11 +2075,17 @@ function finirMatch(){
        les jambes vides — mais l'écran n'en disait aucune : on sortait touché sans
        savoir pourquoi, donc sans rien pouvoir y faire. On garde la raison qui pesait
        le plus lourd dans le tirage, et on l'écrit. */
-    const risqueBase = Math.max(.012, .05 - S.etats.fond * .0006);
+    const risqueBase = Math.max(.012, .05 - S.etats.fond * .0006)
+      + Math.max(0, 88 - S.etats.corps) * .0008;
     const risqueIschios = S.moi.def.id === 'ischios' ? .04 : 0;
-    const risqueVide = S.etats.fraicheur < 60 ? .05 : 0;
+    /* Une semaine sur cinq à l'infirmerie, c'était déjà le cas avant l'usure du corps
+       (mesuré : 11 à 20 % des semaines selon l'âge). Le corps usé ajoutant sa part,
+       on rend un peu de ce que coûtent les jambes vides — sinon la correction se
+       paie en blessures qu'on n'a pas demandées. */
+    const risqueVide = S.etats.fraicheur < 60 ? .035 : 0;
     if (Math.random() < risqueBase + risqueIschios + risqueVide){
-      m.blessure = ri(1, 5); S.etats.corps = clamp(S.etats.corps - m.blessure);
+      m.blessure = ri(1, 5);
+      S.etats.corps = clamp(S.etats.corps - 1.5, 0, 100);
       m.pourquoi = risqueVide >= Math.max(risqueBase, risqueIschios)
           ? "Tu as fini le match sur les jambes, et le corps a lâché là où il lâche toujours."
         : risqueIschios >= risqueBase
@@ -2210,9 +2222,9 @@ function notesEquipe(m){
        d'un remplaçant ne pèse pas comme celle d'un titulaire. */
     const a = minutes >= 70 ? 1 : minutes >= 30 ? .72 : .45;
     const f = faits[x.nom] || { b:0, p:0, j:0, r:0 };
-    const n = 6.1 + (bonus + (x.niv - S.club.force) * .05 + rnd(-1.3, 1.3)
-      + (derriere ? (m.be === 0 ? .8 : m.be >= 4 ? -.7 : 0) : 0)) * a
-      + cumul(f.b, POIDS_BUT_AUTRE) + f.p * .4 - f.j * .25 - f.r * 1.3;
+    const n = 6.1 + (bonus + (x.niv - S.club.force) * .05 + rnd(-.95, .95)
+      + (derriere ? (m.be === 0 ? .7 : m.be >= 4 ? -.7 : 0) : 0)) * a
+      + cumul(f.b, POIDS_BUT_AUTRE) + f.p * .55 - f.j * .25 - f.r * 1.3;
     x.ref.note = Math.round(clamp(n, 3, 10) * 10) / 10;
     x.ref.sum = (x.ref.sum || 0) + x.ref.note; x.ref.nb = (x.ref.nb || 0) + 1;
     // une bonne note, c'est une place la semaine prochaine
@@ -2346,8 +2358,12 @@ function apresMatch(){
      elle devient obligatoire — mesuré, elle écrasait toutes les autres. */
   if (S.moi.base.ment < S.moi.pic.ment - .2)
     bougerAxe('ment', Math.min(.12, S.moi.pic.ment - S.moi.base.ment));
+  // le corps revient vers ce que l'âge permet : c'est ça qui empêche la spirale
+  S.etats.corps = clamp(S.etats.corps + (cibleCorps() - S.etats.corps) * .05, 0, 100);
   S.etats.fond = clamp(S.etats.fond - 1.5);                 // le fond s'use si on ne l'entretient pas
-  S.etats.fraicheur = clamp(S.etats.fraicheur + (S.etats.blessure ? 14 : 9.6) + S.etats.fond * .05);
+  S.etats.fraicheur = clamp(S.etats.fraicheur
+    + ((S.etats.blessure ? 14 : 9.6) + S.etats.fond * .05)
+      * (1 - Math.max(0, 88 - S.etats.corps) * .002));
   S.journee++;
   if (S.journee >= JOURNEES) return finSaison();
   S.arrets = 0; S.semaine = null; S.seance = null; S.match = null;
@@ -2457,11 +2473,11 @@ function choisirEte(id){
   const e = ETE.find(x => x.id === id) || ETE[0];
   S.ete = { id: e.id, nom: e.nom, fraicheur: 100, fond: 0, corps: 0, offres: 0, travail: 0 };
   if (e.id === 'proches'){
-    S.ete.corps = 12;
+    S.ete.corps = 3;
     // la tête se répare vraiment : on remonte au pic, ce que la saison n'offre jamais
     AXES.forEach(a => { if (a === 'ment' && S.moi.base.ment < S.moi.pic.ment) bougerAxe('ment', S.moi.pic.ment - S.moi.base.ment); });
-  } else if (e.id === 'travail'){ S.ete.travail = 3.6; S.ete.corps = -6; S.ete.fraicheur = 78; }
-  else if (e.id === 'soin'){ S.ete.corps = 24; S.ete.fond = 26; }
+  } else if (e.id === 'travail'){ S.ete.travail = 3.6; S.ete.corps = -3; S.ete.fraicheur = 78; }
+  else if (e.id === 'soin'){ S.ete.corps = 8; S.ete.fond = 26; }
   else if (e.id === 'montrer'){ S.ete.offres = 2;
     S.liens.agent = clamp(S.liens.agent + 14); S.liens.supporters = clamp(S.liens.supporters + 10); }
   jrn('ete', `L'été : ${e.nom.toLowerCase()}.`);
@@ -2497,6 +2513,24 @@ function courbeAge(age){
    consiste à savoir **quelle part tu en auras révélée, et combien de temps tu
    l'auras tenue**. */
 function usureAge(age){ return age <= 28 ? 0 : age <= 31 ? -1.3 : age <= 34 ? -3 : -5; }
+/* TON CORPS NE REDEVIENT PAS NEUF. `S.etats.corps` ne bougeait pratiquement pas :
+   mesuré sur 1 020 semaines, médiane 89 et dixième centile 86 — la phrase disait
+   « Rien ne te fait mal » 86 % du temps et n'atteignait jamais les bandes basses,
+   parce que les étés rendaient plus que la saison ne prenait. C'est le propriétaire
+   qui l'a vu (« l'onglet blessure n'est pas connecté à ma situation »), et il avait
+   raison : un chiffre affiché qui ne bouge pas n'existe pas, et celui-là ne servait
+   à rien non plus.
+   Premier essai, trop violent : une usure qui s'empile (matchs, blessures, années)
+   avec une blessure qui coûte du corps et un corps usé qui fait se blesser — la
+   spirale. Mesuré : corps à 77 dès vingt ans, 47 à vingt-trois, et **une semaine sur
+   trois à l'infirmerie**. La bonne forme n'est pas une punition qui s'accumule mais
+   **une cible qui descend avec l'âge** : le corps y revient tout seul chaque semaine,
+   et ce qu'on lui fait subir l'en écarte. On répare, on ne rajeunit pas. */
+function cibleCorps(age){
+  const a = age == null ? (S && S.moi ? S.moi.age : 20) : age;
+  return clamp(96 - Math.max(0, a - 25) * 1.9, 58, 96);
+}
+const plafondCorps = cibleCorps;
 function progresserAxes(){
   const part = Math.min(1, S.stats.matchs / 26);
   const note = S.stats.notes.length ? moyenneNotes() : 5.6;   // ne pas jouer coûte
@@ -2527,6 +2561,9 @@ function progresserAxes(){
    s'en vont. Sans ça la deuxième saison serait la première avec les mêmes gens. */
 function vieillir(){
   const pos = S.bilan ? S.bilan.pos : null;
+  /* L'année qui passe use, et de plus en plus vite. C'est ce qui fait qu'une carrière
+     finit par se terminer dans le corps avant de se terminer dans les chiffres. */
+  if (S.moi.age >= 29) S.etats.corps = clamp(S.etats.corps - (S.moi.age - 28) * .3);
   S.carriere = S.carriere || { saisons:0, matchs:0, titus:0, buts:0, passes:0,
     sum:0, nbNotes:0, titres:0, clubs:[], annees:[] };
   const c = S.carriere;
@@ -2723,7 +2760,8 @@ function demarrerSaison(club, reste){
   S.club = { nom: club.nom, force: e ? e.force : Math.round(club.force) };
   S.ligneRef = { ...S.lignes };
   S.etats = { fraicheur: S.ete ? S.ete.fraicheur : 100, forme:60, blessure:0, suspension:0,
-    corps: clamp((S.etats.corps || 88) + (S.ete ? S.ete.corps : 0)), fond: S.ete ? S.ete.fond : 0 };
+    corps: clamp((S.etats.corps || 88) + (S.ete ? S.ete.corps : 0), 0, cibleCorps()),
+    fond: S.ete ? S.ete.fond : 0 };
   S.stats = { matchs:0, titus:0, buts:0, passes:0, notes:[], minutes:0 };
   /* L'EUROPE SE GAGNE SUR LE TERRAIN, ET DANS L'ÉLITE. On y va si on a fini sur le
      podium de la première division ou si on a gagné la coupe — un podium de Ligue 2
@@ -2897,8 +2935,12 @@ function direPlace(){
    l'arrêt en cours. Elle dit maintenant les deux, et l'arrêt d'abord. */
 function direCorps(){
   const v = S.etats.corps;
-  const usure = v > 85 ? "Rien ne te fait mal." : v > 72 ? "Quelques douleurs, rien de sérieux."
-    : v > 58 ? "Tu récupères moins vite qu'avant." : "Ton corps commence à te lâcher.";
+  /* Les quatre bandes sont posées là où le corps passe vraiment, maintenant qu'il
+     descend : mesuré sur 24 carrières entières, 93 à vingt ans, 87 à vingt-huit,
+     80 à trente et un, 71 à trente-sept. Les quatre se lisent donc dans une carrière,
+     et plus tôt pour qui joue blessé. */
+  const usure = v > 89 ? "Rien ne te fait mal." : v > 80 ? "Quelques douleurs, rien de sérieux."
+    : v > 71 ? "Tu récupères moins vite qu'avant." : "Ton corps commence à te lâcher.";
   if (S.etats.blessure > 0)
     return `À l'infirmerie : ${S.etats.blessure} journée${S.etats.blessure > 1 ? 's' : ''} encore. `
       + (v > 85 ? "Le reste va bien." : usure);
