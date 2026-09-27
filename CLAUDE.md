@@ -356,6 +356,41 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
   - **Rien d'autre n'a bougé** : banc d'essai rejoué avant/après (40 saisons par ligne, trois
     croisements), aucune politique ne prend à la fois les matchs et la trace, « deux séances puis un
     repos » reste devant sur les matchs (16,7 / 16,6 / 13,5 contre 16,8 / 15,4 / 13,1 avant).
+- **Les mots du joueur, et un écran qui tient** (le propriétaire, 27/09/2026, après une
+  deuxième partie en milieu de terrain : « le rythme, il est cool… le fait de faire un
+  entraînement par semaine, on voit bien l'effet que ça a sur ton match, et c'est bien expliqué,
+  surtout… la mécanique du moteur de base, elle est assez juste »). Deux reproches précis, tous
+  deux traités.
+  1. **« Le fond, le geste, la tête, comme appellation, c'est pas très clair, et je crois ne pas me
+     souvenir de ce que ça représente. Je comprends pas pourquoi on a des mots différents. »**
+     Il avait raison : les quatre axes portent déjà un nom sur l'écran de la semaine, et j'en avais
+     inventé d'autres à côté. Ses renommages, appliqués tels quels : **corps → blessure**
+     (`direCorps()`, ce qui te fait mal), **fond → ton corps** (`direFond()`, tenir et récupérer),
+     **geste → technique**, **tête → mental**. Les phrases de `direFond()` ne disent plus « fond »
+     et les pastilles des séances non plus (« ton corps : tu tiens et tu récupères », « la technique,
+     sur les faits de match »). Et **chaque icône est celle de la séance qui nourrit la chose** —
+     ⚽ la technique, 💪 le corps, 🧠 le mental — pour qu'on n'ait jamais à deviner ce qu'une icône
+     représente. Sonde sur les six écrans du 2.0 : plus aucun ancien libellé à l'écran.
+  2. **« L'écran, il est quand même très long… si on a les bons icônes et mis dans la bonne forme,
+     plutôt que tout faire par ligne, ça peut permettre de faire de la place. »** Et l'ordre qu'il
+     veut : « ta situation doit être la première chose qu'on voit, ensuite les choix qu'on doit
+     faire, et après les autres informations — l'équipe d'abord, ensuite le classement qui est plus
+     annexe. »
+     - **L'écran de la semaine suit cet ordre** : `situationHTML(true)` ouvert en tête, puis la
+       carte des séances, puis l'effectif, puis le classement.
+     - **« Ta situation » passe de quatorze lignes à des cases** (`.sit`), deux colonnes sur un
+       téléphone. En **colonnes CSS et non en grille** : dans une grille, la rangée prend la hauteur
+       de sa case la plus haute, et une phrase de trois lignes en gonflait deux. Mesuré à 430 px,
+       même carrière : **971 → 651 px (−33 %)**.
+     - **L'effectif passe en tuiles rangées par ligne** : trois blocs (défense, milieu, attaque),
+       deux tuiles par rangée, chaque bloc portant l'entente de sa ligne — là où elle a enfin des
+       noms. À trois tuiles par rangée les noms se coupaient (« Dos San… ») : `minmax(142px)`.
+       Mesuré : **771 → 549 px (−29 %)**, et la page entière tout dépliée **4 123 → 3 617 px**.
+     - **Les trois ententes ne sont plus dans la fiche** : seule **celle qui te sert** y reste, avec
+       son enjeu et un liéré d'or ; les deux autres sont dans l'effectif, avec les joueurs.
+     - **Ce qui n'a pas été touché** : les six cartes de séance, qui font à elles seules le tiers de
+       l'écran. C'est exactement ce qu'il vient de dire aimer (« c'est bien expliqué, surtout,
+       l'effet que ça a sur ton match ») : raccourcir là aurait coûté ce qu'il garde.
 - **Le banc d'essai (`v2/labo.html`)**, demandé par le propriétaire : « le tableau que tu m'as
   partagé, je sais pas ce que ça représente… j'aimerais bien aussi que je puisse faire [les
   simulations] sur le nombre de matchs en fonction des choix qu'on a fait. » La page rejoue des

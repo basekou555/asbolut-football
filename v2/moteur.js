@@ -319,9 +319,9 @@ function niveauJour(){
    c'est que ce qu'on gagne avec soit un peu moins important que pour le reste. » */
 const SEMAINES = [
   { id:'tech', ico:'⚽', nom:"Rester après l'entraînement", sub:"Frappes, centres, gestes répétés jusqu'à la nuit.",
-    axe:'tech', fit:-8, rende:1, dit:[{c:'risk',t:"🫁 samedi : jambes lourdes"},{c:'foot',t:"⚡ le geste, sur les faits de match"},{c:'vie',t:"🏡 tu rentres tard"}] },
+    axe:'tech', fit:-8, rende:1, dit:[{c:'risk',t:"🫁 samedi : jambes lourdes"},{c:'foot',t:"⚡ la technique, sur les faits de match"},{c:'vie',t:"🏡 tu rentres tard"}] },
   { id:'phys', ico:'💪', nom:"La salle et les sprints", sub:"Le préparateur t'a fait un programme. Il est violent.",
-    axe:'phys', fit:-11, fond:3.5, rende:1.15, dit:[{c:'risk',t:"🫁 samedi : fatigué"},{c:'foot',t:"💪 du fond : tu récupères plus vite"}] },
+    axe:'phys', fit:-11, fond:3.5, rende:1.15, dit:[{c:'risk',t:"🫁 samedi : fatigué"},{c:'foot',t:"💪 ton corps : tu tiens et tu récupères"}] },
   { id:'ment', ico:'🧠', nom:"La vidéo et le calme", sub:"Tu revois tes matchs, tu parles au préparateur mental.",
     axe:'ment', fit:-7, rende:.85, dit:[{c:'foot',t:"🛡️ encaisser les mauvais soirs"},{c:'vie',t:"🏡 du temps chez toi"}] },
   { id:'spec', ico:'🎯', nom:"Le travail de ton poste", sub:"Une heure seul avec l'adjoint, sur ce que ton poste demande.",
@@ -900,11 +900,11 @@ function moyDe(j){ return j.nb ? j.sum / j.nb : null; }
 function effectifTrie(){
   const l = [];
   S.equipe.forEach(j => l.push({ nom:j.nom, poste:j.poste, age:j.age, nb:j.nb || 0,
-    moy: moyDe(j), ligne: LIGNE_LA[LIGNE_DU_POSTE[j.poste]], monte: !!j.monte }));
+    moy: moyDe(j), cle: LIGNE_DU_POSTE[j.poste], monte: !!j.monte }));
   S.concurrents.forEach(c => l.push({ nom:c.nom, poste:S.moi.poste, age:c.age, nb:c.nb || 0,
-    moy: moyDe(c), ligne: LIGNE_LA[LIGNE_DU_POSTE[S.moi.poste]], rival:true, blesse: c.blesse > 0 }));
+    moy: moyDe(c), cle: LIGNE_DU_POSTE[S.moi.poste], rival:true, blesse: c.blesse > 0 }));
   l.push({ nom:S.moi.nom, poste:S.moi.poste, age:S.moi.age, nb:S.stats.notes.length,
-    ligne: LIGNE_LA[LIGNE_DU_POSTE[S.moi.poste]],
+    cle: LIGNE_DU_POSTE[S.moi.poste],
     moy: S.stats.notes.length ? moyenneNotes() : null, moi:true });
   return l.sort((a, b) => (b.moy == null ? -1 : b.moy) - (a.moy == null ? -1 : a.moy));
 }
@@ -1029,9 +1029,16 @@ function dire(lien){
   if (lien === 'vestiaire') return MOTS.vestiaire[bande(vestiaire())];   // la moyenne des lignes
   return MOTS[lien] ? MOTS[lien][bande(S.liens[lien])] : '';
 }
+/* « Le fond, le geste, la tête, comme appellation, c'est pas très clair, et je
+   crois ne pas me souvenir de ce que ça représente » (le propriétaire,
+   27/09/2026). Les axes ont déjà un nom sur l'écran de la semaine : technique,
+   physique, mental. Le jeu s'en tient à ceux-là. Ici, ce que le corps sait
+   faire — tenir un match et récupérer — s'appelle simplement ton corps. */
 function direFond(){ const v = S.etats.fond;
-  return v > 55 ? "Tu tiens les quatre-vingt-dix minutes sans y penser." : v > 32 ? "Tu as du fond."
-    : v > 14 ? "Tu tiens, sans plus." : "Tu manques de fond, et ça se paie en fin de match."; }
+  return v > 55 ? "Tu tiens tout le match, et tu récupères vite."
+    : v > 32 ? "Ton corps suit, et récupère entre deux matchs."
+    : v > 14 ? "Tu tiens, sans plus."
+    : "Tu lâches en fin de match, et tu récupères mal."; }
 function direEncaisse(){ const v = S.moi.base.ment + S.moi.boost.ment;
   return v > 68 ? "Menés à dix minutes de la fin, tu joues comme à l'entraînement."
     : v > 54 ? "Quand ça se tend, tu restes dans ton match."
