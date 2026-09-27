@@ -1167,8 +1167,67 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
   **Vérifié** : les sept invariants du tableau des notes à zéro écart sur 2 040 matchs, les
   invariants du monde à zéro sur 14 carrières, l'arbitrage de la semaine tient aux trois croisements,
   `tests/simulate.js` → `ERRORS: none`.
-- **Ce qui n'est pas encore là** : la vie et ses chantiers, la boutique, la sélection nationale,
-  le mode entraîneur·euse. (La trêve, les offres, la progression
+- **LA VIE ET L'ARGENT** (le propriétaire, 27/09/2026 : « vas-y pour la vie et l'argent »). C'est le
+  chantier qui attaque le problème de fond, dit dès le 21/09 : *« une carrière doit laisser une
+  trace. Aujourd'hui elle en laisse trop peu — on ne s'attache pas vraiment aux carrières, c'est un
+  peu sans effet sauf quand c'est le jackpot. »* Il n'avait jusqu'ici nulle part où se résoudre : le
+  hors-football tenait dans quatre familles d'arrêts sur dix-sept, l'argent n'existait pas, et
+  **l'ambition choisie à la création était stockée sans jamais être lue**.
+  - **L'argent, à l'échelle de l'époque.** `salaireDe(niveau, âge, force du club, division)` en
+    millions de 2015, rendu par `money()` d'`eras.js` : mesuré, un débutant touche **1 kF en 1962,
+    19 k€ en 2018**, une star **201 kF** ou **3,5 M€**. Chaque offre porte **son salaire et sa
+    durée**, et le salaire ne suit pas la force du club — un club moyen qui te veut vraiment paie
+    plus qu'un grand qui hésite. C'est là qu'est l'arbitrage : jouer, ou gagner sa vie. Rester, c'est
+    renégocier ; une saison rapporte le salaire plus les primes (titre, coupe, Europe, montée, et
+    tes matchs joués).
+  - **Les tiens** (`S.vie.proches`) ne sont pas une jauge de plus : ils décident de **ce que ta tête
+    encaisse**. Avec du monde derrière toi, un mauvais samedi se répare dans la semaine (la
+    récupération mentale passe de +0,12 à +0,3) ; sans personne, il s'installe et chaque coup dur
+    coûte jusqu'à 30 % de plus. Le football les éloigne tout seul — chaque saison, et chaque
+    changement de club — donc les garder est un arbitrage, pas un acquis. Mesuré, 24 carrières
+    entières : ils tiennent autour de **55 à 65** quand on s'en occupe, et tombent quand on ne le
+    fait pas.
+  - **L'écran de la vie**, dernier temps de l'intersaison et le seul qui ne parle pas de football :
+    bilan → l'été (ton corps) → les offres (ton club) → le mercato (ton vestiaire) → **la vie (toi)**.
+    Trois façons de passer l'année (mettre de côté, faire vivre les tiens, en profiter) et, quand tu
+    peux te le payer, un **chantier**.
+  - **Les chantiers sont la seule chose du jeu qui survit à la carrière** : la maison des tiens, le
+    diplôme, une école de foot dans ton quartier, une affaire à monter. Chacun coûte un multiple de
+    ton **meilleur** salaire — et non de celui du moment, sinon une école de foot devenait bon marché
+    à trente-sept ans, quand le salaire s'effondre et que le compte est plein. Premier calibrage trop
+    bas : mesuré, **les quatre chantiers étaient construits dans les 24 carrières**. Après
+    resserrement : diplôme et maison pour presque tout le monde, **l'affaire dans deux carrières sur
+    trois, l'école dans une sur six**. Ce sont les deux grosses qui sont un choix.
+  - **L'ambition, enfin lue.** Elle juge chaque saison et donne du mental quand tu obtiens ce que tu
+    étais venu chercher, en coûte quand tu passes à côté. **Trois états et non deux** : mesuré avec
+    deux, « tout gagner » ratait **97 saisons sur 118** — une ambition qui punit neuf fois sur dix
+    n'est plus une ambition, c'est une taxe. Le presque-compte existe donc (un podium, une demi-finale),
+    et on ne reproche pas à un joueur de vingt ans de n'avoir rien bâti tant que rien n'est à sa
+    portée. Mesuré après, 24 carrières : gagner **63+/55−**, les proches 47/73, l'argent 67/53.
+  - **Le bilan de carrière dit ce que tu laisses** : le jugement de ton ambition sur l'ensemble, les
+    chantiers qui tiennent encore, ce qui reste sur le compte et où en sont les tiens. C'est là que
+    la trace se lit, et c'était précisément ce qui manquait.
+  - **Trois promesses d'écran qui ne correspondaient pas au code**, trouvées en relisant les
+    pastilles : le diplôme annonçait « tu as la tête ailleurs cette saison » sans rien coûter (il
+    coûte maintenant du travail au poste), la maison disait « une saison de salaire » pour trois ans,
+    et l'affaire « une fois sur trois, ça coule » pour un risque annuel qui, cumulé, en valait trois
+    sur quatre.
+  - **Un piège fermé au passage** : `monEntree()` (ton club dans la ligue) était **masquée par une
+    variable locale du même nom** dans le moteur de match — ta minute d'entrée. Les deux ne se
+    croisaient pas encore ; la fonction s'appelle `monClub()`.
+  - **Vérifié** : 24 carrières entières jouées de 18 à 38 ans avec tous les écrans, zéro erreur ;
+    les invariants du monde à zéro ; l'arbitrage de la semaine tient aux trois croisements ;
+    la monnaie d'époque relue sur quatre époques ; **migration 11 → 12 sur une vraie partie de la
+    version déployée** (17ᵉ journée) — salaire recalculé au chargement, saison finie, trêve passée,
+    écran de la vie joué, deuxième saison entière.
+  - **Un écart connu et non reproduit** : sur un balayage de 8 160 matchs, **un seul** a compté 15
+    notes pour 16 attendues (et un sortant de moins). Deux balayages de 8 160 matchs ensuite n'ont
+    rien trouvé — environ un match sur seize mille. Le défaut est antérieur à ce lot (rien ici ne
+    touche au moteur de match) et la sonde garde désormais le détail du match fautif pour la
+    prochaine fois.
+- **Ce qui n'est pas encore là** : la sélection nationale (`liens.selection` existe à 0 et n'est
+  lu nulle part), le mode entraîneur·euse en 2.0, et le **contenu** — dix-sept familles d'arrêts
+  mais seulement **huit faits de match** (deux par poste). (La trêve, les offres, la progression
   d'une saison sur l'autre et l'usure sont livrées — voir « La carrière continue ».) Les **contenus** sont volontairement repoussés après le moteur (décision du propriétaire) :
   un contenu n'est une donnée qu'une fois les quatre canaux d'impact et le `ctx` figés. Les quatre
   `ARRETS` et les huit `MOMENTS` en place sont des marqueurs de forme, pas le contenu final.

@@ -14,7 +14,7 @@
    - tout ce qui arrive est écrit dans `S.journal`, seule mémoire du jeu.
    ============================================================ */
 
-const VERSION = 11;  // le mercato : `division`, `ligue.autre`, un seul effectif par club
+const VERSION = 12;  // la vie et l'argent : `argent`, `salaire`, `vie`
 /* MIGRATION 10 → 11 : deux choses à construire, et une partie en cours les reprend
    sans rien perdre — le propriétaire joue la version déployée.
    1. **L'échelon inférieur** (`S.ligue.autre`) n'existait pas : on le fabrique avec
@@ -325,6 +325,8 @@ function nouvellePartie(c){
   const { concurrents, equipe } = creerEffectif(club, poste.id);
   S = {
     v: VERSION, mode: 'joueur', annee: c.annee, division: 1, bonusOffres: 0,
+    argent: 0, salaire: 0,
+    vie: { proches: 58, chantiers: [], gagne: 0, gagneAvant: 0 },
     moi: { nom: c.nom, poste: poste.id, posteNom: poste.nom, specNom: poste.spec,
       age: 18, base, boost: { tech:0, phys:0, ment:0, spec:0 }, plafond, socle,
       u0: c.origine.u0, origine: c.origine.id, ambition: c.ambition.id, pic,
@@ -349,6 +351,8 @@ function nouvellePartie(c){
   /* Ton club n'a qu'un effectif, et c'est le tien : on écrase celui que la ligue
      venait de lui tirer. Sans ça il en aurait deux dès la première minute. */
   syncClubSq();
+  poserSalaire(salaireDe(niveau(), S.moi.age, S.club.force, 1));
+  jrn('argent', `Premier contrat : ${sous(S.salaire)} par an.`);
   jrn('debut', `${S.moi.nom}, ${poste.nom.toLowerCase()} de ${S.club.nom}. Première saison.`);
   sauver(); return S;
 }
@@ -779,9 +783,9 @@ function mercato(){
    dont une que tu ne verrais jamais. Maintenant il n'en a qu'une : la tienne. C'est
    ce qui rend le mercato possible, parce qu'on ne peut transférer que des gens qui
    existent. */
-function monEntree(){ return toutesLesEquipes().find(e => e.nom === S.club.nom) || null; }
+function monClub(){ return toutesLesEquipes().find(e => e.nom === S.club.nom) || null; }
 function syncClubSq(){
-  const e = monEntree(); if (!e || !S.equipe) return;
+  const e = monClub(); if (!e || !S.equipe) return;
   const sq = [];
   S.equipe.forEach(j => { if (j.pot == null) j.pot = potDe(j.niv, j.age);
     sq.push({ n:j.nom, p:j.poste, a:j.age, v:j.niv, t:j.pot }); });
@@ -797,7 +801,7 @@ function syncClubSq(){
    restés gardent leur objet — donc leur histoire, leurs notes, leur relation ; ceux
    qui sont partis disparaissent ; les arrivés naissent ici. */
 function relireClubSq(){
-  const e = monEntree(); if (!e) return { arrivees:[], partis:[] };
+  const e = monClub(); if (!e) return { arrivees:[], partis:[] };
   const avant = {};
   (S.equipe || []).forEach(j => avant[j.nom] = j);
   (S.concurrents || []).forEach(c => avant[c.nom] = c);
@@ -837,7 +841,7 @@ function relireClubSq(){
    dans les buts encaissés, pas un effectif tiré au sort pour l'occasion. */
 function rejoindre(club){
   const pris = nomsPris();
-  const vieux = monEntree();
+  const vieux = monClub();
   if (vieux){
     const i = vieux.sq.findIndex(j => j.moi);
     if (i >= 0){
@@ -855,7 +859,7 @@ function rejoindre(club){
     S.division = (S.division || 1) === 1 ? 2 : 1;
     jrn('division', `Tu joues ${nomDivision()} cette saison.`);
   }
-  const e = monEntree();
+  const e = monClub();
   if (e){
     const l = e.sq.filter(j => j.p === S.moi.poste).sort((a, b) => a.v - b.v);
     if (l.length >= EFFECTIF[S.moi.poste] && l[0]) e.sq.splice(e.sq.indexOf(l[0]), 1);
@@ -906,6 +910,9 @@ function encaisse(){
    hors foot, je perds un point. Si je veux les regagner, il faut que je
    m'entraîne. Plus le mental est fort, moins les événements ont d'effet. » */
 function coutMental(pts, raison){
+  /* Seul, tout cogne plus fort. C'est le deuxième bout de l'effet des tiens : ils
+     n'amortissent pas ta semaine, ils amortissent ta vie. */
+  pts *= clamp(1 + (50 - proches()) * .005, .8, 1.3);
   const amorti = clamp(encaisse(), -.5, .8);
   const avant = S.moi.base.ment;
   bougerAxe('ment', -pts * (1 - amorti));
@@ -2356,8 +2363,11 @@ function apresMatch(){
   /* Une semaine passe, on digère : le temps répare une part de ce qu'on a pris,
      jamais au-delà de ce qu'on avait. Sans ça, seule la séance mentale répare et
      elle devient obligatoire — mesuré, elle écrasait toutes les autres. */
-  if (S.moi.base.ment < S.moi.pic.ment - .2)
-    bougerAxe('ment', Math.min(.12, S.moi.pic.ment - S.moi.base.ment));
+  /* Ce que les tiens changent, et c'est leur seul effet : avec du monde derrière
+     toi, un mauvais samedi se répare dans la semaine ; sans personne, il s'installe. */
+  const repare = .12 + (proches() - 50) * .006;
+  if (repare > 0 && S.moi.base.ment < S.moi.pic.ment - .2)
+    bougerAxe('ment', Math.min(repare, S.moi.pic.ment - S.moi.base.ment));
   // le corps revient vers ce que l'âge permet : c'est ça qui empêche la spirale
   S.etats.corps = clamp(S.etats.corps + (cibleCorps() - S.etats.corps) * .05, 0, 100);
   S.etats.fond = clamp(S.etats.fond - 1.5);                 // le fond s'use si on ne l'entretient pas
@@ -2395,6 +2405,11 @@ function finSaison(){
     note: note == null ? null : Math.round(note * 100) / 100,
     gagne: bilanGagne(note, pos), perdu: bilanPerdu(note), suite: bilanSuite(pos, note),
   };
+  /* L'ordre compte : la place, puis ce que la saison a rapporté, puis le jugement de
+     ton ambition — qui lit les deux. Compter l'argent dans `vieillir()` le faisait
+     juger sur les chiffres de l'année d'avant. */
+  encaisserLaSaison();
+  S.bilan.ambition = jugerAmbition();
   jrn('saison', `Saison terminée : ${S.stats.matchs} matchs, ${S.stats.buts} buts${S.bilan.note == null ? '' : `, note ${nb(S.bilan.note)}`}. ${S.club.nom} ${pos}ᵉ de ${nomDivision()}.`);
   if (S.bilan.descente) jrn('division', `${S.club.nom} descend.`);
   if (S.bilan.montee) jrn('division', `${S.club.nom} monte.`);
@@ -2434,6 +2449,116 @@ function bilanSuite(pos, note){
   if (S.moi.age >= 31) t.push(`On ne te demande plus ton âge au club : on le sait.`);
   return t;
 }
+
+
+/* ================== LA VIE ET L'ARGENT ==================
+   Le propriétaire, 21/09/2026 : « une carrière doit laisser une trace. Aujourd'hui
+   elle en laisse trop peu : on ne s'attache pas vraiment aux carrières, c'est un peu
+   sans effet sauf quand c'est le jackpot. » C'est le problème de fond du jeu, et il
+   n'avait jusqu'ici aucun endroit où se résoudre : le hors-football tenait dans
+   quatre familles d'arrêts sur dix-sept, l'argent n'existait pas, et l'ambition
+   choisie à la création était **stockée sans jamais être lue**.
+   Trois pièces, et elles se tiennent :
+   - **l'argent** : un salaire qu'on lit avant de signer, des primes, et de quoi
+     faire quelque chose ;
+   - **les tiens** (`S.vie.proches`) : ce qui reste quand le football s'arrête, et
+     qui pendant la carrière décide de ce que ta tête encaisse ;
+   - **les chantiers** : ce qu'on construit avec l'argent et qui survit à la carrière.
+   Et l'**ambition** devient la règle qui juge tout ça, saison après saison. */
+
+/* Le salaire, en millions de 2015 comme toute la monnaie du jeu ; `money()` (eras.js)
+   le rend en francs avant 2002 et à l'échelle de l'époque. Calibré pour qu'un
+   débutant de bas de tableau touche quelques dizaines de milliers, un titulaire
+   confirmé quelques centaines, et une star quelques millions. */
+function salaireDe(niv, age, force, div){
+  const base = Math.pow(Math.max(0, niv - 45) / 30, 2.6) * 3.2;
+  const ageF = age <= 19 ? .3 : age <= 21 ? .5 : age <= 23 ? .75 : age <= 31 ? 1 : age <= 33 ? .85 : .7;
+  const clubF = clamp(.45 + (force - 50) * .045, .35, 2.2);
+  const era = typeof eraForYear === 'function' ? eraForYear(S ? S.annee : 2018) : { marketSize:1 };
+  return Math.max(.004, base * ageF * clubF * ((div || 1) === 2 ? .45 : 1) * (era.marketSize || 1));
+}
+/* La monnaie, à l'échelle de l'époque (francs avant 2002) et à la virgule française
+   comme tous les autres nombres du jeu. */
+function sous(v){
+  const t = typeof money === 'function' ? money(v, S.annee) : `${Math.round(v * 1000)} k`;
+  return t.replace('.', ',');
+}
+/* Ce que tu as gagné cette saison : ton salaire, et ce que l'année a rapporté. */
+function primesDeLaSaison(){
+  const p = [];
+  const sal = S.salaire || 0;
+  if (S.bilan && S.bilan.pos === 1 && S.bilan.division === 1) p.push({ q: sal * .55, t:"le titre" });
+  if (S.coupe && S.coupe.gagnee) p.push({ q: sal * .3, t:"la coupe" });
+  if (S.euro && S.euro.gagnee) p.push({ q: sal * .45, t:"l'Europe" });
+  if (S.bilan && S.bilan.montee) p.push({ q: sal * .3, t:"la montée" });
+  if (S.stats.matchs >= 25) p.push({ q: sal * .12, t:"tes matchs joués" });
+  return p;
+}
+
+/* LES TIENS. Ce n'est pas une jauge de plus : c'est **ce qui décide de ce que ta tête
+   encaisse**. Quand il y a du monde derrière toi, un mauvais samedi se répare dans la
+   semaine ; quand il n'y a plus personne, il s'installe. C'est le seul effet, et il
+   passe par la seule porte du mental (`coutMental`, et la récupération hebdomadaire). */
+function proches(){ return S.vie ? S.vie.proches : 50; }
+function bougerProches(d){ if (S.vie) S.vie.proches = clamp(S.vie.proches + d); }
+function direProches(){
+  const v = proches(), t = [];
+  t.push(v > 78 ? "Il y a du monde derrière toi, et ça se sent."
+    : v > 62 ? "Les tiens sont là, même de loin."
+    : v > 46 ? "Tu donnes des nouvelles, et c'est à peu près tout."
+    : v > 30 ? "Ça fait longtemps que tu n'as vu personne."
+    : "Tu es seul, et le football ne suffit pas à remplir ça.");
+  return t.join(' ');
+}
+
+/* LES CHANTIERS : ce qu'on construit avec l'argent, et qui reste après. Chacun coûte
+   un multiple de ton salaire du moment — donc un jeune n'achète rien, et une star ne
+   les achète pas tous. Chacun donne quelque chose pendant la carrière **et** une
+   ligne au bilan, qui est le seul endroit où une carrière se lit en entier. */
+const CHANTIERS = [
+  { id:'maison', ico:'🏠', nom:"La maison des tiens",
+    sub:"Celle où tu as grandi, rachetée et refaite. Ta mère n'a rien dit, elle a pleuré.",
+    cout: 3, trace:"Tu as sorti les tiens de là où tu es né.",
+    dit:[{c:'vie',t:"🏡 les tiens, pour toujours"},{c:'risk',t:"💰 trois ans de salaire"}] },
+  { id:'diplome', ico:'🎓', nom:"Reprendre les études",
+    sub:"Deux soirs par semaine, un dossier à rendre. Personne au club ne comprend.",
+    cout: 1.2, trace:"Tu avais un métier le jour où le football s'est arrêté.",
+    dit:[{c:'vie',t:"🎓 quelque chose après"},{c:'risk',t:"🎯 tu as la tête ailleurs cette saison"}] },
+  { id:'ecole', ico:'⚽', nom:"Une école de foot dans ton quartier",
+    sub:"Deux terrains, un éducateur payé, et des gamins qui portent ton nom sur le dos.",
+    cout: 6.5, trace:"Des centaines de gamins ont appris à jouer là où tu as appris.",
+    dit:[{c:'foot',t:"📣 ton nom, partout"},{c:'vie',t:"🏡 les tiens en sont fiers"},{c:'risk',t:"💰 très cher"}] },
+  { id:'commerce', ico:'🏪', nom:"Monter une affaire",
+    sub:"Un restaurant, une salle, une concession. Ton beau-frère dit que c'est béton.",
+    cout: 4.5, trace:"Ton affaire tournait encore quand tu as raccroché.",
+    dit:[{c:'foot',t:"💰 ça rapporte chaque année"},{c:'risk',t:"🎲 un jour, peut-être, ça coulera"}] },
+];
+/* Le prix se compte en années de ton **meilleur** salaire, pas de celui du moment :
+   sinon une école de foot devenait bon marché à trente-sept ans, quand ton salaire
+   s'effondre et que ton compte est plein. Une chose vaut ce qu'elle vaut. */
+function coutChantier(c){
+  const ref = Math.max(.05, (S.vie && S.vie.salaireMax) || S.salaire || .05);
+  return Math.round(c.cout * ref * 1000) / 1000;
+}
+function poserSalaire(v){
+  S.salaire = Math.round(v * 1000) / 1000;
+  if (S.vie) S.vie.salaireMax = Math.max(S.vie.salaireMax || 0, S.salaire);
+}
+function chantierFait(id){ return (S.vie && S.vie.chantiers || []).some(x => x.id === id); }
+
+/* CE QUE TU FAIS DE CE QUE TU AS GAGNÉ. Quatre options, et la règle du jeu : chacune
+   donne quelque chose tout de suite **ou** quelque chose qui dure, jamais les deux. */
+const VIE_CHOIX = [
+  { id:'cote', ico:'🏦', nom:"Mettre de côté",
+    sub:"Tu ne touches à rien. Ton conseiller appelle ça être raisonnable.",
+    dit:[{c:'foot',t:"💰 tout reste pour plus tard"},{c:'neutre',t:"↔️ rien ne change cette année"}] },
+  { id:'tiens', ico:'🏡', nom:"Faire vivre les tiens",
+    sub:"Les factures, la voiture du frère, les vacances de tout le monde.",
+    dit:[{c:'vie',t:"🏡 les tiens se rapprochent"},{c:'foot',t:"🧠 tu reviens la tête claire"},{c:'risk',t:"💰 ça part vite"}] },
+  { id:'profiter', ico:'🕶️', nom:"En profiter",
+    sub:"Une voiture, des hôtels, des gens qui te trouvent formidable.",
+    dit:[{c:'foot',t:"📣 on parle de toi"},{c:'foot',t:"🧠 tu décompresses"},{c:'risk',t:"🏡 les tiens te voient moins"}] },
+];
 
 /* ================== LA CARRIÈRE CONTINUE ==================
    Le jeu s'arrêtait au bout d'une saison (le propriétaire, 27/09/2026 : « j'aimerais
@@ -2559,15 +2684,37 @@ function progresserAxes(){
 /* Une année passe : on vieillit, on progresse ou on s'use, et le monde autour
    bouge — le championnat se rejoue, les coéquipiers prennent un an, certains
    s'en vont. Sans ça la deuxième saison serait la première avec les mêmes gens. */
+/* CE QUE LA SAISON A RAPPORTÉ, ET CE QU'ELLE A COÛTÉ AUX TIENS. Le football prend
+   de la place : une saison passe, et si on n'a rien fait pour eux, les tiens
+   s'éloignent un peu. C'est lent, ça ne s'efface pas, et c'est le seul endroit du
+   jeu où le temps joue contre toi sans qu'on te prévienne. */
+function encaisserLaSaison(){
+  const primes = primesDeLaSaison();
+  const total = (S.salaire || 0) + primes.reduce((a, x) => a + x.q, 0);
+  S.argent = Math.round((S.argent + total) * 1000) / 1000;
+  S.vie.gagneAvant = S.vie.gagne || 0;
+  S.vie.gagne = Math.round(total * 1000) / 1000;
+  S.vie.primes = primes.map(x => x.t);
+  // un commerce qui tourne rapporte chaque année
+  const co = (S.vie.chantiers || []).find(x => x.id === 'commerce' && !x.coule);
+  if (co){
+    if (Math.random() < .05){ co.coule = true; jrn('argent', `Ton affaire a coulé.`); }
+    else { S.argent = Math.round((S.argent + co.rend) * 1000) / 1000;
+      S.vie.gagne = Math.round((S.vie.gagne + co.rend) * 1000) / 1000; }
+  }
+  jrn('argent', `La saison a rapporté ${sous(S.vie.gagne)}.`);
+  bougerProches(-2.2 - Math.max(0, (S.moi.age - 27)) * .18);
+}
 function vieillir(){
   const pos = S.bilan ? S.bilan.pos : null;
   /* L'année qui passe use, et de plus en plus vite. C'est ce qui fait qu'une carrière
      finit par se terminer dans le corps avant de se terminer dans les chiffres. */
   if (S.moi.age >= 29) S.etats.corps = clamp(S.etats.corps - (S.moi.age - 28) * .3);
   S.carriere = S.carriere || { saisons:0, matchs:0, titus:0, buts:0, passes:0,
-    sum:0, nbNotes:0, titres:0, clubs:[], annees:[] };
+    sum:0, nbNotes:0, titres:0, clubs:[], annees:[], gagne:0 };
   const c = S.carriere;
   c.saisons++; c.matchs += S.stats.matchs; c.titus += S.stats.titus;
+  c.gagne = Math.round(((c.gagne || 0) + (S.vie.gagne || 0)) * 1000) / 1000;
   c.buts += S.stats.buts; c.passes += S.stats.passes;
   S.stats.notes.forEach(n => { c.sum += n; c.nbNotes++; });
   /* Un titre est un titre de l'élite. Gagner l'échelon inférieur est une **montée**,
@@ -2617,8 +2764,15 @@ function genererOffres(){
   }
   const d1 = (S.ligue.equipes || []);
   const maDiv = S.division || 1;
-  S.offres = tires.map(e => ({ nom:e.nom, force:e.force,
-    div: d1.some(x => x.nom === e.nom) ? maDiv : (maDiv === 1 ? 2 : 1) }));
+  S.offres = tires.map(e => {
+    const div = d1.some(x => x.nom === e.nom) ? maDiv : (maDiv === 1 ? 2 : 1);
+    /* Le salaire est dans l'offre, et il ne suit pas la force du club : un club
+       moyen qui te veut vraiment paie plus qu'un grand qui hésite. C'est ça,
+       l'arbitrage — jouer ou gagner sa vie. */
+    return { nom:e.nom, force:e.force, div,
+      salaire: Math.round(salaireDe(n, S.moi.age, e.force, div) * rnd(.8, 1.45) * 1000) / 1000,
+      ans: ri(2, 4) };
+  });
   S.offreIdx = 0;
   /* Ton club peut ne plus vouloir de toi : trop vieux, ou une saison sans jouer.
      C'est la seule chose qui t'oblige à partir. */
@@ -2634,15 +2788,21 @@ function passerOffre(){
 }
 function signerOffre(){
   const o = offreCourante(); if (!o) return;
-  jrn('offre', `Tu signes à ${o.nom}.`);
+  jrn('offre', `Tu signes à ${o.nom} : ${sous(o.salaire)} par an, ${o.ans} ans.`);
+  poserSalaire(o.salaire); S.contrat = o.ans;
+  bougerProches(-4);      // on déménage, et les tiens restent où ils sont
   rejoindre(o);
   ouvrirMercato(false);
 }
 function resterAuClub(){
   if (S.libre) return;
-  jrn('offre', `Tu restes à ${S.club.nom}.`);
-  const e = monEntree();
+  const e = monClub();
   if (e) S.club = { nom: e.nom, force: e.force };
+  /* Rester, c'est renégocier : ton salaire suit ce que tu es devenu, en bien
+     comme en mal. */
+  const neuf = salaireDe(niveau(), S.moi.age, S.club.force, S.division || 1);
+  poserSalaire(Math.max(S.salaire * .8, (S.salaire + neuf) / 2));
+  jrn('offre', `Tu restes à ${S.club.nom} : ${sous(S.salaire)} par an.`);
   ouvrirMercato(true);
 }
 
@@ -2747,7 +2907,122 @@ function choisirMercato(id){
   sauver(); rendre();
 }
 function finirMercato(){
+  ouvrirVie();
+}
+
+/* ========== L'ÉCRAN DE LA VIE ==========
+   Dernier temps de l'intersaison, et le seul qui ne parle pas de football : ton
+   bilan, ton corps (l'été), ton club (les offres), ton vestiaire (le mercato), puis
+   **toi**. C'est là que l'argent sert à quelque chose et que se décide ce qu'il
+   restera de tout ça. */
+function ouvrirVie(){
+  S.vie.fait = null; S.vie.suite = null;
+  S.ecran = 'vie'; sauver(); rendre();
+}
+function chantiersDispos(){
+  return CHANTIERS.filter(c => !chantierFait(c.id) && coutChantier(c) <= S.argent);
+}
+function choisirVie(id){
+  const c = VIE_CHOIX.find(x => x.id === id);
+  if (c) return faireVie(c);
+  const ch = CHANTIERS.find(x => x.id === id);
+  if (ch) return faireChantier(ch);
+}
+function faireVie(c){
+  let suite = '';
+  if (c.id === 'cote'){
+    suite = `Tu n'as rien touché. ${sous(S.argent)} dorment quelque part, et personne au club n'en sait rien.`;
+  } else if (c.id === 'tiens'){
+    const q = Math.min(S.argent, (S.vie.gagne || S.salaire) * .55);
+    S.argent = Math.round((S.argent - q) * 1000) / 1000;
+    bougerProches(16);
+    if (S.moi.base.ment < S.moi.pic.ment) bougerAxe('ment', Math.min(3, S.moi.pic.ment - S.moi.base.ment));
+    suite = `${sous(q)} partis en six semaines, et tu n'as pas compté. Ils étaient tous là, et tu es reparti la tête claire.`;
+  } else {
+    const q = Math.min(S.argent, (S.vie.gagne || S.salaire) * .7);
+    S.argent = Math.round((S.argent - q) * 1000) / 1000;
+    S.liens.supporters = clamp(S.liens.supporters + 9);
+    if (S.moi.base.ment < S.moi.pic.ment) bougerAxe('ment', Math.min(2, S.moi.pic.ment - S.moi.base.ment));
+    bougerProches(-7);
+    suite = `${sous(q)} en un été. Tu as coupé, vraiment — et chez toi, on a lu ça dans les journaux comme tout le monde.`;
+  }
+  S.vie.fait = { id:c.id, nom:c.nom }; S.vie.suite = suite;
+  jrn('vie', `${c.nom}.`);
+  sauver(); rendre();
+}
+function faireChantier(ch){
+  const q = coutChantier(ch);
+  if (q > S.argent) return;
+  S.argent = Math.round((S.argent - q) * 1000) / 1000;
+  const fait = { id:ch.id, nom:ch.nom, annee:S.annee, trace:ch.trace };
+  let suite = '';
+  if (ch.id === 'maison'){ bougerProches(22);
+    suite = `Les clés sur la table de la cuisine. Ta mère n'a rien dit. C'est la première chose que ce métier t'a permis de faire pour eux.`; }
+  else if (ch.id === 'diplome'){ S.vie.diplome = true; bougerProches(5);
+    // « tu as la tête ailleurs cette saison » : la pastille le promet, le code le fait
+    bougerAxe('spec', -1.2);
+    suite = `Deux soirs par semaine, un an. Au club, personne n'a compris — mais le jour où ça s'arrêtera, tu ne seras pas seulement un ancien joueur.`; }
+  else if (ch.id === 'ecole'){ S.liens.supporters = clamp(S.liens.supporters + 20); bougerProches(12);
+    suite = `Deux terrains, un éducateur, et cinquante gamins le mercredi. Il y a ton nom sur le portail, et tu n'as pas su quoi en penser.`; }
+  else { fait.rend = Math.round(q * .16 * 1000) / 1000;
+    suite = `Signé chez le notaire un mardi matin, entre deux entraînements. Ça tournera, ou ça ne tournera pas.`; }
+  S.vie.chantiers.push(fait);
+  S.vie.fait = { id:ch.id, nom:ch.nom }; S.vie.suite = suite;
+  jrn('vie', `${ch.nom} — ${sous(q)}.`);
+  sauver(); rendre();
+}
+function finirVie(){
   demarrerSaison(S.club, S.mercato ? S.mercato.reste : true);
+}
+
+/* ========== L'AMBITION, ENFIN LUE ==========
+   Elle était choisie au troisième écran de la création, rangée dans `S.moi.ambition`
+   et **jamais relue** : un écran qui ne promettait rien. Elle décide maintenant de ce
+   qu'une saison te fait — ce que tu es venu chercher te porte quand tu l'obtiens et
+   te pèse quand tu passes à côté — et de la phrase qui juge toute la carrière. */
+function jugerAmbition(){
+  const a = S.moi.ambition, b = S.bilan;
+  if (!a || !b) return null;
+  const trophee = (b.pos === 1 && b.division === 1) || (S.coupe && S.coupe.gagnee) || (S.euro && S.euro.gagnee);
+  /* Trois états et non deux : une ambition qui punit neuf saisons sur dix n'est plus
+     une ambition, c'est une taxe. Mesuré avec deux états : « tout gagner » ratait
+     97 saisons sur 118. Le presque-compte doit exister — c'est ce qui fait qu'on
+     continue. */
+  let note = 0, mot = '';
+  if (a === 'gagner'){
+    const pres = b.pos <= 3 || (S.coupe && S.coupe.hist.length >= 4) || (S.euro && S.euro.hist.length > 6);
+    note = trophee ? 1 : pres ? 0 : -1;
+    mot = trophee ? "Tu es venu pour ça, et cette année tu l'as eu."
+      : pres ? "Vous y étiez presque. C'est ce qui fait qu'on recommence."
+      : "Une saison sans rien à mettre dans l'armoire. Ce n'est pas pour ça que tu joues.";
+  } else if (a === 'proches'){
+    const p = proches();
+    note = p >= 60 && S.stats.matchs >= 15 ? 1 : p >= 46 ? 0 : -1;
+    mot = note > 0 ? "Tu joues, et les dimanches sont à eux. C'est exactement ce que tu voulais."
+      : note === 0 ? "Tu donnes des nouvelles, ils comprennent. Ce n'est pas tout à fait ce que tu voulais."
+      : "Tu as joué, et tu n'as vu personne. Ce n'était pas le marché.";
+  } else if (a === 'argent'){
+    const g = S.vie.gagne || 0, av = S.vie.gagneAvant || 0;
+    note = g >= av ? 1 : g >= av * .8 ? 0 : -1;
+    mot = note > 0 ? `${sous(g)} cette saison. Personne chez toi n'avait jamais vu ça.`
+      : note === 0 ? `${sous(g)} : un peu moins que l'an dernier, rien d'alarmant.`
+      : "Tu as gagné bien moins que l'an dernier. C'est le genre de chose qui tient éveillé.";
+  } else {
+    const n = (S.vie.chantiers || []).length, av = S.vie.chantiersAvant || 0;
+    /* On ne reproche pas à un joueur de vingt ans de n'avoir rien bâti : tant que
+       rien n'est à sa portée, la saison ne compte ni pour ni contre. Sans ça, une
+       ambition de bâtisseur coûtait du mental à chacune des cinq premières saisons. */
+    const portee = CHANTIERS.some(c => coutChantier(c) <= S.argent);
+    note = n > av ? 1 : n || !portee ? 0 : -1;
+    mot = note > 0 ? "Il y a maintenant quelque chose de plus qui existe en dehors du terrain."
+      : n ? "Rien de neuf cette année, mais ce que tu as monté tourne sans toi."
+      : !portee ? "Rien de construit encore — tu n'en as pas les moyens. Ça viendra, ou ça ne viendra pas."
+      : "Toujours rien de construit, et tu pourrais. Le football ne durera pas éternellement.";
+  }
+  S.vie.chantiersAvant = (S.vie.chantiers || []).length;
+  if (note > 0){ if (S.moi.base.ment < S.moi.pic.ment) bougerAxe('ment', Math.min(2.5, S.moi.pic.ment - S.moi.base.ment)); }
+  else if (note < 0) coutMental(1.4, "une saison qui n'était pas celle que tu voulais");
+  return { note, ok: note > 0, mot, nom: (AMBITIONS.find(x => x.id === a) || {}).nom };
 }
 
 /* La saison suivante commence : nouveau championnat, effectif renouvelé, tout
@@ -2756,7 +3031,7 @@ function demarrerSaison(club, reste){
   /* Tout ce qui concerne le monde s'est déjà joué : les divisions se sont échangées,
      les deux championnats ont vieilli, le marché est passé et ton vestiaire a été
      relu. Ici on ne fait plus que remettre à zéro ce qui ne dure qu'une saison. */
-  const e = monEntree();
+  const e = monClub();
   S.club = { nom: club.nom, force: e ? e.force : Math.round(club.force) };
   S.ligneRef = { ...S.lignes };
   S.etats = { fraicheur: S.ete ? S.ete.fraicheur : 100, forme:60, blessure:0, suspension:0,
@@ -3084,6 +3359,16 @@ function charger(){
       }
       d.v = 11;
     }
+    /* MIGRATION 11 → 12 : la vie et l'argent. Une carrière commencée avant n'a ni
+       compte, ni salaire, ni personne derrière elle — on lui donne des proches au
+       milieu et un compte vide ; le salaire se calcule au chargement (`demarrer()`),
+       parce qu'il dépend de `niveau()` et que l'état n'existe pas encore ici. */
+    if (d.v === 11){
+      d.argent = d.argent || 0;
+      d.vie = d.vie || { proches: 58, chantiers: [], gagne: 0, gagneAvant: 0 };
+      d.v = 12;
+    }
+
     /* La qualité et le défaut se découvrent désormais à la création : une carrière
        commencée avant ne les a peut-être pas encore vus, et plus rien ne les lui
        montrerait. On les lui donne. */
