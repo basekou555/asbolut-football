@@ -223,7 +223,7 @@ function ecranResultat(){
   const fin = S.journee + 1 >= JOURNEES;
   return `<div class="card">
     <div class="step">${ordinal(S.journee + 1)} journée · terminé</div>
-    <div class="score"><span class="big">${score}</span><div><b>${esc(gauche)}</b> – ${esc(droite)}<br><span class="sub">${esc(maLigne)}</span></div></div>
+    <div class="score"><span class="big">${score}</span><div><b>${esc(gauche)}</b> – ${esc(droite)}<br><span class="sub">${maLigne}</span></div></div>
     ${m.seance ? `<h3>Ta semaine</h3><p class="narr">${esc(m.seance.texte)}</p>` : ''}
     <h3>Le film du match</h3>
     <div class="tl">${filmHTML(m)}</div>
@@ -245,8 +245,8 @@ function filmHTML(m){
     if (e.type === 'but') lignes.push({ min:e.min, moi:!!(e.moi || e.passeMoi), ico:'⚽',
       t: e.moi ? `<b>Ton but</b>` : e.passeMoi ? `But de ${esc(qui)}, <b>sur ta passe</b>`
         : eux ? `But de ${esc(m.adv.nom)}` : `But de ${esc(qui)}` });
-    if (e.type === 'jaune') lignes.push({ min:e.min, moi:!!e.moi, ico:'🟨', t: `${esc(e.moi ? S.moi.nom : qui)} averti${eux ? ` (${esc(m.adv.nom)})` : ''}` });
-    if (e.type === 'rouge') lignes.push({ min:e.min, moi:!!e.moi, ico:'🟥', t: `${esc(e.moi ? S.moi.nom : qui)} exclu${eux ? ` (${esc(m.adv.nom)})` : ''}` });
+    if (e.type === 'jaune') lignes.push({ min:e.min, moi:!!e.moi, ico:'🟨', t: `${esc(e.moi ? S.moi.nom : qui)} averti` });
+    if (e.type === 'rouge') lignes.push({ min:e.min, moi:!!e.moi, ico:'🟥', t: `${esc(e.moi ? S.moi.nom : qui)} exclu` });
     if (e.type === 'penalty') lignes.push({ min:e.min, moi:false, ico:'🎪', t: `Penalty pour ${esc(e.nous ? S.club.nom : m.adv.nom)}` });
     if (e.type === 'blessure') lignes.push({ min:e.min, moi:false, ico:'🩼', t: `Sortie sur blessure — ${esc(qui)}` });
   });
