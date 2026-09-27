@@ -786,6 +786,7 @@ function notesEquipe(m){
     let n = socleNote + (j.niv - S.club.force) * .05 + rnd(-1.3, 1.3)
       + (derriere ? (m.be === 0 ? .8 : m.be >= 4 ? -.7 : 0) : 0);
     j.note = Math.round(clamp(n, 3, 10) * 10) / 10;
+    j.sum = (j.sum || 0) + j.note; j.nb = (j.nb || 0) + 1;
     joueurs.push({ nom:j.nom, poste:j.poste, note:j.note });
   });
   // les rivaux à ton poste jouent aussi, et leur note te regarde
@@ -795,6 +796,7 @@ function notesEquipe(m){
     if (m.statut === 'titulaire' && S.moi.poste === 'G') return;   // un seul gardien joue
     if (Math.random() < .25) return;
     c.note = Math.round(clamp(socleNote + (c.niv + c.forme - S.club.force) * .05 + rnd(-1.2, 1.2), 3, 10) * 10) / 10;
+    c.sum = (c.sum || 0) + c.note; c.nb = (c.nb || 0) + 1;
     joueurs.push({ nom:c.nom, poste:S.moi.poste, note:c.note, rival:true });
   });
   if (m.note != null) joueurs.push({ nom:S.moi.nom, poste:S.moi.poste, note:m.note, moi:true });
@@ -809,6 +811,25 @@ function notesEquipe(m){
       : m.note >= moy - .3 ? "Dans la moyenne du groupe."
       : "Sous le niveau de tes coéquipiers.";
   }
+}
+/* « On a peu d'infos liées au reste de l'équipe ; ça peut être cool d'avoir les
+   moyennes de notes des autres joueurs, ça apporte plus de contexte à la
+   situation » (le propriétaire, 27/09/2026). La liste de l'effectif, classée par
+   moyenne, avec ta ligne dedans pour que la comparaison soit immédiate. */
+function moyDe(j){ return j.nb ? j.sum / j.nb : null; }
+function motRelation(v){
+  return v > 66 ? "proche de toi" : v > 54 ? "en bons termes" : v > 44 ? "correct"
+    : v > 34 ? "un peu froid" : "tendu";
+}
+function effectifTrie(){
+  const l = [];
+  S.equipe.forEach(j => l.push({ nom:j.nom, poste:j.poste, age:j.age, nb:j.nb || 0,
+    moy: moyDe(j), rel: motRelation(j.rel), monte: !!j.monte }));
+  S.concurrents.forEach(c => l.push({ nom:c.nom, poste:S.moi.poste, age:c.age, nb:c.nb || 0,
+    moy: moyDe(c), rival:true, blesse: c.blesse > 0 }));
+  l.push({ nom:S.moi.nom, poste:S.moi.poste, age:S.moi.age, nb:S.stats.notes.length,
+    moy: S.stats.notes.length ? moyenneNotes() : null, moi:true });
+  return l.sort((a, b) => (b.moy == null ? -1 : b.moy) - (a.moy == null ? -1 : a.moy));
 }
 function autresMatchs(){
   const eq = S.ligue.equipes.filter(e => e.nom !== S.club.nom && e.nom !== S.match.adv.nom);

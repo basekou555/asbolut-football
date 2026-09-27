@@ -112,28 +112,45 @@ function topHTML(){
 }
 function maPlace(){ return classementTrie().findIndex(x => x.nom === S.club.nom) + 1; }
 
-/* Chaque ligne porte son libellé : « les icônes, on ne sait pas toujours ce que
-   ça représente » (le propriétaire, 27/09/2026). Et elles sont rangées en trois
-   blocs — les gens, ton corps, ton jeu — pour qu'on s'y retrouve. */
-function ligneSit(ico, nom, txt){
-  return `<div><span class="i">${ico}</span><span><b class="qui">${esc(nom)}</b>${esc(txt)}</span></div>`;
+/* « Ta situation » en fiche : le libellé à gauche, la phrase à droite, une ligne
+   par chose. Le propriétaire la trouvait encore confuse avec les libellés
+   empilés au-dessus de chaque phrase — hachés, ils se lisaient mal. Ici l'œil
+   descend une seule colonne de noms et lit en face. */
+function ligneSit(nom, txt){
+  return `<div><span class="k">${esc(nom)}</span><span>${esc(txt)}</span></div>`;
 }
 function situationHTML(ouvert){
-  const gens = Object.keys(LIEN_NOM).map(k => ligneSit(LIEN_ICO[k], LIEN_NOM[k], dire(k))).join('')
-    + ligneSit('⚔️', "Ta place", direPlace());
-  const corps = ligneSit('🫁', "Fraîcheur", direFraicheur() + " avant le match.")
-    + ligneSit('🩹', "Ton corps", direCorps())
-    + ligneSit('💪', "Ton fond", direFond());
-  let jeu = ligneSit('⚡', "Ton geste", direGeste())
-    + ligneSit('🛡️', "Ta tête", direEncaisse());
-  if (S.moi.qual.vu){ const q = QUALITES.find(x => x.id === S.moi.qual.id); jeu += ligneSit('✨', q.nom, q.dit); }
-  if (S.moi.def.vu){ const f = DEFAUTS.find(x => x.id === S.moi.def.id); jeu += ligneSit('⚠️', f.nom, f.dit); }
+  const gens = Object.keys(LIEN_NOM).map(k => ligneSit(LIEN_NOM[k], dire(k))).join('')
+    + ligneSit("Ta place", direPlace());
+  const toi = ligneSit("Fraîcheur", direFraicheur() + " avant le match.")
+    + ligneSit("Ton corps", direCorps())
+    + ligneSit("Ton fond", direFond())
+    + ligneSit("Ton geste", direGeste())
+    + ligneSit("Ta tête", direEncaisse());
+  let tire = '';
+  if (S.moi.qual.vu){ const q = QUALITES.find(x => x.id === S.moi.qual.id); tire += ligneSit(q.nom, q.dit); }
+  if (S.moi.def.vu){ const f = DEFAUTS.find(x => x.id === S.moi.def.id); tire += ligneSit(f.nom, f.dit); }
   return `<details class="fold"${ouvert ? ' open' : ''}><summary>Ta situation</summary>
-    <h3>Les gens</h3><div class="words">${gens}</div>
-    <h3>Ton corps</h3><div class="words">${corps}</div>
-    <h3>Ton jeu</h3><div class="words">${jeu}</div>
+    <h3>Autour de toi</h3><div class="fiche">${gens}</div>
+    <h3>Toi</h3><div class="fiche">${toi}</div>
+    ${tire ? `<h3>Ce qu'on sait de toi</h3><div class="fiche">${tire}</div>` : ''}
     <p class="narr" style="margin-top:12px">${esc(direStaff())}</p>
-    <p class="sub">${S.stats.matchs} match${S.stats.matchs > 1 ? 's' : ''} joué${S.stats.matchs > 1 ? 's' : ''}${S.stats.titus ? `, dont ${S.stats.titus} comme titulaire` : ''}${S.stats.buts ? ` · ${S.stats.buts} but${S.stats.buts > 1 ? 's' : ''}` : ''}${S.stats.notes.length ? ` · moyenne ${virg(moyenneNotes())}` : ''}.</p>
+    <p class="sub">${S.stats.matchs} match${S.stats.matchs > 1 ? 's' : ''} joué${S.stats.matchs > 1 ? 's' : ''}${S.stats.titus ? `, dont ${S.stats.titus} comme titulaire` : ''}${S.stats.buts ? ` \u00b7 ${S.stats.buts} but${S.stats.buts > 1 ? 's' : ''}` : ''}${S.stats.notes.length ? ` \u00b7 moyenne ${virg(moyenneNotes())}` : ''}.</p>
+  </details>`;
+}
+
+/* L'effectif, avec la moyenne de chacun : c'est ce qui donne le contexte —
+   qui tourne bien, qui décroche, et où tu te situes là-dedans. */
+function effectifHTML(){
+  if (!S.equipe || !S.equipe.length) return '';
+  const l = effectifTrie();
+  return `<details class="fold"><summary>L'effectif</summary>
+    <div class="squad">${l.map(j => `<div${j.moi ? ' class="me"' : ''}>
+      <span class="p">${j.poste}</span>
+      <span><b>${esc(j.nom)}</b>${j.moi ? ' <i>toi</i>' : j.rival ? ' <i>ton poste</i>' : j.monte ? ' <i>il monte</i>' : ''}
+        <span class="sub2">${j.age} ans${j.blesse ? ' \u00b7 \u00e0 l\u2019infirmerie' : j.rel ? ' \u00b7 ' + j.rel : ''}</span></span>
+      <span class="n">${j.moy == null ? '\u2014' : virg(j.moy)}<i>${j.nb} m</i></span></div>`).join('')}</div>
+    <p class="sub">La moyenne de chacun sur la saison, et le nombre de matchs notés.</p>
   </details>`;
 }
 const virg = v => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
@@ -165,7 +182,7 @@ function ecranSemaine(){
     <h3>Ce que tu travailles</h3>
     ${SEMAINES.map(s => optHTML(s.ico, s.nom, s.sub, s.dit, `choisirSemaine('${s.id}')`)).join('')}
   </div>
-  ${situationHTML(false)}${classementHTML()}${liensJournal()}`;
+  ${situationHTML(false)}${effectifHTML()}${classementHTML()}${liensJournal()}`;
 }
 
 /* Qui se bat avec toi pour la place. Des noms, pas un nombre : c'est ce que le
@@ -293,7 +310,7 @@ function ecranBilan(){
     <div class="btn-row"><button class="btn ghost" onclick="ouvrirJournal()">📓 Le journal</button>
       <button class="btn" onclick="recommencer()">Recommencer</button></div>
   </div>
-  ${classementHTML()}`;
+  ${effectifHTML()}${classementHTML()}`;
 }
 
 /* ---------------- le journal ---------------- */
