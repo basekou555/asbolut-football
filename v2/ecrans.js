@@ -38,7 +38,7 @@ function rendre(){
   if (!S) { el.innerHTML = creationHTML(); window.scrollTo(0, 0); return; }
   const f = { semaine:ecranSemaine, arret:ecranArret, moment:ecranMoment,
     resultat:ecranResultat, bilan:ecranBilan, journal:ecranJournal,
-    ete:ecranEte, offres:ecranOffres, mercato:ecranMercato,
+    ete:ecranEte, offres:ecranOffres, mercato:ecranMercato, vie:ecranVie,
     carriere:ecranCarriere, tirage:ecranTirage }[S.ecran];
   el.innerHTML = (S.ecran === 'tirage' ? '' : topHTML()) + (f ? f() : `<div class="card"><h2>Écran inconnu</h2><p class="sub">${esc(S.ecran)}</p></div>`);
   window.scrollTo(0, 0);
@@ -167,7 +167,7 @@ const LIEN_ICO = { coach:"🎽", vestiaire:"✊", club:"🏟️", supporters:"�
 function topHTML(){
   // hors saison, la journée et le classement sont ceux de l'année d'avant : on ne
   // les affiche pas, on dit où on en est vraiment
-  const hors = { ete:"L'été", offres:'Les offres', mercato:'Mercato', carriere:'Fin de carrière' }[S.ecran];
+  const hors = { ete:"L'été", offres:'Les offres', mercato:'Mercato', vie:'Ta vie', carriere:'Fin de carrière' }[S.ecran];
   const pos = hors ? 0 : maPlace();
   return `<div class="top">
     <div><div class="who">${esc(S.moi.nom)}</div>
@@ -194,7 +194,10 @@ function celSit(ico, nom, txt, cle){
     <span class="v">${esc(txt)}</span></div>`;
 }
 function situationHTML(ouvert){
-  const gens = LIENS_VUS.map(k => celSit(LIEN_ICO[k], LIEN_NOM[k], dire(k))).join('');
+  const gens = LIENS_VUS.map(k => celSit(LIEN_ICO[k], LIEN_NOM[k], dire(k))).join('')
+    /* Les tiens : la seule case de cette section qui ne parle pas de football, et
+       celle qui décide de ce que ta tête encaisse. */
+    + celSit('\u{1F3E1}', "Les tiens", direProches());
   /* Une seule ligne ici : celle qui te sert, avec son enjeu. Les trois ententes
      sont avec les joueurs, dans l'effectif — c'est là qu'elles ont des noms. */
   /* Le propriétaire, 27/09/2026 : « il y a un onglet attaque à côté de le club,
@@ -478,6 +481,9 @@ function ecranBilan(){
       ${b.gagne.map(t => `<p class="narr" style="margin:0 0 5px">${esc(t)}</p>`).join('')}</div></div>
     <div class="bloc perdu"><span class="i">⚠️</span><div><h4>Ce que ça t'a coûté</h4>
       ${b.perdu.map(t => `<p class="narr" style="margin:0 0 5px">${esc(t)}</p>`).join('')}</div></div>
+    ${b.ambition ? `<div class="bloc ${b.ambition.note > 0 ? 'gagne' : b.ambition.note < 0 ? 'perdu' : ''}"><span class="i">${b.ambition.note > 0 ? '🎯' : b.ambition.note < 0 ? '🌫️' : '➖'}</span>
+      <div><h4>${esc(b.ambition.nom || "Ce que tu étais venu chercher")}</h4>
+      <p class="narr" style="margin:0">${esc(b.ambition.mot)}</p></div></div>` : ''}
     <div class="bloc suite"><span class="i">➡️</span><div><h4>Ce qui vient</h4>
       ${b.suite.map(t => `<p class="narr" style="margin:0 0 5px">${esc(t)}</p>`).join('')}</div></div>
     ${(S.coupe && (S.coupe.gagnee || S.coupe.hist.length)) || (S.euro && S.euro.engage) ? `
@@ -537,6 +543,15 @@ function motPlace(f){
     : d >= -2 ? "Tu auras ta chance. À toi d'en faire quelque chose."
     : "Tu devras la prendre. Ils ont mieux que toi à ton poste.";
 }
+/* Ce que vaut une proposition, en mots : jamais « 12 % de plus », toujours ce que
+   ça change pour toi. */
+function motSalaire(v){
+  const r = v / Math.max(.004, S.salaire || .004);
+  return r > 1.8 ? "Et ils mettent le paquet : tu n'as jamais vu une somme pareille."
+    : r > 1.15 ? "Ils paient mieux que ce que tu touches aujourd'hui."
+    : r > .85 ? "Côté salaire, ce sera à peu près pareil."
+    : "Tu y perdrais de l'argent, et ils le savent.";
+}
 function ecranOffres(){
   const o = offreCourante();
   const reste = (S.offres || []).length - (S.offreIdx || 0);
@@ -556,8 +571,8 @@ function ecranOffres(){
     <div class="step">Mercato ${S.annee} · ${S.moi.age} ans · ${reste > 1 ? "une proposition parmi d'autres" : 'une proposition'}</div>
     <div class="big-ico">📞</div>
     <h2>${esc(o.nom)}</h2>
-    <p class="sub">${esc(nomDivision(o.div))}</p>
-    <p class="narr">${esc(motClub(o))} ${esc(motPlace(o.force))}</p>
+    <p class="sub">${esc(nomDivision(o.div))}${o.salaire ? ` · ${esc(sous(o.salaire))} par an sur ${o.ans} ans` : ''}</p>
+    <p class="narr">${esc(motClub(o))} ${esc(motPlace(o.force))}${o.salaire ? ` ${esc(motSalaire(o.salaire))}` : ''}</p>
     ${situationTete()}
     ${S.libre ? `<p class="sub">${esc(S.club.nom)} n'a pas prolongé : tu n'as pas de club si tu refuses tout.</p>`
       : `<p class="sub">Refuser la fait disparaître. La suivante peut être pire, ou ne pas venir.</p>`}
@@ -618,6 +633,39 @@ function ecranMercato(){
   </div>`;
 }
 
+/* ================== L'ÉCRAN DE LA VIE ==================
+   Le dernier temps de l'intersaison, et le seul qui ne parle pas de football. C'est
+   ici que l'argent devient quelque chose : ce que la saison a rapporté, ce qu'il y a
+   sur le compte, ce qu'on en fait — et les chantiers, qui sont la seule chose du jeu
+   qui survit à la carrière. */
+function ecranVie(){
+  const v = S.vie || { chantiers:[] };
+  const fait = !!v.fait;
+  const dispo = chantiersDispos();
+  const primes = (v.primes || []);
+  return `<div class="card no-sticky">
+    <div class="step">Été ${S.annee} · ${S.moi.age} ans · en dehors du terrain</div>
+    <div class="big-ico">${fait ? '🤝' : '🏡'}</div>
+    <h2>${fait ? esc(v.fait.nom) : "Ce que tu fais de tout ça"}</h2>
+    ${fait ? `<p class="narr">${esc(v.suite)}</p>` : `<p class="narr">Six semaines sans match, un compte qui a grossi, et des gens qui attendent de tes nouvelles.</p>`}
+    <div class="stats">
+      <div><div class="v">${esc(sous(v.gagne || 0))}</div><div class="k">cette saison</div></div>
+      <div><div class="v">${esc(sous(S.argent || 0))}</div><div class="k">de côté</div></div>
+      <div><div class="v">${(v.chantiers || []).length}</div><div class="k">construit</div></div>
+    </div>
+    ${primes.length ? `<p class="sub">Dont les primes : ${esc(primes.join(', '))}.</p>` : ''}
+    <div class="sit"><div><span class="k">LES TIENS</span><span class="v">${esc(direProches())}</span></div></div>
+    ${(v.chantiers || []).length ? `<h3>Ce que tu as déjà construit</h3>
+      <div class="mvts">${v.chantiers.map(c => `<div class="in"><span class="i">${esc((CHANTIERS.find(x => x.id === c.id) || {}).ico || '✅')}</span>
+        <span><b>${esc(c.nom)}</b> <i>${c.annee ? `depuis ${c.annee}` : ''}${c.coule ? ' — a coulé' : ''}</i></span></div>`).join('')}</div>` : ''}
+    ${fait ? `<div class="btn-row"><button class="btn" onclick="finirVie()">La saison qui vient →</button></div>`
+      : `${dispo.length ? `<h3>Construire quelque chose</h3>
+          ${dispo.map(c => optHTML(c.ico, c.nom, `${c.sub} — ${esc(sous(coutChantier(c)))}`, c.dit, `choisirVie('${c.id}')`)).join('')}` : ''}
+        <h3>Ou simplement cette année</h3>
+        ${VIE_CHOIX.map(c => optHTML(c.ico, c.nom, c.sub, c.dit, `choisirVie('${c.id}')`)).join('')}`}
+  </div>`;
+}
+
 /* Ce que l'été a changé en toi, en mots : jamais un chiffre d'axe à l'écran. */
 function situationTete(){
   const g = S.progres || {};
@@ -631,6 +679,38 @@ function situationTete(){
   return `<p class="sub">${l.join(' ')}</p>`;
 }
 /* ---------------- le bilan de carrière ---------------- */
+/* CE QU'IL RESTE QUAND LE FOOTBALL S'ARRÊTE. C'était le problème de fond du jeu
+   (« on ne s'attache pas vraiment aux carrières, c'est un peu sans effet sauf quand
+   c'est le jackpot ») : il n'y avait rien à lire ici que des chiffres de football. */
+function vieFinaleHTML(){
+  const v = S.vie || { chantiers:[] }, c = S.carriere || {};
+  const amb = AMBITIONS.find(x => x.id === S.moi.ambition);
+  const traces = (v.chantiers || []).filter(x => !x.coule);
+  let jugement = '';
+  if (amb){
+    if (amb.id === 'gagner') jugement = c.titres + (c.coupes || 0) + (c.europes || 0) >= 3
+      ? "Tu étais venu pour l'armoire à trophées. Elle est pleine."
+      : c.titres + (c.coupes || 0) ? "Tu étais venu pour gagner. Tu as gagné, moins que tu ne l'avais rêvé."
+      : "Tu étais venu pour gagner, et tu n'as rien gagné. Il faudra vivre avec.";
+    else if (amb.id === 'proches') jugement = proches() >= 65
+      ? "Tu voulais rester près des tiens. Ils sont toujours là, et ils savent pourquoi."
+      : proches() >= 45 ? "Tu voulais rester près des tiens. Le métier en a pris une partie."
+      : "Tu voulais rester près des tiens, et le football a tout pris.";
+    else if (amb.id === 'argent') jugement = `Tu étais le premier de la famille à vivre de ça. Tu auras gagné ${esc(sous(c.gagne || 0))}.`;
+    else jugement = traces.length >= 2
+      ? "Tu voulais construire autre chose. Il en reste plus que des feuilles de match."
+      : traces.length ? "Tu voulais construire autre chose. Il en reste une."
+      : "Tu voulais construire autre chose, et tu n'as rien construit.";
+  }
+  return `<div class="bloc ${traces.length ? 'gagne' : ''}"><span class="i">🏡</span><div>
+    <h4>Ce que tu laisses</h4>
+    ${jugement ? `<p class="narr" style="margin:0 0 6px">${jugement}</p>` : ''}
+    ${traces.length ? `<div class="mvts" style="margin:6px 0 0">${traces.map(x => `<div class="in">
+      <span class="i">${esc((CHANTIERS.find(y => y.id === x.id) || {}).ico || '✅')}</span>
+      <span><b>${esc(x.nom)}</b> <i>${esc(x.trace || '')}</i></span></div>`).join('')}</div>` : ''}
+    <p class="sub" style="margin:6px 0 0">${esc(sous(S.argent || 0))} de côté · ${esc(direProches())}</p>
+  </div></div>`;
+}
 function ecranCarriere(){
   const c = S.carriere || { saisons:0, matchs:0, buts:0, passes:0, titres:0, clubs:[], annees:[] };
   const moy = moyCarriere();
@@ -659,13 +739,15 @@ function ecranCarriere(){
       <span>${esc(a.club)} <i>${a.matchs} m·${a.buts} b${a.pos ? ` · ${a.pos}ᵉ` : ''}</i>${a.pos === 1 ? ' 🏆' : ''}${a.coupe ? ' 🏅' : ''}${a.euro ? ' ⭐' : ''}</span>
       <span class="n">${a.note == null ? '—' : virg(a.note)}</span></div>`).join('')}</div>
     <p class="sub">Les clubs : ${esc((c.clubs || []).join(', ')) || '—'}.</p>
+    ${vieFinaleHTML()}
     <div class="btn-row"><button class="btn ghost" onclick="ouvrirJournal()">📓 Le journal</button>
       <button class="btn" onclick="recommencer()">Une autre carrière</button></div>
   </div>`;
 }
 
 /* ---------------- le journal ---------------- */
-const JRN_ICO = { debut:'🎬', semaine:'🏋️', arret:'💬', moment:'⚡', match:'⚽', decouverte:'✨', saison:'🗓️', ete:'☀️', offre:'📞', fin:'🏁' };
+const JRN_ICO = { debut:'🎬', semaine:'🏋️', arret:'💬', moment:'⚡', match:'⚽', decouverte:'✨',
+  saison:'🗓️', ete:'☀️', offre:'📞', mercato:'🔁', division:'🪜', argent:'💰', vie:'🏡', fin:'🏁' };
 function ecranJournal(){
   // Groupé par journée, la plus récente en haut : la liste brute était un mur.
   const par = [];
@@ -706,6 +788,8 @@ function demarrer(){
   if (d){ S = d; if (S.ecran === 'journal') S.ecran = 'semaine';
     /* Ton club n'a qu'un effectif : le tien. Une sauvegarde d'avant le mercato en
        portait deux (le fantôme de la ligue et le vrai) ; c'est ici que ça se règle. */
-    if (S.equipe && S.equipe.length) syncClubSq(); }
+    if (S.equipe && S.equipe.length) syncClubSq();
+    /* Le salaire d'une carrière d'avant l'argent : ce qu'elle vaudrait aujourd'hui. */
+    if (!S.salaire) poserSalaire(salaireDe(niveau(), S.moi.age, S.club.force, S.division || 1)); }
   rendre();
 }
