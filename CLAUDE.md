@@ -679,6 +679,64 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
   - **Pas de migration** : rien de tout cela ne vit dans la sauvegarde longue. Vérifié en reprenant
     une vraie partie de la version déployée à la 17ᵉ journée — saison terminée, 17 matchs, zéro
     écart de comptage, zéro erreur.
+- **LE CHAMPIONNAT VIT, ET LE TITRE CHANGE DE MAINS** (le propriétaire, 27/09/2026 : « par
+  championnat, mettre un petit système aléatoire pour les clubs adverses pour définir leur
+  niveau… d'une année à l'autre j'aurai des clubs plus ou moins forts : peut-être une année deux
+  clubs plus forts que moi, l'autre année cinq, une autre trois… dans certaines carrières c'était
+  tout le temps les mêmes équipes qui gagnaient, donc si tu rejoignais cette équipe tu savais que
+  tu allais remporter des trophées »). Le championnat était **entièrement retiré chaque année** :
+  les dix-huit clubs changeaient d'identité d'une saison à l'autre et la force de chacun ne devait
+  rien à ce qu'il avait fait.
+  - **Les mêmes clubs toute la carrière**, chacun avec une **ancre** (son poids historique à cette
+    époque, qui ne bouge pas), un **potentiel** qui dérive lentement (un petit club peut monter dans
+    la hiérarchie, jamais d'un coup) et une **force qui se rejoue chaque été** :
+    `élan + tirage + rappel vers le potentiel`. Ton club passe par la même porte : il n'a plus de
+    règle à lui.
+  - **L'élan est sur la force, pas sur le potentiel, et il est petit** (`ELAN_CLUB` = .12 par place).
+    Mesuré palier par palier : à 0,3 par place c'est une boucle qui s'auto-entretient — le champion
+    reste champion, **55 % de titres conservés quel que soit le reste du réglage**, et l'élan appliqué
+    au potentiel est pire encore (écart 1ᵉr-5ᵉ de 12,8 au lieu de 8,6). À 0,12, le champion prend un
+    point d'avance qui s'efface en deux ou trois ans : un vrai avantage, pas une rente — ce qu'il
+    demandait (« elles ont fait un bon résultat… puis l'année d'après ça leur permet d'avoir leur
+    chance »).
+  - **Le vrai verrou était la pente de la hiérarchie.** À 4 points par point de poids historique, le
+    premier était **douze à quatorze points au-dessus du cinquième** et le titre était joué avant
+    août, *quel que soit* le tirage : 3,9 champions différents sur vingt saisons, titre conservé 59 %.
+    À `PENTE_CLUB` = 2,4 l'écart tombe à neuf ou dix. Mesuré après, 25 carrières de vingt saisons :
+    **5,8 champions différents, titre conservé 44 %**, et le nombre de clubs plus forts que le tien
+    varie vraiment d'une année sur l'autre (0 dans 21 % des saisons, 1 à 5 dans 43 %, six ou plus
+    dans 20 %) — son exemple, tel quel.
+  - **Ce qui n'est pas fait** : les clubs adverses n'ont pas d'effectif nommé. Leur **force est leur
+    effectif**, et elle suit la même logique potentiel + croissance que la tienne ; il n'y a pas de
+    joueur adverse qui vieillit individuellement. Pas de montée ni de descente non plus : ça viendra
+    avec la coupe et l'Europe.
+- **TON POTENTIEL ET CELUI DES CLUBS SONT SUR LA MÊME ÉCHELLE.** Première version du championnat
+  vivant : j'avais resserré la hiérarchie des clubs **sans** toucher à la tienne. Mesuré :
+  niveau 88 quand le meilleur club vaut 66, donc `(niveauJour() − force) × .12` te faisait valoir
+  **trois points à toi seul** — tu faisais champion ton club, 4,8 titres par carrière et un attaquant
+  médian à 40 buts par saison. Le sommet d'un joueur doit rester un peu au-dessus du meilleur club,
+  pas vingt points au-dessus : `POT_MIN`/`POT_MAX` = 56/80, niveau maximal médian **70**.
+- **UN GRAND CLUB N'APPELLE PAS TOUS LES ÉTÉS.** La fenêtre des offres était symétrique
+  (`|force − cote| < 7`), donc une fois ta cote haute **toutes** les offres venaient du haut du
+  tableau et tu suivais le meilleur club d'année en année — c'est ça qui faisait les titres, pas le
+  championnat. Le tirage est maintenant pondéré : un club à ta portée appelle volontiers, un club
+  au-dessus de toi rarement (il a le choix). Mesuré : **3,3 titres** par carrière de vingt saisons
+  (médiane 3, maximum 9, trois carrières sur quarante sans rien) et **6,6 clubs** traversés au lieu
+  de 2,6.
+- **LES BUTS REVIENNENT À L'ÉCHELLE D'UN VRAI CHAMPIONNAT** (« 32 buts par saison au sommet, c'est
+  quand même conséquent, donc il faut être un bon joueur »). Ce n'était pas les scores mais **ta
+  part** : à .38, un attaquant prenait plus d'un but sur trois de son club, alors qu'ils sont deux
+  devant et cinq dans le groupe. Resserré à .28 (milieu .155, défenseur .055). Mesuré :
+  | poste | première saison | médiane au sommet | 90ᵉ centile | carrière |
+  |---|---|---|---|---|
+  | attaquant | 9,4 | **22** | 36 | 454 |
+  | milieu | 4,3 | 10 | 16 | 195 |
+  | défenseur | 1,2 | 2 | 5 | 50 |
+  | gardien | 0 | 0 | 0 | 0 |
+  Les 32 buts dont il parlait sont désormais **au-dessus du quatre-vingtième centile** : il faut vraiment
+  être un bon joueur, ce qu'il demandait.
+  **L'équilibre de la semaine tient** aux trois croisements après tous ces changements, et
+  « toujours lever le pied » n'est la meilleure politique nulle part.
 - **Le banc d'essai (`v2/labo.html`)**, demandé par le propriétaire : « le tableau que tu m'as
   partagé, je sais pas ce que ça représente… j'aimerais bien aussi que je puisse faire [les
   simulations] sur le nombre de matchs en fonction des choix qu'on a fait. » La page rejoue des
