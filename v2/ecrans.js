@@ -99,7 +99,8 @@ function setAmbition(i){
 /* ---------------- bandeau ---------------- */
 const LIEN_NOM = { coach:"Le coach", vestiaire:"Le vestiaire", club:"Le club", supporters:"Le stade", agent:"Ton agent" };
 const LIEN_ICO = { coach:"🎽", vestiaire:"✊", club:"🏟️", supporters:"📣", agent:"🤝",
-  fraicheur:"🫁", blessure:"🩼", suspension:"🟥" };
+  fraicheur:"🫁", blessure:"🩼", suspension:"🟥",
+  def:"🛡️", mil:"🎛️", att:"🎯" };
 
 function topHTML(){
   const pos = maPlace();
@@ -122,6 +123,10 @@ function ligneSit(nom, txt){
 function situationHTML(ouvert){
   const gens = Object.keys(LIEN_NOM).map(k => ligneSit(LIEN_NOM[k], dire(k))).join('')
     + ligneSit("Ta place", direPlace());
+  /* Les trois ententes, et l'enjeu écrit en face de celle qui te sert : sans ça
+     la ligne resterait une jauge de plus qu'on ne saurait pas lire. */
+  const lignes = LIGNES.map(k => ligneSit(LIGNE_NOM[k],
+    direLigne(k) + (k === LIGNE_CLE[S.moi.poste] ? ' ' + ENJEU_LIGNE[S.moi.poste] : ''))).join('');
   const toi = ligneSit("Fraîcheur", direFraicheur() + " avant le match.")
     + ligneSit("Ton corps", direCorps())
     + ligneSit("Ton fond", direFond())
@@ -132,6 +137,7 @@ function situationHTML(ouvert){
   if (S.moi.def.vu){ const f = DEFAUTS.find(x => x.id === S.moi.def.id); tire += ligneSit(f.nom, f.dit); }
   return `<details class="fold"${ouvert ? ' open' : ''}><summary>Ta situation</summary>
     <h3>Autour de toi</h3><div class="fiche">${gens}</div>
+    <h3>Les trois lignes</h3><div class="fiche">${lignes}</div>
     <h3>Toi</h3><div class="fiche">${toi}</div>
     ${tire ? `<h3>Ce qu'on sait de toi</h3><div class="fiche">${tire}</div>` : ''}
     <p class="narr" style="margin-top:12px">${esc(direStaff())}</p>
@@ -148,9 +154,9 @@ function effectifHTML(){
     <div class="squad">${l.map(j => `<div${j.moi ? ' class="me"' : ''}>
       <span class="p">${j.poste}</span>
       <span><b>${esc(j.nom)}</b>${j.moi ? ' <i>toi</i>' : j.rival ? ' <i>ton poste</i>' : j.monte ? ' <i>il monte</i>' : ''}
-        <span class="sub2">${j.age} ans${j.blesse ? ' \u00b7 \u00e0 l\u2019infirmerie' : j.rel ? ' \u00b7 ' + j.rel : ''}</span></span>
+        <span class="sub2">${j.age} ans${j.blesse ? ' \u00b7 \u00e0 l\u2019infirmerie' : j.ligne ? ' \u00b7 ' + j.ligne : ''}</span></span>
       <span class="n">${j.moy == null ? '\u2014' : virg(j.moy)}<i>${j.nb} m</i></span></div>`).join('')}</div>
-    <p class="sub">La moyenne de chacun sur la saison, et le nombre de matchs notés.</p>
+    <p class="sub">La moyenne de chacun sur la saison, et le nombre de matchs notés. L'entente se joue par ligne : elle est dans « Ta situation ».</p>
   </details>`;
 }
 const virg = v => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');

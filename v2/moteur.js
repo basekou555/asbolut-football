@@ -14,7 +14,7 @@
    - tout ce qui arrive est écrit dans `S.journal`, seule mémoire du jeu.
    ============================================================ */
 
-const VERSION = 5;   // un effectif nommé et stable : `S.equipe` est neuf
+const VERSION = 6;   // un effectif nommé et stable : `S.equipe` est neuf
 let S = null;
 /* Mis à true par le banc d'essai (labo.html) : les milliers de saisons qu'il
    simule ne doivent pas écraser la carrière rangée dans localStorage. */
@@ -101,6 +101,55 @@ const AXE_NOM = { tech:"Technique", phys:"Physique", ment:"Mental", spec:"Au pos
    ou Placement, selon le poste. */
 function axeNom(a){ return a === 'spec' && S && S.moi ? S.moi.specNom : AXE_NOM[a]; }
 
+/* ---------- les trois lignes ----------
+   Le propriétaire, 27/09/2026 : « il y a une petite réserve sur la relation avec
+   chaque joueur individuellement. J'ai peur que ça fasse beaucoup et que ça ait
+   peu d'impact… soit chaque ligne fait la moyenne de la relation du vestiaire,
+   et du coup ça peut monter et descendre. » Sa réserve était juste : dix
+   relations individuelles étaient dix nombres invisibles qui ne servaient qu'à
+   déclencher un arrêt. La ligne est le bon grain — à une condition, qu'elle
+   change **le football** et pas seulement une jauge. C'est `LIGNE_CLE` qui s'en
+   charge, et le vestiaire n'est plus une jauge : c'est leur moyenne. */
+const LIGNES = ['def', 'mil', 'att'];
+const LIGNE_NOM = { def:"La défense", mil:"Le milieu", att:"L'attaque" };
+const LIGNE_LA = { def:"la défense", mil:"le milieu", att:"l'attaque" };
+const LIGNE_DU_POSTE = { G:'def', D:'def', M:'mil', A:'att' };
+/* La ligne avec qui tu joues, celle dont l'entente te sert vraiment :
+   le gardien et le défenseur encaissent avec la défense, le milieu passe
+   décisif s'il trouve l'attaque, l'attaquant marque si le milieu le trouve. */
+const LIGNE_CLE = { G:'def', D:'def', M:'att', A:'mil' };
+const ENJEU_LIGNE = { G:"C'est avec eux que tu encaisses, ou pas.",
+  D:"C'est avec eux que tu encaisses, ou pas.",
+  M:"Plus tu les trouves, plus tu passes décisif.",
+  A:"Plus ils te trouvent, plus tu marques." };
+/* Chaque ligne a son vocabulaire : trois fois la même phrase, et le lecteur
+   conclut que les lignes ne servent à rien. Une ligne parle de ce qu'elle fait. */
+const MOTS_LIGNE = {
+  def: ["Derrière, chacun joue pour soi.", "On se marche dessus.",
+    "Ça tient un match sur deux.", "On se couvre.",
+    "On défend à quatre, jamais à un.", "Personne ne passe entre nous."],
+  mil: ["Au milieu, personne ne lève la tête.", "On joue les uns à côté des autres.",
+    "Un ballon sur deux se trouve.", "On se trouve.",
+    "Trois passes et on est de l'autre côté.", "On joue les yeux fermés."],
+  att: ["Devant, on se gêne.", "On se cherche encore.",
+    "Un centre sur deux arrive.", "On commence à se trouver.",
+    "Un appel, un ballon.", "On sait où l'autre va avant lui."],
+};
+function vestiaire(){ return (S.lignes.def + S.lignes.mil + S.lignes.att) / 3; }
+function bougerLigne(k, v){ if (v) S.lignes[k] = clamp(S.lignes[k] + v); }
+function bougerVestiaire(v){ LIGNES.forEach(k => bougerLigne(k, v)); }
+function direLigne(k){ return MOTS_LIGNE[k][bande(S.lignes[k])]; }
+function ligneFaible(){
+  const k = LIGNES.slice().sort((a, b) => S.lignes[a] - S.lignes[b])[0];
+  return S.lignes[k] < 44 ? k : null;
+}
+/* Le visage d'une ligne : le plus ancien. Déterministe, pour que ce soit
+   toujours le même tant que la ligne va mal — une histoire, pas un tirage. */
+function visageDe(k){
+  const l = S.equipe.filter(j => LIGNE_DU_POSTE[j.poste] === k);
+  return l.length ? l.slice().sort((a, b) => b.age - a.age)[0] : null;
+}
+
 function nouvellePartie(c){
   const poste = POSTES.find(p => p.id === c.poste) || POSTES[2];
   const base = {}; AXES.forEach(a => base[a] = 50);
@@ -122,8 +171,13 @@ function nouvellePartie(c){
      même : un joueur parti de 60 ne tombera jamais où tombe un joueur parti de 40. */
   socle.ment -= 12;
   const pic = { ...base };   // le plus haut atteint par chaque axe ; on y revient vite
-  const liens = { coach:50, vestiaire:50, club:50, supporters:45, agent:50, selection:0 };
-  Object.entries(c.origine.liens || {}).forEach(([k, v]) => liens[k] = clamp(liens[k] + v));
+  const liens = { coach:50, club:50, supporters:45, agent:50, selection:0 };
+  const lignes = { def:50, mil:50, att:50 };
+  Object.entries(c.origine.liens || {}).forEach(([k, v]) => {
+    // « vestiaire » d'une origine touche les trois lignes : il en est la moyenne
+    if (k === 'vestiaire') LIGNES.forEach(l => lignes[l] = clamp(lignes[l] + v));
+    else liens[k] = clamp(liens[k] + v);
+  });
 
   /* Les concurrents au poste. Le propriétaire, 27/09/2026 : « plus on est fort au
      poste, plus on a de chances d'être titulaire par rapport à ses concurrents,
@@ -140,17 +194,18 @@ function nouvellePartie(c){
     // le titulaire en place est devant toi ; le second est à ta portée
     concurrents.push({ nom:tirerNom(), niv: Math.round(club.force + (i === 0 ? rnd(2, 7) : rnd(-4, 2))),
       forme: 0, blesse: 0, age: ri(23, 31) });
-  /* L'EFFECTIF. Des coéquipiers **stables et nommés**, avec une relation qui vit :
-     sans eux, « un coéquipier progresse », « ça se tend avec ton attaquant » ou
-     « les notes du match » n'ont personne de qui parler. Chacun garde son poste,
-     son niveau, sa relation avec toi, et une progression sur la saison. */
+  /* L'EFFECTIF. Des coéquipiers **stables et nommés** : sans eux, « un coéquipier
+     progresse », « ça se tend avec ton attaquant » ou « les notes du match »
+     n'ont personne de qui parler. Chacun garde son poste, son niveau, son âge et
+     une progression sur la saison — mais **plus de relation individuelle** :
+     l'entente se joue par ligne, et son visage est un nom. */
   const PLAN = { G:1, D:4, M:4, A:2 };
   const equipe = [];
   Object.entries(PLAN).forEach(([po, n]) => {
     const combien = po === poste.id ? n - 1 : n;          // ta place et tes rivaux sont à part
     for (let i = 0; i < combien; i++)
       equipe.push({ nom:tirerNom(), poste:po, niv: Math.round(club.force + rnd(-6, 6)),
-        age: ri(19, 33), rel: ri(44, 58), prog: 0, note: null });
+        age: ri(19, 33), prog: 0, note: null });
   });
   // un jeune qui monte : c'est de lui que parleront les arrêts « il progresse »
   const jeune = equipe.filter(j => j.age <= 23).sort((a, b) => a.age - b.age)[0];
@@ -164,7 +219,7 @@ function nouvellePartie(c){
       qual: { id:q.id, vu:false }, def: { id:f.id, vu:false },
       histo: {} },
     club: { nom: club.nom, force: club.force }, concurrents, equipe,
-    ligue, liens,
+    ligue, liens, lignes,
     /* `fond` est la réserve que construit le travail physique : on récupère plus
        vite d'un match à l'autre, on se blesse moins, et on laisse moins de jambes
        dans un match. Il s'use d'une journée sur l'autre : il faut l'entretenir.
@@ -337,7 +392,7 @@ const ARRETS = [
       { l:"Dire que tu veux plus haut", liens:{ agent:8, club:-6, supporters:-3 }, dit:[{c:'foot',t:"🤝 ton agent adore"},{c:'risk',t:"🏟️ le club beaucoup moins"}] },
       { l:"Parler du groupe, pas de toi", liens:{ vestiaire:7, supporters:3 }, dit:[{c:'foot',t:"✊ le vestiaire lit la presse"}] },
     ] },
-  { id:'ancien', quand: () => S.journee >= 5 && S.liens.vestiaire < 52,
+  { id:'ancien', quand: () => S.journee >= 5 && vestiaire() < 52,
     titre:"Le plus ancien du vestiaire te prend à part",
     texte:"« On mange tous ensemble jeudi. Tu viens, ou tu rentres encore chez toi ? »",
     options:[
@@ -352,32 +407,35 @@ const ARRETS = [
      temps avec lui ? Une situation qui se dégrade avec mon milieu ou mon
      attaquant, comment je réagis ? » Chaque famille vise quelqu'un de nommé. */
   { id:'rival', quand: () => S.journee >= 3 && devantToi(),
+    ligne: () => LIGNE_DU_POSTE[S.moi.poste],
     sujet: () => devantToi(),
     titre: q => `${q.nom} a fait une séance énorme`,
     texte: q => `L'adjoint n'a regardé que lui pendant une heure. Le coach a souri deux fois. Toi, tu as fini ton travail dans ton coin.`,
     options:[
       { l:"Rester une heure de plus, seul", fit:-7, axes:{ spec:1.2 }, dit:[{c:'foot',t:"🎽 ta place : tu grattes"},{c:'risk',t:"🫁 samedi dans les jambes"}] },
-      { l:"Aller le voir et lui demander comment il fait", liens:{ vestiaire:5 }, axes:{ spec:.5 }, dit:[{c:'foot',t:"✊ il est flatté"},{c:'neutre',t:"🎯 tu apprends un peu"}] },
+      { l:"Aller le voir et lui demander comment il fait", ligne:6, axes:{ spec:.5 }, dit:[{c:'foot',t:"✊ ta ligne apprécie"},{c:'neutre',t:"🎯 tu apprends un peu"}] },
       { l:"Laisser couler, ton tour viendra", ment:-1.4, coup:"cette séance où il t'a dépassé", dit:[{c:'risk',t:"🧠 ça te reste en travers"},{c:'foot',t:"🫁 tu es frais samedi"}] },
     ] },
   { id:'jeune', quand: () => S.journee >= 6 && S.equipe.some(j => j.monte),
+    ligne: () => { const j = S.equipe.find(x => x.monte); return j ? LIGNE_DU_POSTE[j.poste] : 'mil'; },
     sujet: () => S.equipe.find(j => j.monte),
     titre: q => `${q.nom} progresse vite`,
     texte: q => `Le gamin est arrivé il y a six mois et il a déjà pris dix ans. Il traîne après la séance, il pose des questions. Souvent à toi.`,
     options:[
-      { l:"Passer du temps avec lui", fit:-4, liens:{ vestiaire:7 }, dit:[{c:'foot',t:"✊ le vestiaire te voit autrement"},{c:'risk',t:"🫁 une heure de plus"}] },
-      { l:"Répondre quand il demande, sans plus", liens:{ vestiaire:2 }, dit:[{c:'neutre',t:"↔️ correct"}] },
-      { l:"Le laisser se débrouiller", liens:{ vestiaire:-4 }, dit:[{c:'risk',t:"✊ on l'a remarqué"},{c:'vie',t:"🏡 tu rentres à l'heure"}] },
+      { l:"Passer du temps avec lui", fit:-4, ligne:9, dit:[{c:'foot',t:"✊ sa ligne te voit autrement"},{c:'risk',t:"🫁 une heure de plus"}] },
+      { l:"Répondre quand il demande, sans plus", ligne:3, dit:[{c:'neutre',t:"↔️ correct"}] },
+      { l:"Le laisser se débrouiller", ligne:-5, dit:[{c:'risk',t:"✊ sa ligne l'a remarqué"},{c:'vie',t:"🏡 tu rentres à l'heure"}] },
     ] },
-  { id:'tension', quand: () => S.journee >= 5 && S.equipe.some(j => j.rel < 44),
-    sujet: () => S.equipe.filter(j => j.rel < 44).sort((a, b) => a.rel - b.rel)[0],
-    titre: q => `Ça se tend avec ${q.nom}`,
-    texte: q => `Deux ballons mal donnés, un regard de trop, et maintenant il ne te parle plus à l'échauffement. Le groupe l'a vu.`,
+  { id:'tension', quand: () => S.journee >= 5 && !!ligneFaible() && !!visageDe(ligneFaible()),
+    ligne: () => ligneFaible(),
+    sujet: (l) => visageDe(l),
+    titre: (q, l) => `Ça se tend avec ${LIGNE_LA[l]}`,
+    texte: (q, l) => `Deux ballons mal donnés, un regard de trop, et ${q.nom} ne te parle plus à l'échauffement. Toute la ligne s'est rangée derrière lui.`,
     options:[
-      { l:"Mettre les choses à plat, tout de suite", liens:{ vestiaire:6 }, rel:14, dit:[{c:'foot',t:"✊ le groupe respire"}] },
-      { l:"Attendre que ça passe", liens:{ vestiaire:-3 }, rel:3, dit:[{c:'risk',t:"✊ ça pourrit doucement"}] },
-      { l:"Lui répondre devant tout le monde", liens:{ vestiaire:-8, coach:-3 }, rel:-12, ment:-1.2,
-        coup:"cette engueulade devant tout le monde", dit:[{c:'risk',t:"✊ le vestiaire se fige"},{c:'risk',t:"🧠 tu rumines"}] },
+      { l:"Mettre les choses à plat, tout de suite", ligne:13, fit:-3, dit:[{c:'foot',t:"✊ la ligne respire"},{c:'risk',t:"🫁 une soirée de plus"}] },
+      { l:"Attendre que ça passe", ligne:2, dit:[{c:'risk',t:"✊ ça pourrit doucement"}] },
+      { l:"Lui répondre devant tout le monde", ligne:-11, liens:{ coach:-3 }, ment:-1.2,
+        coup:"cette engueulade devant tout le monde", dit:[{c:'risk',t:"✊ la ligne se fige"},{c:'risk',t:"🧠 tu rumines"}] },
     ] },
   { id:'agent', quand: () => S.journee >= 7 && (S.stats.matchs >= 5 || S.liens.coach < 45),
     titre:"Ton agent t'appelle",
@@ -395,7 +453,7 @@ const ARRETS = [
       { l:"Dire que tu n'es pas d'accord", liens:{ coach:-5 }, axes:{ ment:1 }, dit:[{c:'risk',t:"🎽 il n'aime pas"},{c:'foot',t:"🧠 tu tiens ta position"}] },
       { l:"Acquiescer et passer à autre chose", liens:{ coach:-1 }, dit:[{c:'neutre',t:"↔️ rien ne change"}] },
     ] },
-  { id:'capitaine', quand: () => S.journee >= 8 && S.liens.vestiaire >= 55,
+  { id:'capitaine', quand: () => S.journee >= 8 && vestiaire() >= 55,
     sujet: () => pick(S.equipe.filter(j => j.age >= 28)) || S.equipe[0],
     titre: q => `${q.nom} te demande quelque chose`,
     texte: q => `« On perd trop de matchs bêtement. J'organise une réunion entre nous, sans le staff. Tu viens, et tu parles ? »`,
@@ -455,10 +513,12 @@ function ouvrirArrets(){
   S.vuArrets[a.id] = (S.vuArrets[a.id] || 0) + 1;
   S.recentArrets = [a.id, ...recents].slice(0, 3);
   // certaines familles parlent de quelqu'un : on fige qui, et les textes le nomment
-  const q = a.sujet ? a.sujet() : null;
-  S.arret = { id:a.id, options:a.options, sujet: q ? q.nom : null,
-    titre: typeof a.titre === 'function' ? a.titre(q) : a.titre,
-    texte: typeof a.texte === 'function' ? a.texte(q) : a.texte };
+  // la ligne dont parle l'arrêt : c'est elle que ses options font monter ou tomber
+  const l = a.ligne ? (typeof a.ligne === 'function' ? a.ligne() : a.ligne) : null;
+  const q = a.sujet ? a.sujet(l) : null;
+  S.arret = { id:a.id, options:a.options, sujet: q ? q.nom : null, ligne: l,
+    titre: typeof a.titre === 'function' ? a.titre(q, l) : a.titre,
+    texte: typeof a.texte === 'function' ? a.texte(q, l) : a.texte };
   S.arrets++; S.ecran = 'arret'; sauver(); rendre();
 }
 function choisirArret(i){
@@ -469,13 +529,14 @@ function choisirArret(i){
 }
 function appliquer(o){
   if (o.ment) coutMental(-o.ment, o.coup || "cette histoire");
-  if (o.rel && S.arret && S.arret.sujet){
-    const j = S.equipe.find(x => x.nom === S.arret.sujet);
-    if (j) j.rel = clamp(j.rel + o.rel);
-  }
   const enc = encaisse();
-  Object.entries(o.liens || {}).forEach(([k, v]) =>
-    S.liens[k] = clamp(S.liens[k] + (v < 0 ? v * (1 - enc * .4) : v)));
+  const amorti = v => v < 0 ? v * (1 - enc * .4) : v;
+  // `ligne` vise la ligne dont parle l'arrêt ; `liens.vestiaire` vise les trois
+  if (o.ligne && S.arret && S.arret.ligne) bougerLigne(S.arret.ligne, amorti(o.ligne));
+  Object.entries(o.liens || {}).forEach(([k, v]) => {
+    if (k === 'vestiaire') bougerVestiaire(amorti(v));
+    else S.liens[k] = clamp(S.liens[k] + amorti(v));
+  });
   Object.entries(o.axes || {}).forEach(([k, v]) => {
     if (k === 'ment' && v < 0) coutMental(-v, o.coup || "cette histoire t'est restée");
     else bougerAxe(k, v);
@@ -525,11 +586,19 @@ function vivreConcurrents(){
 function lancerMatch(){
   const adv = adversaire(S.journee);
   const statut = monStatut(adv);
-  const nous = S.club.force + (S.liens.vestiaire - 50) * .04 + (statut === 'titulaire' ? (niveauJour() - S.club.force) * .12 : 0);
+  const nous = S.club.force + (vestiaire() - 50) * .04 + (statut === 'titulaire' ? (niveauJour() - S.club.force) * .12 : 0);
   const eux = adv.force;
   const diff = nous - eux + (adv.dom ? 2.4 : -2.4);
+  /* L'ENTENTE DE TA LIGNE CHANGE TON FOOTBALL, pas seulement une jauge — c'est la
+     condition que posait le propriétaire, et sans elle la ligne ne serait qu'un
+     nombre de plus. Derrière (gardien, défenseur) : on encaisse moins quand on se
+     trouve. Milieu : plus il trouve l'attaque, plus il passe décisif. Attaquant :
+     plus le milieu le trouve, plus il marque. Trois postes, trois effets. */
+  const ent = S.lignes[LIGNE_CLE[S.moi.poste]] - 50;
+  const monDerriere = S.moi.poste === 'G' || S.moi.poste === 'D';
+  const aide = monDerriere && statut === 'titulaire' ? ent * .08 : 0;
   const bn = poisson(tameXG(1.35 * Math.exp(diff / 19)));
-  const be = poisson(tameXG(1.35 * Math.exp(-diff / 19)));
+  const be = poisson(tameXG(1.35 * Math.exp(-(diff + aide) / 19)));
 
   const m = { adv, statut, bn, be, faits: [], minutes: 0, buts:0, passes:0, note:null, moments:[], jaune:0, blessure:0 };
   // entrée en jeu
@@ -554,8 +623,10 @@ function lancerMatch(){
   evs.sort((a, b) => a.min - b.min);
 
   // qui marque chez nous : moi si je suis sur le terrain, sinon un coéquipier
-  const chance = { G:0, D:.07, M:.20, A:.38 }[S.moi.poste];
-  const chancePasse = { G:0, D:.10, M:.24, A:.18 }[S.moi.poste];
+  const chance = { G:0, D:.07, M:.20, A:.38 }[S.moi.poste]
+    * (S.moi.poste === 'A' ? 1 + ent * .012 : 1);
+  const chancePasse = { G:0, D:.10, M:.24, A:.18 }[S.moi.poste]
+    * (S.moi.poste === 'M' ? 1 + ent * .012 : 1);
   evs.filter(e => e.type === 'but' && e.nous).forEach(e => {
     const surLeTerrain = m.minutes && e.min >= entree;
     if (surLeTerrain && Math.random() < chance + (S.moi.base.spec - 50) * .002){ e.moi = true; m.buts++; }
@@ -690,7 +761,7 @@ function aleaNote(){
 function moyenneNotes(){ const n = S.stats.notes; return n.length ? n.reduce((a, b) => a + b, 0) / n.length : 6; }
 function finirMatch(){
   const m = S.match, res = m.bn > m.be ? 'V' : m.bn < m.be ? 'D' : 'N';
-  const g0 = { ...S.liens }, e0 = { ...S.etats };
+  const g0 = { ...S.liens }, e0 = { ...S.etats }, l0 = { ...S.lignes };
   m.semaine = S.semaine; m.seance = S.seance;
   if (m.minutes){
     const derriere = S.moi.poste === 'G' || S.moi.poste === 'D';
@@ -717,7 +788,8 @@ function finirMatch(){
       dCoach *= (1 - amorti);
     }
     S.liens.coach = clamp(S.liens.coach + dCoach);
-    S.liens.vestiaire = clamp(S.liens.vestiaire + (m.note >= 7 ? 1.2 : m.note < 5.5 ? -1 : 0));
+    // ta ligne te juge sur ta note : c'est avec eux que tu viens de jouer
+    bougerLigne(LIGNE_DU_POSTE[S.moi.poste], m.note >= 7 ? 1.4 : m.note < 5.5 ? -1.2 : 0);
     S.liens.supporters = clamp(S.liens.supporters + (m.buts ? 2 : 0) + (m.note >= 7.5 ? 1 : 0) - (m.note < 5.4 ? 1 : 0));
     S.etats.forme = clamp(S.etats.forme + (m.note >= 7 ? 5 : m.note >= 6 ? 1 : -4));
     if (m.note < 5.6) coutMental(1.7, "un match que tu voudrais oublier");
@@ -736,6 +808,12 @@ function finirMatch(){
   /* Rester sur le banc ne retire PAS de mental : ça fermait la spirale sur
      elle-même. Le banc coûte déjà la confiance du coach, ça suffit. */
   if (m.blessure) coutMental(2.2, "cette blessure");
+  /* Et chaque ligne se juge sur ce dont elle répond, que tu aies joué ou non : la
+     défense sur ce qu'elle a encaissé, l'attaque sur ce qu'elle a marqué, le
+     milieu sur le résultat. Le vestiaire suit, puisqu'il en est la moyenne. */
+  bougerLigne('def', m.be === 0 ? 1.1 : m.be >= 3 ? -1.2 : 0);
+  bougerLigne('att', m.bn >= 2 ? 1 : m.bn === 0 ? -1 : 0);
+  bougerLigne('mil', res === 'V' ? .8 : res === 'D' ? -.8 : 0);
   AXES.forEach(a => S.moi.boost[a] *= .5);
   // classement
   const c = S.ligue.classement;
@@ -752,6 +830,8 @@ function finirMatch(){
   m.mvt = [];
   Object.keys(g0).forEach(k => { const d = S.liens[k] - g0[k];
     if (Math.abs(d) >= .8) m.mvt.push({ k, up: d > 0, mot: dire(k) }); });
+  LIGNES.forEach(k => { const d = S.lignes[k] - l0[k];
+    if (Math.abs(d) >= .8) m.mvt.push({ k, up: d > 0, mot: `${LIGNE_NOM[k]} \u2014 ${direLigne(k)}` }); });
   if (S.etats.fraicheur - e0.fraicheur <= -8) m.mvt.push({ k:'fraicheur', up:false, mot:direJambes() });
   if (m.blessure) m.mvt.push({ k:'blessure', up:false, mot:`Tu sors touché : ${m.blessure} journée${m.blessure > 1 ? 's' : ''} d'absence.` });
   if (m.suspendu) m.mvt.push({ k:'suspension', up:false, mot:`Suspendu ${m.suspendu} match${m.suspendu > 1 ? 's' : ''}.` });
@@ -817,17 +897,14 @@ function notesEquipe(m){
    situation » (le propriétaire, 27/09/2026). La liste de l'effectif, classée par
    moyenne, avec ta ligne dedans pour que la comparaison soit immédiate. */
 function moyDe(j){ return j.nb ? j.sum / j.nb : null; }
-function motRelation(v){
-  return v > 66 ? "proche de toi" : v > 54 ? "en bons termes" : v > 44 ? "correct"
-    : v > 34 ? "un peu froid" : "tendu";
-}
 function effectifTrie(){
   const l = [];
   S.equipe.forEach(j => l.push({ nom:j.nom, poste:j.poste, age:j.age, nb:j.nb || 0,
-    moy: moyDe(j), rel: motRelation(j.rel), monte: !!j.monte }));
+    moy: moyDe(j), ligne: LIGNE_LA[LIGNE_DU_POSTE[j.poste]], monte: !!j.monte }));
   S.concurrents.forEach(c => l.push({ nom:c.nom, poste:S.moi.poste, age:c.age, nb:c.nb || 0,
-    moy: moyDe(c), rival:true, blesse: c.blesse > 0 }));
+    moy: moyDe(c), ligne: LIGNE_LA[LIGNE_DU_POSTE[S.moi.poste]], rival:true, blesse: c.blesse > 0 }));
   l.push({ nom:S.moi.nom, poste:S.moi.poste, age:S.moi.age, nb:S.stats.notes.length,
+    ligne: LIGNE_LA[LIGNE_DU_POSTE[S.moi.poste]],
     moy: S.stats.notes.length ? moyenneNotes() : null, moi:true });
   return l.sort((a, b) => (b.moy == null ? -1 : b.moy) - (a.moy == null ? -1 : a.moy));
 }
@@ -866,10 +943,11 @@ function decouverte(m){
 function apresMatch(){
   const d = S.dernier;
   vivreConcurrents();
-  S.equipe.forEach(j => {
-    j.rel = clamp(j.rel + rnd(-2.2, 1.8));      // une relation qui ne bouge pas n'existe pas
-    if (j.monte) j.niv = Math.min(j.niv + .35, S.club.force + 12);
-  });
+  S.equipe.forEach(j => { if (j.monte) j.niv = Math.min(j.niv + .35, S.club.force + 12); });
+  /* Une entente qui ne bouge pas n'existe pas — mais elle ne doit pas s'échapper
+     non plus : un rappel de 1 % vers 50 tient l'écart-type autour de sept points,
+     assez pour que les arrêts et le match pèsent plus que le hasard. */
+  LIGNES.forEach(k => S.lignes[k] = clamp(S.lignes[k] * .99 + .5 + rnd(-1.8, 1.8)));
   if (S.etats.blessure > 0) S.etats.blessure--;
   if (S.etats.suspension > 0) S.etats.suspension--;
   if (d && d.blessure) S.etats.blessure = d.blessure;
@@ -910,7 +988,7 @@ function bilanGagne(note, pos){
   if (S.stats.titus >= 15) t.push(`Tu as gagné ta place : ${S.stats.titus} titularisations, et plus personne ne discute.`);
   if (S.stats.buts >= 8) t.push(`${S.stats.buts} buts, ce qui ne s'était jamais vu pour toi.`);
   if (note >= 6.8) t.push(`Une moyenne que le staff a remarquée avant les journalistes.`);
-  if (S.liens.vestiaire > 62) t.push(`Le vestiaire est avec toi, et ça se sent sur le terrain.`);
+  if (vestiaire() > 62) t.push(`Le vestiaire est avec toi, et ça se sent sur le terrain.`);
   if (pos <= 5) t.push(`Le club a fini dans le haut du tableau, ce que personne n'attendait en août.`);
   return t.length ? t : [`Une saison d'apprentissage. Tu es encore là, c'est déjà quelque chose.`];
 }
@@ -947,7 +1025,10 @@ const MOTS = {
   supporters: ["On te siffle.", "Personne ne te connaît.", "Ton nom circule un peu.", "Le stade t'apprécie.", "Le stade t'attend.", "Tu es leur chouchou."],
   agent: ["Il ne répond plus.", "Il est évasif.", "Il dit ce qu'il veut bien dire.", "Il répond vite.", "Il te dit tout ce qu'il sait.", "Il travaille pour toi jour et nuit."],
 };
-function dire(lien){ return MOTS[lien] ? MOTS[lien][bande(S.liens[lien])] : ''; }
+function dire(lien){
+  if (lien === 'vestiaire') return MOTS.vestiaire[bande(vestiaire())];   // la moyenne des lignes
+  return MOTS[lien] ? MOTS[lien][bande(S.liens[lien])] : '';
+}
 function direFond(){ const v = S.etats.fond;
   return v > 55 ? "Tu tiens les quatre-vingt-dix minutes sans y penser." : v > 32 ? "Tu as du fond."
     : v > 14 ? "Tu tiens, sans plus." : "Tu manques de fond, et ça se paie en fin de match."; }
@@ -993,7 +1074,23 @@ function charger(){
   try {
     const d = JSON.parse(localStorage.getItem('ac2') || 'null');
     if (!d) return null;
-    if (d.v !== VERSION) return null;      // migration : à écrire quand la forme bougera
+    /* MIGRATION 5 → 6 : les relations individuelles deviennent trois ententes de
+       ligne. Le propriétaire testait la partie précédente au moment du changement :
+       on reconstruit ses lignes depuis ce qu'il avait plutôt que d'effacer. */
+    if (d.v === 5 && d.liens && d.equipe){
+      const vest = d.liens.vestiaire == null ? 50 : d.liens.vestiaire;
+      d.lignes = {};
+      LIGNES.forEach(k => {
+        const l = d.equipe.filter(j => LIGNE_DU_POSTE[j.poste] === k && j.rel != null);
+        const moy = l.length ? l.reduce((a, j) => a + j.rel, 0) / l.length : 50;
+        // le vestiaire qu'il avait, nuancé par ce que valait cette ligne
+        d.lignes[k] = clamp(vest + (moy - 50) * .5);
+      });
+      delete d.liens.vestiaire;
+      d.equipe.forEach(j => { delete j.rel; });
+      d.v = 6;
+    }
+    if (d.v !== VERSION) return null;
     return d;
   } catch(e){ return null; }
 }
