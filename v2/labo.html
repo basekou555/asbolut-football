@@ -105,24 +105,29 @@ const REG = { n:10, annee:2018, orig:0, poste:'M' };
 function uneSaison(iOrig, poste, polF){
   nouvellePartie({ nom:"Essai", poste, annee:REG.annee, origine:ORIGINES[iOrig], ambition:AMBITIONS[0] });
   const dep = { ...S.moi.base };
-  let k = 0;
+  let k = 0, nFaits = 0, nReussis = 0;
   for (let i = 0; i < 400 && S.ecran !== 'bilan'; i++){
     if (S.ecran === 'semaine') choisirSemaine(polF(k++));
     else if (S.ecran === 'arret') choisirArret(Math.floor(Math.random() * S.arret.options.length));
-    else if (S.ecran === 'moment') choisirMoment(Math.floor(Math.random() * S.match.moments[S.momentIdx].opts.length));
+    else if (S.ecran === 'moment'){
+      const f = S.match.moments[S.momentIdx];
+      choisirMoment(Math.floor(Math.random() * f.opts.length));
+      nFaits++; if (f.reussi) nReussis++;
+    }
     else if (S.ecran === 'resultat') apresMatch();
     else break;
   }
   const g = {}; AXES.forEach(a => g[a] = S.moi.base[a] - dep[a]);
   return { m:S.stats.matchs, t:S.stats.titus, b:S.stats.buts, pa:S.stats.passes,
     note: S.stats.notes.length ? moyenneNotes() : 0, pos:S.bilan ? S.bilan.pos : 18,
-    fr:S.etats.fraicheur, fond:S.etats.fond, g, zero: S.stats.matchs === 0 ? 1 : 0 };
+    fr:S.etats.fraicheur, fond:S.etats.fond, faits:nFaits,
+    reus: nFaits ? nReussis / nFaits * 100 : 0, g, zero: S.stats.matchs === 0 ? 1 : 0 };
 }
 function moyenner(lignes){
   const n = lignes.length, s = k => lignes.reduce((a, x) => a + x[k], 0) / n;
   const ga = {}; AXES.forEach(a => ga[a] = lignes.reduce((x, l) => x + l.g[a], 0) / n);
   return { m:s('m'), t:s('t'), b:s('b'), pa:s('pa'), note:s('note'), pos:s('pos'),
-    fr:s('fr'), fond:s('fond'), zero:s('zero') * 100, g:ga };
+    fr:s('fr'), fond:s('fond'), faits:s('faits'), reus:s('reus'), zero:s('zero') * 100, g:ga };
 }
 const v1 = x => x.toFixed(1).replace('.', ',');
 const vd = x => (x > 0 ? '+' : x < 0 ? '−' : '') + Math.abs(x).toFixed(1).replace('.', ',');
@@ -172,14 +177,15 @@ function tableau(cols, lignes, marquees){
     }).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 const COLS = [['nom',''],['m','matchs'],['t','titul.'],['b','buts'],['pa','passes'],
-  ['note','note'],['pos','place'],['fr','fraîch.'],['fond','fond'],['tr','trace'],
+  ['note','note'],['pos','place'],['fr','fraîch.'],['fond','fond'],['reus','faits ✓'],['tr','trace'],
   ['tech','techn.'],['phys','phys.'],['ment','mental'],['spec','poste']];
 function ligne(nom, r){
   const tr = AXES.reduce((a, x) => a + r.g[x], 0);
-  return { cells:{ nom:0, m:r.m, t:r.t, b:r.b, pa:r.pa, note:r.note, pos:-r.pos, fr:r.fr, fond:r.fond, tr,
+  return { cells:{ nom:0, m:r.m, t:r.t, b:r.b, pa:r.pa, note:r.note, pos:-r.pos, fr:r.fr, fond:r.fond, reus:r.reus, tr,
       tech:r.g.tech, phys:r.g.phys, ment:r.g.ment, spec:r.g.spec },
     txt:{ nom, m:v1(r.m), t:v1(r.t), b:v1(r.b), pa:v1(r.pa), note:v1(r.note),
-      pos:v1(r.pos) + 'ᵉ', fr:Math.round(r.fr) + ' %', fond:Math.round(r.fond), tr:vd(tr),
+      pos:v1(r.pos) + 'ᵉ', fr:Math.round(r.fr) + ' %', fond:Math.round(r.fond),
+      reus:Math.round(r.reus) + ' %', tr:vd(tr),
       tech:vd(r.g.tech), phys:vd(r.g.phys), ment:vd(r.g.ment), spec:vd(r.g.spec) } };
 }
 const LEGENDE = `<div class="legend">
@@ -188,6 +194,7 @@ const LEGENDE = `<div class="legend">
   <div><b>place</b> — où ton club a fini au classement, sur 18.</div>
   <div><b>fraîch.</b> — ce qui te reste dans les jambes à la fin de la saison.</div>
   <div><b>fond</b> — la réserve construite par le travail physique : on récupère mieux et on se blesse moins.</div>
+  <div><b>faits ✓</b> — la part des faits de match réussis. C'est là que se voit la technique.</div>
   <div><b>trace</b> — le total des quatre colonnes suivantes : tout ce que la saison a laissé.</div>
   <div><b>techn. / phys. / mental / poste</b> — ce que la saison a ajouté à chaque axe, pour toujours.
     C'est la trace : ce que tu emportes dans la saison suivante.</div>
@@ -227,7 +234,11 @@ document.getElementById('go2').onclick = () => {
         Deux colonnes sont peintes : <b>matchs</b> et <b>trace</b>. C'est l'arbitrage du jeu.
         Ce qu'on veut voir : l'or dans <b>matchs</b> et l'or dans <b>trace</b> sur deux lignes
         <b>différentes</b>, et le compromis entre les deux. Si une seule ligne prend les deux,
-        le choix de la semaine n'en est pas un et il faut recalibrer.</p>`;
+        le choix de la semaine n'en est pas un et il faut recalibrer.
+        <br><br>Une limite à garder en tête : le banc ne joue qu'<b>une</b> saison. Travailler
+        coûte de la fraîcheur tout de suite et ne rend qu'après, donc tout entraînement est ici
+        désavantagé. La colonne <b>trace</b> est ce qui comptera vraiment quand la carrière
+        s'étalera sur plusieurs saisons.</p>`;
   });
 };
 </script>

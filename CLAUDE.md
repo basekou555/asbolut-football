@@ -171,6 +171,38 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
   laisse presque rien (+0,6), celle qui laisse le plus de trace (l'axe faible, +8 à +9) fait jouer
   deux à quatre matchs de moins, et « deux séances puis un repos » est au milieu (18 à 21 matchs,
   +4 de trace).
+- **Chaque axe a son effet long terme, et ce n'est pas « du niveau »** (retour du propriétaire,
+  27/09/2026, après lecture du banc : « lorsqu'on travaille le mental, ça nous avantage plus parce
+  que c'est moins fatigant… ce qu'il faut, c'est que ce qu'on peut gagner avec le mental soit un peu
+  moins important que pour le reste. Et le physique qui consomme beaucoup de fraîcheur, il faut qu'au
+  cours de l'année on regagne de la fraîcheur grâce à lui, sur la vitesse de récupération. Pour la
+  technique, à long terme, ça peut être sur notre capacité à faire la bonne décision sur les faits
+  de match. Pour le mental… encaisser les choix du coach, les faits de match, l'impact de tout ce qui
+  est hors football »). Sa lecture est meilleure que la mienne : tout n'allait que dans le niveau,
+  donc les quatre séances se distinguaient seulement par leur coût. Désormais **une séance = un coût
+  de fraîcheur maintenant, un effet nommé plus tard** :
+  | axe | ce que ça coûte samedi | ce que ça construit |
+  |---|---|---|
+  | **Physique** (−11) | le plus cher | **le fond** : on récupère plus vite, on laisse moins de jambes dans un match, on se blesse moins |
+  | **Technique** (−8) | cher | **le geste** : `choisirMoment()` ajoute `(tech−50)×.005` à **tous** les faits de match (et `×.009` quand le fait est déjà technique, sans double compte) |
+  | **Au poste** (−8) | cher | **ta place** : `monStatut()` ajoute `(spec−50)×.09`, en plus du poids que `spec` a déjà dans `niveau()` |
+  | **Mental** (−7) | le moins cher | **encaisser** : `encaisse()` (−1 à +1) amortit l'aléa **défavorable** de la note (`aleaNote()`), la chute de confiance du coach après un mauvais match, et les effets négatifs des arrêts sur les liens. Jamais les gains. |
+  Et `rende` fait suivre la récompense au coût, exactement comme il le demandait : physique 1,15,
+  technique et poste 1, **mental 0,85**. Le compte rendu de séance compare au rendement de sa propre
+  séance, pas à un barème commun.
+  Deux coefficients ont dû être relevés après une première mesure : la technique à `.0028` ne
+  changeait la réussite des faits que de trois points, invisible dans le bruit (et donc pour le
+  joueur) ; le poste à `.055` ne pesait que +0,28 de crédit face à un seuil à 1,5. Mesuré après,
+  40 saisons par ligne, trois croisements : **aucune politique ne prend à la fois les matchs et la
+  trace** — l'or des matchs va à « deux séances puis un repos » (18 à 21 matchs) et l'or de la trace
+  à l'axe faible de l'origine (+8 à +10), et l'effet technique se voit enfin où il doit se voir
+  (étranger attaquant, technique à 40 : **38 % de faits réussis** en la travaillant contre 30 à 34 %
+  autrement). Le mental retombe à la moyenne quand il n'est pas l'axe faible (+3,9 contre +8,2 pour
+  la technique chez l'étranger). Quatre phrases de plus dans « Ta situation » (`direFond()`,
+  `direGeste()`, `direEncaisse()`, `direCorps()`), toujours sans un chiffre.
+  **Limite connue du banc** : il ne joue qu'une saison, donc il sous-estime structurellement tout
+  entraînement (le coût est immédiat, le gain différé). C'est écrit sous le tableau. Le vrai test
+  viendra avec l'intersaison.
 - **Le banc d'essai (`v2/labo.html`)**, demandé par le propriétaire : « le tableau que tu m'as
   partagé, je sais pas ce que ça représente… j'aimerais bien aussi que je puisse faire [les
   simulations] sur le nombre de matchs en fonction des choix qu'on a fait. » La page rejoue des

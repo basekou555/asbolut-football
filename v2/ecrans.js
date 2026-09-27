@@ -123,6 +123,8 @@ function situationHTML(ouvert){
       <div><span class="i">🫁</span><span>${esc(direFraicheur())} avant le match.</span></div>
       <div><span class="i">🩹</span><span>${esc(direCorps())}</span></div>
       <div><span class="i">💪</span><span>${esc(direFond())}</span></div>
+      <div><span class="i">⚡</span><span>${esc(direGeste())}</span></div>
+      <div><span class="i">🛡️</span><span>${esc(direEncaisse())}</span></div>
       ${d.join('')}
     </div>
     <p class="narr" style="margin-top:10px">${esc(direStaff())}</p>
