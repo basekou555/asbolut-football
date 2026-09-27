@@ -177,8 +177,8 @@ function effectifHTML(){
     if (!j.length) return '';
     return `<div class="lineHead">${ico} ${esc(nom)}<span>${k ? esc(direLigne(k)) : ''}</span></div>
       <div class="lineup">${j.map(x => `<div class="${x.moi ? 'me' : ''}${x.blesse || x.susp ? ' out' : ''}">
-        <b>${esc(x.nom)}</b><span class="n">${x.moy == null ? '\u2014' : virg(x.moy)}</span>
-        <span class="s">${x.age} ans \u00b7 ${x.nb} m${x.moi ? ' \u00b7 toi' : x.rival ? ' \u00b7 ton poste' : x.monte ? ' \u00b7 il monte' : ''}${x.blesse ? ' \u00b7 \u{1FA7C} bless\u00e9' : x.susp ? ' \u00b7 \u{1F7E5} suspendu' : ''}</span>
+        <b>${esc(x.nom)}</b><span class="n">${x.moy == null ? (x.res == null ? '\u2014' : virg(x.res)) : virg(x.moy)}</span>
+        <span class="s">${x.moy == null && x.res != null ? `${x.age} ans \u00b7 ${x.nbR} m en r\u00e9serve` : `${x.age} ans \u00b7 ${x.nb} m${x.nbR ? ` \u00b7 ${x.nbR} en r\u00e9serve` : ''}`}${x.moi ? ' \u00b7 toi' : x.rival ? ' \u00b7 ton poste' : x.monte ? ' \u00b7 il monte' : ''}${x.blesse ? ' \u00b7 \u{1FA7C} bless\u00e9' : x.susp ? ' \u00b7 \u{1F7E5} suspendu' : x.boude ? ' \u00b7 \u{1F624} il boude' : ''}</span>
       </div>`).join('')}</div>`;
   };
   return `<details class="fold"><summary>L'effectif</summary>
@@ -291,8 +291,13 @@ function ecranResultat(){
     ${m.notes && m.notes.length > 1 ? `<h3>Les notes du match</h3>
       ${m.jugement ? `<p class="narr">${esc(m.jugement)}</p>` : ''}
       <div class="notes">${m.notes.map(j => `<div${j.moi ? ' class="me"' : ''}>
-        <span class="p">${j.poste}</span><span>${esc(j.nom)}${j.rival ? ' <i>(ton poste)</i>' : ''}</span>
+        <span class="p">${j.poste}</span><span>${esc(j.nom)}${j.rival ? ' <i>(ton poste)</i>' : ''}${j.min && j.min < 90 ? ` <i>${j.min} min</i>` : ''}</span>
         <span class="n">${virg(j.note)}</span></div>`).join('')}</div>` : ''}
+    ${m.reserveVue && m.reserveVue.length ? `<h3>Avec la réserve</h3>
+      <div class="notes">${m.reserveVue.map(j => `<div>
+        <span class="p">${j.poste}</span><span>${esc(j.nom)}</span>
+        <span class="n">${virg(j.note)}</span></div>`).join('')}</div>
+      <p class="sub">Ceux qui n'étaient pas dans le groupe ont joué avec la réserve.</p>` : ''}
     ${m.mvt && m.mvt.length ? `<h3>Ce que ça change</h3><div class="mvt">${m.mvt.map(x =>
       `<div><span class="${x.up ? 'up' : 'dn'}">${LIEN_ICO[x.k] || '•'}</span><span>${esc(x.mot)}</span></div>`).join('')}</div>` : ''}
     <div class="btn-row"><button class="btn" onclick="apresMatch()">${fin ? "Le bilan de la saison" : "La semaine suivante"}</button></div>
@@ -301,7 +306,6 @@ function ecranResultat(){
 }
 function filmHTML(m){
   const lignes = [];
-  if (m.entree) lignes.push({ min:m.entree, moi:true, ico:'🔄', t:"Tu entres en jeu" });
   m.evs.forEach(e => {
     const eux = !e.nous, qui = e.qui || (eux ? `un joueur de ${m.adv.nom}` : "un coéquipier");
     if (e.type === 'but') lignes.push({ min:e.min, moi:!!(e.moi || e.passeMoi), ico:'⚽',
@@ -312,6 +316,11 @@ function filmHTML(m){
     if (e.type === 'penalty') lignes.push({ min:e.min, moi:false, ico:'🎪', t: `Penalty pour ${esc(e.nous ? S.club.nom : m.adv.nom)}` });
     if (e.type === 'blessure') lignes.push({ min:e.min, moi:false, ico:'🩼', t: `Sortie sur blessure — ${esc(qui)}` });
   });
+  // le coach change : ça fait vivre le groupe, et ça te concerne quand c'est toi
+  (m.chgVus || []).forEach(c => lignes.push({ min:c.min, moi: c.moiE || c.moiS, ico:'🔄',
+    t: c.moiE ? `<b>Tu entres</b>, ${esc(c.s)} sort`
+      : c.moiS ? `<b>Tu sors</b>, ${esc(c.e)} entre`
+      : `${esc(c.e)} entre, ${esc(c.s)} sort` }));
   m.moments.forEach(f => lignes.push({ min:f.min, moi:true, ico: f.reussi ? '🎯' : '💨',
     t: `${f.chaud ? '<b>' + (f.reussi ? 'Sous pression' : 'Sous pression') + '</b> · ' : ''}${esc(f.choix)} — ${esc(f.reussi ? f.ok : f.ko)}` }));
   if (m.perduLeFil) lignes.push({ min:m.perduLeFil + 1, moi:true, ico:'🌫️',

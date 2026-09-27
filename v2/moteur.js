@@ -14,7 +14,7 @@
    - tout ce qui arrive est écrit dans `S.journal`, seule mémoire du jeu.
    ============================================================ */
 
-const VERSION = 7;   // un effectif nommé et stable : `S.equipe` est neuf
+const VERSION = 8;   // un effectif nommé et stable : `S.equipe` est neuf
 let S = null;
 /* Mis à true par le banc d'essai (labo.html) : les milliers de saisons qu'il
    simule ne doivent pas écraser la carrière rangée dans localStorage. */
@@ -598,10 +598,22 @@ function vivreEquipe(){
   S.equipe.forEach(j => {
     if (j.blesse > 0) j.blesse--;
     if (j.susp > 0) j.susp--;
-    j.forme = clamp((j.forme || 0) * .75 + rnd(-2, 2), -5, 5);
+    /* La forme persiste davantage (.82 au lieu de .75) et le bruit est réduit :
+       depuis que les notes la nourrissent, c'est elle qui raconte la série en
+       cours, et un tirage qui l'écrase chaque journée lui retirait ce rôle. */
+    j.forme = clamp((j.forme || 0) * .82 + rnd(-1.4, 1.4), -5, 5);
+    j.rancune = (j.rancune || 0) * .55;      // on s'en remet en deux ou trois journées
     if (j.blesse <= 0 && Math.random() < .028) j.blesse = ri(1, 5);
     else if (j.susp <= 0 && Math.random() < .013) j.susp = ri(1, 2);
   });
+  S.concurrents.forEach(c => { c.rancune = (c.rancune || 0) * .55; });
+}
+function bougerForme(j, d){ j.forme = clamp((j.forme || 0) + d, -5, 5); }
+/* Sortir tôt, c'est une vexation. Le propriétaire, 27/09/2026 : « un joueur qui
+   sort, il peut d'une certaine manière en vouloir au coach, donc il a moins de
+   chances de jouer le match suivant. » `rancune` se retranche du choix du onze. */
+function vexer(j, min){
+  if (min < 62 && Math.random() < .4) j.rancune = Math.min(6, (j.rancune || 0) + 2.2);
 }
 function dispoDe(j){ return !(j.blesse > 0 || j.susp > 0); }
 /* Tous ceux qui peuvent jouer, toi excepté : coéquipiers et rivaux à ton poste. */
@@ -618,48 +630,118 @@ function groupe(){
    Le même tirage sert au onze réel et au onze idéal, pour que l'écart ne mesure
    que l'infirmerie et jamais la rotation. */
 const ROTATION = 3.5;
-/* LE ONZE DU JOUR, et ce que l'infirmerie coûte. On compare le onze réellement
-   alignable au meilleur onze possible si tout le monde était valide : l'écart,
-   étalé sur onze joueurs, est ce que le match perd. Un groupe profond l'absorbe,
-   un groupe court le prend en pleine figure. */
-function onzeDuJour(statut){
+/* « Un groupe, c'est 18 joueurs. Sur une équipe de 22, on peut dire qu'il y a
+   toujours 4 absents du groupe » (le propriétaire, 27/09/2026). Les quatre
+   laissés à la maison, s'ils ne sont ni blessés ni suspendus, **jouent avec la
+   réserve** : ils ont du temps de jeu et une note, qui ne pèse pas autant que
+   celle d'un match avec le onze. C'est ce qui permet à un jeune d'exister. */
+const TAILLE_GROUPE = 18;
+/* RENDEMENT DÉCROISSANT SUR LA NOTE (le propriétaire, 27/09/2026 : « s'il y a
+   deux ou trois faits de match, il arrive parfois qu'on ait une note de 10, et
+   le 10 ça doit quand même rester rare… le premier fait vaut un point, le
+   deuxième 0,75, le troisième 0,5. Ça évite d'avoir une note de 10 si on met un
+   doublé dans un match »). Sa proposition, appliquée telle quelle aux faits, et
+   la même logique aux buts puisque c'est le doublé qu'il nomme. Symétrique : un
+   deuxième fait raté ne coûte pas autant que le premier non plus. */
+const POIDS_FAIT = [1, .75, .5, .35];
+const POIDS_BUT = [.7, .5, .35, .25];
+function cumul(n, table){
+  let t = 0;
+  for (let i = 0; i < n; i++) t += table[i] != null ? table[i] : table[table.length - 1];
+  return t;
+}
+/* LE GROUPE, LE ONZE, LE BANC ET LA RÉSERVE — et ce que l'infirmerie coûte.
+   On compare le onze réellement alignable au meilleur onze possible si tout le
+   monde était valide : l'écart, étalé sur onze joueurs, est ce que le match
+   perd. Un groupe profond l'absorbe, un groupe court le prend en pleine figure. */
+function equipeDuJour(statut){
   const g = groupe();
-  const onze = [], absents = g.filter(x => !x.dispo);
-  let perte = 0;
-  g.forEach(x => x.choix = x.niv + rnd(-ROTATION, ROTATION));
+  const absents = g.filter(x => !x.dispo);
+  // le choix du coach : le niveau du jour, un peu de rotation, moins la rancune
+  g.forEach(x => x.choix = x.niv + rnd(-ROTATION, ROTATION) - (x.ref.rancune || 0));
   const tri = l => l.slice().sort((a, b) => b.choix - a.choix);
+  const jeJoue = statut === 'titulaire' || statut === 'banc';
+  const dispo = tri(g.filter(x => x.dispo));
+  const places = TAILLE_GROUPE - (jeJoue ? 1 : 0);
+  const conv = dispo.slice(0, places);          // convoqués
+  const reserve = dispo.slice(places);          // ils joueront avec la réserve
+
+  const onze = [];
+  let perte = 0;
   Object.entries(FORMATION).forEach(([po, n]) => {
     let besoin = n;
     if (po === S.moi.poste && statut === 'titulaire') besoin--;   // ta place est prise
     if (besoin <= 0) return;
-    const cands = g.filter(x => x.poste === po);
-    const pris = tri(cands.filter(x => x.dispo)).slice(0, besoin);
-    const ideal = tri(cands).slice(0, besoin);
+    const pris = tri(conv.filter(x => x.poste === po)).slice(0, besoin);
+    const ideal = tri(g.filter(x => x.poste === po)).slice(0, besoin);
     onze.push(...pris);
     /* Chacun contre celui qu'il remplace, rang par rang : le cinquième défenseur
        se compare au quatrième, pas à zéro. Comparer les sommes brutes faisait
        compter un absent pour tout son niveau — mesuré, le onze perdait jusqu'à
        onze points de force pour trois blessés. */
     for (let i = 0; i < pris.length; i++) perte += pris[i].niv - ideal[i].niv;
-    /* Pas assez d'hommes à ce poste : quelqu'un dépanne. Un onze reste un onze —
-       sinon l'écran des notes en affichait neuf ou dix. Mais **un joueur de champ
-       peut aller dans les buts, l'inverse jamais** : un gardien ne dépanne pas en
-       défense. Mesuré avant cette règle : douze matchs à deux gardiens. */
+    /* Pas assez d'hommes à ce poste : quelqu'un dépanne. Un onze reste un onze.
+       Mais **un joueur de champ peut aller dans les buts, l'inverse jamais**. */
     if (pris.length < besoin){
       const trou = besoin - pris.length;
       perte -= trou * 7;
-      const reste = tri(g.filter(x => x.dispo && !onze.includes(x)
-        && (po === 'G' || x.poste !== 'G')));
+      const reste = tri(conv.filter(x => !onze.includes(x) && (po === 'G' || x.poste !== 'G')));
       onze.push(...reste.slice(0, trou));
     }
   });
-  return { onze, absents, ecart: perte / 11 };
+  const banc = conv.filter(x => !onze.includes(x));
+  return { onze, banc, reserve, absents, ecart: perte / 11 };
 }
+
+/* LES CHANGEMENTS. Le propriétaire, 27/09/2026 : « l'entraîneur, à chaque match,
+   il fait des changements quand même, au moins 3 en général, parfois jusqu'à 5…
+   une équipe qui perd va avoir tendance à faire des changements plus tôt et à
+   faire des changements tactiques, là où une équipe qui gagne va faire rentrer
+   des joueurs frais. » Trois entrées entre la 45ᵉ et la 68ᵉ (donc 25 à 45
+   minutes), une ou deux en toute fin (5 à 15). Menés, on change plus tôt et on
+   fait entrer devant ; devant, on renforce derrière. */
+function planChangements(m, onze, banc){
+  const etat = min => { let n = 0, e = 0;
+    m.evs.filter(x => x.type === 'but' && x.min <= min).forEach(x => x.nous ? n++ : e++);
+    return n - e; };
+  const chg = [];
+  // le gardien ne sort que blessé, et c'est rare : soit il commence, soit il regarde
+  const gBanc = banc.find(x => x.poste === 'G');
+  const gOnze = onze.find(x => x.poste === 'G');
+  if (gBanc && gOnze && Math.random() < .05)
+    chg.push({ min: ri(20, 70), entrant: gBanc, sortant: gOnze, gardien: true });
+
+  const mene = etat(62) < 0;
+  const envie = x => x.niv + (mene ? { A:5, M:3, D:0, G:-99 }[x.poste] : { D:3.5, M:3, A:1, G:-99 }[x.poste]);
+  const champ = banc.filter(x => x.poste !== 'G' && !chg.some(c => c.entrant === x));
+  const nb = Math.min(champ.length, 3 + (Math.random() < .5 ? 1 : 0) + (Math.random() < .25 ? 1 : 0));
+  const entrants = champ.slice().sort((a, b) => envie(b) - envie(a)).slice(0, nb);
+  /* Qui sort : celui qui rend le moins, le poste qu'on sacrifie, et **les jambes**.
+     « Une équipe qui gagne va faire rentrer des joueurs frais, faire sortir les
+     joueurs les plus fatigués. » Pour toi la fraîcheur est connue ; pour les
+     autres, le tirage en tient lieu. Sans ce tirage, le coach sortait toujours
+     les mêmes et tu ne sortais jamais : mesuré, 14 sorties sur 900 titularisations. */
+  const jambes = mene ? .05 : .08;
+  const laisse = x => x.niv + rnd(-4, 4)
+    + (mene ? { D:3, M:1, A:0, G:99 }[x.poste] : { A:3, M:1, D:0, G:99 }[x.poste])
+    - (x.moi ? (100 - S.etats.fraicheur) * jambes : 0);
+  const sur = onze.filter(x => x.poste !== 'G' && !chg.some(c => c.sortant === x))
+    .slice().sort((a, b) => laisse(a) - laisse(b));
+  entrants.forEach((e, i) => {
+    if (!sur[i]) return;
+    let min;
+    if (i < 3){ const b = ri(56, 68); min = etat(b) < 0 ? Math.max(45, b - ri(6, 12)) : b; }
+    else min = ri(74, 86);
+    chg.push({ min, entrant: e, sortant: sur[i] });
+  });
+  return chg.sort((a, b) => a.min - b.min);
+}
+
 function lancerMatch(){
   const adv = adversaire(S.journee);
   const statut = monStatut(adv);
-  const equipeDuJour = onzeDuJour(statut);
-  const nous = S.club.force + equipeDuJour.ecart + (vestiaire() - 50) * .04
+  const eq = equipeDuJour(statut);
+  const nous = S.club.force + eq.ecart + (vestiaire() - 50) * .04
     + (statut === 'titulaire' ? (niveauJour() - S.club.force) * .12 : 0);
   const eux = adv.force;
   const diff = nous - eux + (adv.dom ? 2.4 : -2.4);
@@ -675,17 +757,9 @@ function lancerMatch(){
   const be = poisson(tameXG(1.35 * Math.exp(-(diff + aide) / 19)));
 
   const m = { adv, statut, bn, be, faits: [], minutes: 0, buts:0, passes:0, note:null, moments:[], jaune:0, blessure:0,
-    onze: equipeDuJour.onze, absents: equipeDuJour.absents.map(x => ({ nom:x.nom, poste:x.poste,
-      raison: (x.ref.susp > 0 ? 'susp' : 'blesse') })), ecartOnze: equipeDuJour.ecart };
-  // entrée en jeu
-  if (statut === 'titulaire') m.minutes = 90;
-  else if (statut === 'banc'){
-    /* On ne remplace pas un gardien en cours de match : soit il commence, soit
-       il regarde. La seule exception est la vraie — le titulaire sort blessé. */
-    if (S.moi.poste === 'G') m.minutes = Math.random() < .05 ? ri(25, 70) : 0;
-    else m.minutes = Math.random() < .6 ? ri(12, 35) : 0;
-  }
-  const entree = statut === 'banc' && m.minutes ? 90 - m.minutes : 0;
+    onze: eq.onze, banc: eq.banc, reserve: eq.reserve,
+    absents: eq.absents.map(x => ({ nom:x.nom, poste:x.poste,
+      raison: (x.ref.susp > 0 ? 'susp' : 'blesse') })), ecartOnze: eq.ecart };
 
   // les buts, répartis dans le temps
   const mins = shuffle([...Array(90).keys()].map(i => i + 1));
@@ -697,6 +771,22 @@ function lancerMatch(){
   if (Math.random() < .09) evs.push({ min: mins.pop(), type:'rouge', nous: Math.random() < .5 });
   if (Math.random() < .12) evs.push({ min: mins.pop(), type:'blessure', nous: Math.random() < .5 });
   evs.sort((a, b) => a.min - b.min);
+  m.evs = evs;
+
+  /* TON TEMPS DE JEU SORT DES MÊMES CHANGEMENTS QUE CELUI DES AUTRES. Tu es une
+     ligne du banc comme les autres si tu n'es pas titulaire, et une ligne du onze
+     si tu l'es : tu peux donc sortir avant l'heure, comme n'importe qui. */
+  const toi = { moi:true, nom:S.moi.nom, poste:S.moi.poste, niv:niveauJour(), ref:{} };
+  const onzeC = statut === 'titulaire' ? [toi, ...eq.onze] : eq.onze;
+  const bancC = statut === 'banc' ? [toi, ...eq.banc] : eq.banc;
+  const chg = planChangements(m, onzeC, bancC);
+  m.chg = chg;
+  let entree = 0, sortie = 90;
+  const monEntree = chg.find(c => c.entrant && c.entrant.moi);
+  const maSortie = chg.find(c => c.sortant && c.sortant.moi);
+  if (statut === 'titulaire'){ sortie = maSortie ? maSortie.min : 90; m.minutes = sortie; }
+  else if (statut === 'banc' && monEntree){ entree = monEntree.min; m.minutes = 90 - entree; }
+  m.sorti = statut === 'titulaire' && !!maSortie ? sortie : 0;
 
   // qui marque chez nous : moi si je suis sur le terrain, sinon un coéquipier
   const chance = { G:0, D:.07, M:.20, A:.38 }[S.moi.poste]
@@ -704,26 +794,28 @@ function lancerMatch(){
   const chancePasse = { G:0, D:.10, M:.24, A:.18 }[S.moi.poste]
     * (S.moi.poste === 'M' ? 1 + ent * .012 : 1);
   evs.filter(e => e.type === 'but' && e.nous).forEach(e => {
-    const surLeTerrain = m.minutes && e.min >= entree;
+    const surLeTerrain = m.minutes && e.min >= entree && e.min <= sortie;
     if (surLeTerrain && Math.random() < chance + (S.moi.base.spec - 50) * .002){ e.moi = true; m.buts++; }
     else if (surLeTerrain && Math.random() < chancePasse){ e.passeMoi = true; m.passes++; }
-    e.qui = e.moi ? S.moi.nom : coequipier();
+    e.qui = e.moi ? S.moi.nom : surLeBanc(m, e.min, 'but');
   });
   evs.filter(e => e.type === 'but' && !e.nous).forEach(e => e.qui = adv.nom);
   // un carton peut être le mien : c'est lui qui compte pour la suspension
   const pCarton = { G:.04, D:.30, M:.26, A:.16 }[S.moi.poste];
   evs.filter(e => (e.type === 'jaune' || e.type === 'rouge') && e.nous).forEach(e => {
-    if (m.minutes && e.min >= entree && Math.random() < pCarton) e.moi = true;
-    e.qui = e.moi ? S.moi.nom : coequipier();
+    if (m.minutes && e.min >= entree && e.min <= sortie && Math.random() < pCarton) e.moi = true;
+    e.qui = e.moi ? S.moi.nom : surLeBanc(m, e.min, 'carton');
   });
-  evs.filter(e => e.type === 'blessure' && e.nous).forEach(e => e.qui = coequipier());
+  evs.filter(e => e.type === 'blessure' && e.nous).forEach(e => e.qui = surLeBanc(m, e.min, 'but'));
 
   // faits de match : zéro à deux, seulement si je suis sur le terrain
   if (m.minutes){
     const n = Math.random() < .45 ? 0 : Math.random() < .8 ? 1 : 2;
     for (let i = 0; i < n; i++){
       const f = pick(MOMENTS[S.moi.poste]);
-      if (!m.moments.some(x => x.id === f.id)) m.moments.push({ ...f, min: ri(Math.max(entree + 2, 10), 88) });
+      const bas = Math.max(entree + 2, 10), haut = Math.min(sortie - 2, 88);
+      if (haut > bas && !m.moments.some(x => x.id === f.id))
+        m.moments.push({ ...f, min: ri(bas, haut) });
     }
     m.moments.sort((a, b) => a.min - b.min);
     /* Un « mauvais soir » doit être une situation nommée, pas un aléa invisible.
@@ -742,7 +834,7 @@ function lancerMatch(){
         : tard ? "Fin de match, tout se joue là." : null;
     });
   }
-  m.evs = evs; m.entree = entree;
+  m.entree = entree;
   S.match = m; S.momentIdx = 0;
   suiteMatch();
 }
@@ -846,7 +938,8 @@ function finirMatch(){
   m.semaine = S.semaine; m.seance = S.seance;
   if (m.minutes){
     const derriere = S.moi.poste === 'G' || S.moi.poste === 'D';
-    m.note = clamp(6.1 + (res === 'V' ? .5 : res === 'D' ? -.4 : 0) + m.buts * .7 + m.passes * .4
+    m.note = clamp(6.1 + (res === 'V' ? .5 : res === 'D' ? -.4 : 0)
+      + cumul(m.buts, POIDS_BUT) + m.passes * .4
       + (derriere ? (m.be === 0 ? 1 : m.be === 1 ? .35 : m.be >= 4 ? -.5 : 0) : 0)
       /* Un fait de match pèse **un point de note**, pas trois dixièmes (demande du
          propriétaire, 27/09/2026 : « on fait quasiment que des matchs corrects, il
@@ -854,8 +947,9 @@ function finirMatch(){
          plus sur l'impact des faits de match sur la note, avec un point en plus ou
          en moins »). C'est ce qui fait qu'une saison a des soirs de gala et des
          soirs qu'on veut oublier. */
-      + (niveauJour() - S.club.force) * .035 + m.moments.filter(f => f.reussi).length * .95
-      - m.moments.filter(f => f.reussi === false).length * .95
+      + (niveauJour() - S.club.force) * .035
+      + cumul(m.moments.filter(f => f.reussi).length, POIDS_FAIT)
+      - cumul(m.moments.filter(f => f.reussi === false).length, POIDS_FAIT)
       - (m.perduLeFil ? .7 : 0) + (m.moments.some(f => f.tenu) ? .35 : 0) + aleaNote(), 3, 10);
     m.note = Math.round(m.note * 10) / 10;
     S.stats.matchs++; S.stats.minutes += m.minutes; S.stats.buts += m.buts; S.stats.passes += m.passes;
@@ -873,6 +967,12 @@ function finirMatch(){
     bougerLigne(LIGNE_DU_POSTE[S.moi.poste], m.note >= 7 ? 1.4 : m.note < 5.5 ? -1.2 : 0);
     S.liens.supporters = clamp(S.liens.supporters + (m.buts ? 2 : 0) + (m.note >= 7.5 ? 1 : 0) - (m.note < 5.4 ? 1 : 0));
     S.etats.forme = clamp(S.etats.forme + (m.note >= 7 ? 5 : m.note >= 6 ? 1 : -4));
+    /* Le propriétaire : « un joueur qui sort, il peut en vouloir au coach. »
+       Pour toi ça se paie en tête et en confiance du coach, pas en rancune. */
+    if (m.sorti && m.sorti < 62){
+      coutMental(1.2, `cette sortie à la ${m.sorti}e minute`);
+      S.liens.coach = clamp(S.liens.coach - 1);
+    }
     if (m.note < 5.6) coutMental(1.7, "un match que tu voudrais oublier");
     if (m.rouge) coutMental(2.2, "ce carton rouge");
     if (Math.random() < Math.max(.012, .05 - S.etats.fond * .0006) + (S.moi.def.id === 'ischios' ? .04 : 0) + (S.etats.fraicheur < 60 ? .05 : 0)){
@@ -904,9 +1004,12 @@ function finirMatch(){
   c[m.adv.nom].j++; c[m.adv.nom].bp += m.be; c[m.adv.nom].bc += m.bn;
   c[m.adv.nom].pts += res === 'D' ? 3 : res === 'N' ? 1 : 0;
   c[m.adv.nom][res === 'D' ? 'v' : res === 'N' ? 'n' : 'd']++;
+  /* `m.res` était posé APRÈS `notesEquipe(m)`, qui le lit : le bonus de victoire
+     sur les notes des coéquipiers valait donc toujours zéro. */
+  m.res = res;
   notesEquipe(m);
   autresMatchs();
-  m.res = res; S.dernier = m;
+  S.dernier = m;
   // ce qui a bougé, en direction seulement : l'écran n'aura jamais le chiffre
   m.mvt = [];
   Object.keys(g0).forEach(k => { const d = S.liens[k] - g0[k];
@@ -934,28 +1037,68 @@ function finirMatch(){
   S.ecran = 'resultat'; sauver(); rendre();
 }
 /* « On ne connaît pas la note de ses coéquipiers, du coup on ne sait pas si on a
-   fait un bon match par rapport à l'ensemble de l'équipe. » Chaque coéquipier qui
-   a joué reçoit sa note, tirée autour du résultat et de son niveau, et l'écran les
-   affiche. C'est le seul repère qui dit si ta note est bonne ce soir-là. */
+   fait un bon match par rapport à l'ensemble de l'équipe. » Les onze titulaires
+   **et les remplaçants entrés** reçoivent leur note ; ceux qui n'étaient pas dans
+   le groupe jouent avec la réserve et reçoivent la leur, à part. */
+function surLeTerrainA(m, min){
+  const dehors = new Set();
+  (m.chg || []).forEach(c => { if (c.min <= min && c.sortant) dehors.add(c.sortant); });
+  const l = (m.onze || []).filter(x => !dehors.has(x));
+  (m.chg || []).forEach(c => { if (c.min <= min && c.entrant && !dehors.has(c.entrant)) l.push(c.entrant); });
+  return l;
+}
+/* Qui marque, qui prend le carton, qui sort blessé : quelqu'un qui est vraiment
+   sur le terrain. `coequipier()` tirait un nom au hasard dans la liste des noms,
+   donc un buteur qui ne joue même pas au club. */
+function surLeBanc(m, min, genre){
+  const l = surLeTerrainA(m, min).filter(x => !x.moi && (genre !== 'but' || x.poste !== 'G'));
+  return l.length ? pick(l).nom : coequipier();
+}
 function notesEquipe(m){
-  const socleNote = 6.1 + (m.res === 'V' ? .55 : m.res === 'D' ? -.45 : 0);
+  const bonus = m.res === 'V' ? .55 : m.res === 'D' ? -.45 : 0;
   const joueurs = [];
-  S.equipe.forEach(j => j.note = null);
-  S.concurrents.forEach(c => c.note = null);
-  /* Seuls les onze qui ont commencé sont notés. Avec un groupe de vingt-deux,
-     noter tout le monde donnait dix-sept notes pour un match à onze. */
-  (m.onze || []).forEach(x => {
+  S.equipe.forEach(j => { j.note = null; j.noteR = null; });
+  S.concurrents.forEach(c => { c.note = null; c.noteR = null; });
+  const sorti = new Map();
+  (m.chg || []).forEach(c => { if (c.sortant) sorti.set(c.sortant, c.min); });
+
+  const noter = (x, minutes) => {
+    if (x.moi || !x.ref) return;
     const derriere = x.poste === 'G' || x.poste === 'D';
-    const n = socleNote + (x.niv - S.club.force) * .05 + rnd(-1.3, 1.3)
-      + (derriere ? (m.be === 0 ? .8 : m.be >= 4 ? -.7 : 0) : 0);
+    /* Moins de minutes, moins d'écart : un joueur entré à la 80ᵉ ne fait ni un 10
+       ni un 3, sa note colle à la moyenne. C'est aussi ce qui fait que la note
+       d'un remplaçant ne pèse pas comme celle d'un titulaire. */
+    const a = minutes >= 70 ? 1 : minutes >= 30 ? .72 : .45;
+    const n = 6.1 + (bonus + (x.niv - S.club.force) * .05 + rnd(-1.3, 1.3)
+      + (derriere ? (m.be === 0 ? .8 : m.be >= 4 ? -.7 : 0) : 0)) * a;
     x.ref.note = Math.round(clamp(n, 3, 10) * 10) / 10;
     x.ref.sum = (x.ref.sum || 0) + x.ref.note; x.ref.nb = (x.ref.nb || 0) + 1;
-    joueurs.push({ nom:x.nom, poste:x.poste, note:x.ref.note, rival: !!x.rival });
+    // une bonne note, c'est une place la semaine prochaine
+    bougerForme(x.ref, (x.ref.note - 6.1) * .9 * a);
+    joueurs.push({ nom:x.nom, poste:x.poste, note:x.ref.note, rival: !!x.rival, min: minutes });
+  };
+  (m.onze || []).forEach(x => noter(x, sorti.has(x) ? sorti.get(x) : 90));
+  (m.chg || []).forEach(c => { if (c.entrant) noter(c.entrant, 90 - c.min); });
+
+  /* LA RÉSERVE. « Ceux qui sont pas dans le groupe, s'ils sont pas blessés ou
+     suspendus, ils jouent avec la réserve, donc ils ont du temps de jeu et donc
+     une note — mais elle n'a pas le même impact que celle du joueur qui a joué
+     avec le onze. » Elle est comptée à part (`sumR`/`nbR`) et pèse un tiers sur
+     la forme : c'est la route lente vers le groupe, et elle existe. */
+  (m.reserve || []).forEach(x => {
+    if (!x.ref) return;
+    const n = clamp(6.1 + (x.niv - S.club.force) * .04 + rnd(-1.5, 1.5), 3, 10);
+    x.ref.noteR = Math.round(n * 10) / 10;
+    x.ref.sumR = (x.ref.sumR || 0) + x.ref.noteR; x.ref.nbR = (x.ref.nbR || 0) + 1;
+    bougerForme(x.ref, (x.ref.noteR - 6.1) * .3);
   });
-  /* Tu n'entres dans les notes que si tu as joué. Le garde-fou est doublé :
-     `m.note` n'est calculée que sous `if (m.minutes)`, et on le revérifie ici. */
+  m.reserveVue = (m.reserve || []).filter(x => x.ref).map(x => ({ nom:x.nom, poste:x.poste, note:x.ref.noteR }));
+
+  // sortir tôt, c'est une vexation : on s'en souvient deux ou trois journées
+  (m.chg || []).forEach(c => { if (c.sortant && c.sortant.ref && !c.sortant.moi) vexer(c.sortant.ref, c.min); });
+
   if (m.minutes && m.note != null)
-    joueurs.push({ nom:S.moi.nom, poste:S.moi.poste, note:m.note, moi:true });
+    joueurs.push({ nom:S.moi.nom, poste:S.moi.poste, note:m.note, moi:true, min:m.minutes });
   joueurs.sort((a, b) => b.note - a.note);
   m.notes = joueurs;
   if (m.note != null && joueurs.length > 1){
@@ -967,19 +1110,26 @@ function notesEquipe(m){
       : m.note >= moy - .3 ? "Dans la moyenne du groupe."
       : "Sous le niveau de tes coéquipiers.";
   }
+  /* Le film garde les changements, mais en noms : les objets du groupe portent
+     une référence vers l'effectif, et les sérialiser dans la sauvegarde en
+     ferait des copies — deux joueurs pour un seul nom au rechargement. */
+  m.chgVus = (m.chg || []).map(c => ({ min:c.min,
+    e: c.entrant ? c.entrant.nom : '', s: c.sortant ? c.sortant.nom : '',
+    moiE: !!(c.entrant && c.entrant.moi), moiS: !!(c.sortant && c.sortant.moi) }));
+  delete m.onze; delete m.banc; delete m.reserve; delete m.chg;
 }
-/* « On a peu d'infos liées au reste de l'équipe ; ça peut être cool d'avoir les
-   moyennes de notes des autres joueurs, ça apporte plus de contexte à la
-   situation » (le propriétaire, 27/09/2026). La liste de l'effectif, classée par
-   moyenne, avec ta ligne dedans pour que la comparaison soit immédiate. */
+/* Qui tourne bien, qui décroche, et où tu te situes là-dedans. */
 function moyDe(j){ return j.nb ? j.sum / j.nb : null; }
+function moyReserve(j){ return j.nbR ? j.sumR / j.nbR : null; }
 function effectifTrie(){
   const l = [];
   S.equipe.forEach(j => l.push({ nom:j.nom, poste:j.poste, age:j.age, nb:j.nb || 0,
-    moy: moyDe(j), cle: LIGNE_DU_POSTE[j.poste], monte: !!j.monte,
-    blesse: j.blesse > 0, susp: j.susp > 0 }));
+    moy: moyDe(j), res: moyReserve(j), nbR: j.nbR || 0,
+    cle: LIGNE_DU_POSTE[j.poste], monte: !!j.monte,
+    blesse: j.blesse > 0, susp: j.susp > 0, boude: (j.rancune || 0) > 1.5 }));
   S.concurrents.forEach(c => l.push({ nom:c.nom, poste:S.moi.poste, age:c.age, nb:c.nb || 0,
-    moy: moyDe(c), cle: LIGNE_DU_POSTE[S.moi.poste], rival:true, blesse: c.blesse > 0 }));
+    moy: moyDe(c), res: moyReserve(c), nbR: c.nbR || 0,
+    cle: LIGNE_DU_POSTE[S.moi.poste], rival:true, blesse: c.blesse > 0 }));
   l.push({ nom:S.moi.nom, poste:S.moi.poste, age:S.moi.age, nb:S.stats.notes.length,
     cle: LIGNE_DU_POSTE[S.moi.poste],
     moy: S.stats.notes.length ? moyenneNotes() : null, moi:true });
@@ -1153,7 +1303,7 @@ function direInfirmerie(){
    vingt-deux est censé faire. */
 function direProfondeur(){
   const abs = groupe().filter(x => !x.dispo).length;
-  const e = onzeDuJour(monStatutSec()).ecart;
+  const e = equipeDuJour(monStatutSec()).ecart;
   if (!abs) return "Tout le monde est là : le coach a le choix.";
   return e > -.25 ? "Le groupe absorbe : le onze ne s'en ressent pas."
     : e > -.8 ? "Le coach bricole un peu, sans plus."
@@ -1226,6 +1376,13 @@ function charger(){
         }
       });
       d.v = 7;
+    }
+    /* MIGRATION 7 → 8 : le groupe de dix-huit, la réserve et la rancune. Rien à
+       reconstruire, seulement des champs à poser — une partie en cours continue. */
+    if (d.v === 7 && d.equipe){
+      d.equipe.forEach(j => { j.rancune = 0; j.sumR = j.sumR || 0; j.nbR = j.nbR || 0; });
+      (d.concurrents || []).forEach(c => { c.rancune = 0; c.sumR = c.sumR || 0; c.nbR = c.nbR || 0; });
+      d.v = 8;
     }
     if (d.v !== VERSION) return null;
     return d;

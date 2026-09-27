@@ -453,6 +453,56 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
      - garde-fou doublé dans `notesEquipe()` : tu n'entres dans les notes que si `m.minutes`.
      Résultat mesuré : **11 notes quand tu ne joues pas, 12 quand tu entres**, jamais autre chose,
      et **zéro note sans avoir joué** sur 2 720 matchs.
+- **LE GROUPE VIT : DIX-HUIT CONVOQUÉS, UNE RÉSERVE, DES CHANGEMENTS** (le propriétaire,
+  27/09/2026 : « un groupe c'est 18 joueurs, donc sur une équipe de 22 on peut dire qu'il y a
+  toujours 4 absents du groupe… ceux qui sont pas dans le groupe, s'ils sont pas blessés ou
+  suspendus, ils jouent avec la réserve, donc ils ont du temps de jeu et une note, mais elle n'a
+  pas le même impact… l'entraîneur à chaque match fait des changements, au moins 3, parfois
+  jusqu'à 5… une équipe qui perd va faire des changements plus tôt et des changements tactiques,
+  là où une équipe qui gagne va faire rentrer des joueurs frais »).
+  - **`TAILLE_GROUPE` = 18.** `equipeDuJour()` remplace `onzeDuJour()` et rend quatre listes :
+    le **onze**, le **banc** (7), la **réserve** (les 4 laissés à la maison et valides) et les
+    **absents**. Le choix du coach est `niveau du jour + rotation − rancune`.
+  - **`planChangements()`** : trois entrées entre la 45ᵉ et la 68ᵉ (25 à 45 minutes), une ou deux
+    en toute fin (5 à 15). **Menés**, on change plus tôt (−6 à −12 minutes) et on fait entrer
+    devant ; **devant**, on renforce derrière et on sort **les jambes** les plus usées. Le gardien
+    ne sort que blessé (5 %). Mesuré : **3 à 5 changements**, les trois premiers à la 57ᵉ en
+    moyenne, les suivants à la 79ᵉ.
+  - **Tu es une ligne du onze ou du banc comme les autres** : ton temps de jeu sort des mêmes
+    changements. Mesuré : tu entres **71 %** des fois où tu es sur le banc, et tu **sors avant la
+    fin 22 %** de tes titularisations (84 minutes en moyenne). *Première version* : « qui sort »
+    était strictement le moins bon, donc tu ne sortais **jamais** (14 fois sur 900
+    titularisations) ; un tirage de ±4 et la fraîcheur ont réglé ça.
+  - **Sortir tôt est une vexation** : `vexer()` pose une `rancune` (2,2, qui s'estompe de 45 % par
+    journée) retranchée du choix du onze suivant — « un joueur qui sort peut en vouloir au coach,
+    donc il a moins de chances de jouer le match suivant ». Pour **toi**, une sortie avant la 62ᵉ
+    coûte du mental et un point de confiance du coach, avec sa raison affichée.
+  - **La réserve fait exister les jeunes** : `sumR`/`nbR` à part, une note affichée sous « Avec la
+    réserve » après le match, et un effet **trois fois moindre sur la forme** (×.3 contre ×.9) —
+    c'est la route lente vers le groupe, et elle existe. **La forme est désormais portée par les
+    notes** (persistance .82 au lieu de .75), donc une bonne série en réserve finit par ouvrir la
+    porte. Mesuré : **plus aucun joueur à zéro note** en fin de saison.
+  - **Les remplaçants sont notés**, avec leurs minutes à l'écran, et leur note est amortie vers la
+    moyenne selon le temps joué (×1 au-dessus de 70 minutes, ×.72 au-dessus de 30, ×.45 en
+    dessous) : un joueur entré à la 80ᵉ ne fait ni un 10 ni un 3. Mesuré : **14 à 16 notes par
+    match** (11 titulaires + 3 à 5 entrants), contre 11 à 12 avant.
+  - **Les changements sont dans le film du match** (`m.chgVus`, en noms : sérialiser les objets du
+    groupe en aurait fait des copies au rechargement).
+  - **Deux bugs trouvés en route** : `m.res` était posé **après** `notesEquipe(m)` qui le lit, donc
+    le bonus de victoire sur les notes des coéquipiers valait toujours zéro ; et `coequipier()`
+    tirait un nom au hasard dans `NOMS` pour dire qui avait marqué — donc un buteur qui ne joue
+    même pas au club. `surLeBanc()` prend quelqu'un qui est **réellement sur le terrain à cette
+    minute**. Mesuré : **0 but sur 1 822** attribué à un inconnu.
+- **LE 10 REDEVIENT RARE** (le propriétaire, 27/09/2026 : « s'il y a deux ou trois faits de match,
+  il arrive parfois qu'on ait une note de 10, et le 10 ça doit quand même rester rare… le premier
+  fait vaut un point, le deuxième 0,75, le troisième 0,5. Ça évite d'avoir une note de 10 si on
+  met un doublé dans un match »). Sa table appliquée telle quelle (`POIDS_FAIT = [1, .75, .5,
+  .35]`), symétrique pour les faits ratés, et **la même logique aux buts** (`POIDS_BUT = [.7, .5,
+  .35, .25]`) puisque c'est le doublé qu'il nomme. Mesuré sur 1 207 de tes notes : 10ᵉ centile
+  **4,7**, médiane **6,3**, 90ᵉ **8,1** — inchangés — mais le **maximum tombe de 10 à 9,8** et les
+  notes à 9,5 et plus ne sont plus que **0,9 %**.
+  **Migration 7 → 8** : rien à reconstruire, seulement `rancune`, `sumR` et `nbR` à poser.
+  Vérifié sur une vraie partie v7 (17ᵉ journée) : reprise et saison terminée sans erreur.
 - **Le banc d'essai (`v2/labo.html`)**, demandé par le propriétaire : « le tableau que tu m'as
   partagé, je sais pas ce que ça représente… j'aimerais bien aussi que je puisse faire [les
   simulations] sur le nombre de matchs en fonction des choix qu'on a fait. » La page rejoue des
