@@ -174,23 +174,36 @@ button.chip.on{border-color:var(--gold);color:var(--gold);background:color-mix(i
 .words .qui{color:var(--muted);font-weight:600;font-size:11px;letter-spacing:.06em;
   text-transform:uppercase;display:block;margin-bottom:1px}
 
-/* ---- la fiche « Ta situation » : un nom à gauche, la phrase en face ---- */
-.fiche{display:grid;gap:0;font-size:13.5px}
-.fiche div{display:grid;grid-template-columns:104px 1fr;gap:12px;align-items:baseline;
-  padding:7px 0;border-bottom:1px solid var(--line)}
-.fiche div:last-child{border-bottom:0}
-.fiche .k{color:var(--muted);font-size:12px}
-@media(max-width:430px){
-  .fiche div{grid-template-columns:1fr;gap:1px}
-  .fiche .k{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase}
-}
-/* ---- l'effectif ---- */
-.squad{display:grid;gap:3px}
-.squad div{display:grid;grid-template-columns:22px 1fr auto;gap:9px;align-items:center;
-  font-size:13px;padding:6px 9px;border-radius:7px;background:var(--panel-2)}
-.squad .p{font-size:10px;font-weight:700;color:var(--muted);text-align:center}
-.squad i{color:var(--muted);font-style:normal;font-size:11px}
-.squad .sub2{display:block;color:var(--muted);font-size:11px;margin-top:1px}
-.squad .n{font-variant-numeric:tabular-nums;color:var(--gold);font-weight:600;text-align:right}
-.squad .n i{display:block;font-weight:400;font-size:10.5px}
-.squad .me{outline:1px solid var(--gold-dim)}
+/* ---- « Ta situation » : une case par chose, deux colonnes sur un téléphone.
+   Quatorze lignes pleine largeur faisaient défiler l'écran pour rien. ---- */
+/* En colonnes et non en grille : dans une grille, la rangée prend la hauteur de
+   sa case la plus haute, et une phrase de trois lignes en gonflait deux. Les
+   colonnes empilent chaque case à sa vraie hauteur. */
+.sit{columns:2 152px;column-gap:7px}
+.sit > div{background:var(--panel-2);border-radius:8px;padding:7px 10px 8px;
+  margin:0 0 7px;break-inside:avoid;-webkit-column-break-inside:avoid}
+.sit .k{display:block;color:var(--muted);font-size:10px;letter-spacing:.07em;
+  text-transform:uppercase;margin-bottom:2px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.sit .v{display:block;font-size:12.5px;line-height:1.35}
+.sit .cle{outline:1px solid var(--gold-dim)}
+.sit-fold h3{margin:14px 0 7px}
+.sit-fold h3:first-of-type{margin-top:4px}
+
+/* ---- l'effectif : trois blocs de tuiles, un par ligne ---- */
+.lineHead{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline;
+  font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--gold);
+  font-weight:600;margin:12px 0 6px}
+.lineHead:first-of-type{margin-top:2px}
+.lineHead span{text-transform:none;letter-spacing:0;font-weight:400;
+  color:var(--muted);font-size:11.5px}
+/* deux tuiles par rangée sur un téléphone : à trois, les noms se coupaient */
+.lineup{display:grid;grid-template-columns:repeat(auto-fit,minmax(142px,1fr));gap:6px}
+.lineup > div{background:var(--panel-2);border-radius:7px;padding:6px 9px 7px;
+  display:grid;grid-template-columns:1fr auto;column-gap:6px}
+.lineup b{font-weight:600;font-size:12.5px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;min-width:0}
+.lineup .n{font-variant-numeric:tabular-nums;color:var(--gold);font-weight:600;font-size:12.5px}
+.lineup .s{grid-column:1/-1;color:var(--muted);font-size:10.5px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lineup .me{outline:1px solid var(--gold-dim)}
