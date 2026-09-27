@@ -78,8 +78,7 @@ function creationHTML(){
 }
 function origineDit(o){
   const d = [];
-  const sp = POSTES.find(x => x.id === NEW.poste).spec;
-  Object.entries(o.axes).forEach(([a, v]) => d.push({ c: v > 0 ? 'foot' : 'risk', t: `${v > 0 ? '▲' : '▼'} ${a === 'spec' ? sp : AXE_NOM[a]}` }));
+  Object.entries(o.axes).forEach(([a, v]) => d.push({ c: v > 0 ? 'foot' : 'risk', t: `${v > 0 ? '▲' : '▼'} ${AXE_NOM[a]}` }));
   Object.entries(o.liens || {}).forEach(([k, v]) => d.push({ c: v > 0 ? 'foot' : 'risk', t: `${v > 0 ? '▲' : '▼'} ${LIEN_NOM[k] || k}` }));
   return d;
 }

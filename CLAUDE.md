@@ -879,6 +879,50 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
   écarts sur le tableau des notes — dix mille deux cents matchs les ont ensuite démentis. L'écriture
   atomique n'est pas une précaution contre les erreurs d'encodage seulement : c'est aussi ce qui
   empêche de mesurer un fichier qui n'existe pas encore.
+- **UNE ÉTIQUETTE DOIT NOMMER UNE SÉANCE QU'ON PEUT FAIRE** (le propriétaire, 27/09/2026, deuxième
+  passe sur les huit textes : « au lieu de mettre ta finition, mets ton poste. Sinon, c'est pas
+  clair… parce que sinon, ça voudrait dire que c'est une qualité sur laquelle on ne peut pas avoir
+  d'impact. Là, par exemple, tu as mis ta finition. Puis après, dans l'explication, tu as mis
+  lecture du jeu au-dessus de la moyenne… Qu'est-ce que ça augmente ? Est-ce que ça augmente la
+  technique ? le physique ? le mental ? le poste ? On ne sait pas »). Son argument est meilleur que
+  ma trouvaille de la passe précédente : j'avais donné à chaque poste son mot propre
+  (« ta finition », « tes réflexes ») en croyant gagner en précision, et j'avais en fait
+  débranché l'étiquette de la seule chose qu'elle sert à désigner — **la séance qu'on peut
+  choisir le lundi**. Les quatre séances s'appellent ta technique, ton physique, ton mental et
+  ton poste ; une étiquette ne nomme plus rien d'autre.
+  - **`motAxe('spec')` rend « ton poste »**, le champ `mot` de `POSTES` disparaît, et
+    **`axeNom('spec')` rend « Ton poste »** — donc la phrase du staff ne dit plus
+    « La finition, c'est ce qui te fait jouer » (qu'il avait citée comme incompréhensible) mais
+    « Ton poste : c'est ce qui te fait jouer, et ça monte ». `POSTES[].spec` reste, pour l'unique
+    endroit où la spécialité est à sa place : le nom du poste à la création.
+  - **La mention « au-dessus / en dessous de la moyenne » n'est plus sur les huit** (« je pense
+    qu'on n'est pas obligé de la mettre pour toutes ») : elle reste là où la phrase seule ne
+    dirait pas si c'est bien ou mal (la frappe, le pied faible, le moteur), elle disparaît là où
+    l'image tranche toute seule — **les ischios** (« cette gêne derrière la cuisse revient chaque
+    hiver »), **le doute** (« un geste raté et tu joues petit pendant vingt minutes »), et **le
+    sang-froid**, dont j'ai retiré le préfixe **de ma seule initiative** : « Une tête au-dessus de
+    la moyenne » tombait juste à côté de `direEncaisse()`, qui écrit mot pour mot la même chose
+    dans la même section.
+  - **Ses reformulations, appliquées telles quelles** : « qualité de tir » → **toucher de balle** ;
+    « côté gauche tu ne fais rien » → **« tu n'as pas de pied gauche, et les défenseurs l'ont bien
+    compris »** ; et la symétrie qu'il a demandée pour le poste (« tu peux mettre la même chose en
+    vrai… tu réagis une demi-seconde au-dessus de la moyenne à ton poste ») : **Le temps d'avance**
+    fait face au **Temps de retard**, même phrase à un mot près. « La lecture du jeu » disparaît :
+    il ne l'aimait pas (« ça fait pas assez jeu au poste ») et proposait « lecture du poste,
+    peut-être, à la limite » — **j'ai préféré la symétrie**, qui dit le même football sans
+    inventer un mot.
+  - **Le piège évité à la relecture** : sa phrase du poste contenait déjà « à ton poste », donc
+    la ligne se lisait « ton poste — Tu réagis une demi-seconde après les autres **à ton poste** ».
+    L'étiquette le dit ; la phrase ne le répète plus. C'est le même piège que la passe précédente,
+    trouvé de la même façon : en imprimant les huit textes aux quatre postes avant de livrer.
+  - **Un mort trouvé au passage** : l'écran de création affichait la spécialité du poste à la place
+    de « Au poste » dans les pastilles d'origine — sauf qu'**aucune des trois origines ne touche
+    `spec`** (elles jouent tech, phys et ment). Du code mort depuis le début : retiré, rien ne
+    change à l'écran.
+  - **Vérifié** : les huit textes relus aux quatre postes, la phrase du staff et celle du mental
+    avec eux ; la roulette de création rejouée jusqu'au coup d'envoi ; les six invariants du
+    tableau des notes à zéro écart sur 2 040 matchs. **Aucun chiffre du moteur n'a bougé** — c'est
+    une passe de mots.
 - **Le banc d'essai (`v2/labo.html`)**, demandé par le propriétaire : « le tableau que tu m'as
   partagé, je sais pas ce que ça représente… j'aimerais bien aussi que je puisse faire [les
   simulations] sur le nombre de matchs en fonction des choix qu'on a fait. » La page rejoue des
