@@ -503,6 +503,41 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
   notes à 9,5 et plus ne sont plus que **0,9 %**.
   **Migration 7 → 8** : rien à reconstruire, seulement `rancune`, `sumR` et `nbR` à poser.
   Vérifié sur une vraie partie v7 (17ᵉ journée) : reprise et saison terminée sans erreur.
+- **NE PAS JOUER ÉTAIT UNE IMPASSE** (le propriétaire, 27/09/2026 : « j'ai joué 4 matchs alors que
+  c'est au moins la 22ᵉ journée… je sais pas trop quoi faire pour entrer dedans… soit j'ai mon
+  agent qui vient me voir, soit il y a des discussions avec le coach… ça doit amener des
+  événements hors football pour compenser le fait qu'au niveau football il se passe pas
+  grand-chose. Étant donné que je ne suis même pas dans le groupe le week-end, ce serait bien
+  qu'il y ait des trucs positifs comme le temps avec la famille »). Mesuré avant de toucher à quoi
+  que ce soit, 120 carrières par poste : une saison à **six matchs ou moins** arrivait dans **3 %**
+  des carrières de milieu — et dans **63 %** de celles de gardien. Son cas n'était pas isolé,
+  c'était la queue de la distribution, et elle n'avait aucune issue.
+  - **La spirale du coach, fermée.** Ne pas jouer faisait baisser `S.liens.coach` de .5 par
+    journée, or `coach` pèse .16 dans `valeurAuPoste()` : donc on jouait encore moins. Exactement
+    la spirale du mental, et la seule porte de sortie qui se refermait. **Plancher à 42.**
+  - **L'âge se desserre en cours de saison** (`+ journee × .13`, borné à zéro) : un coach ne donne
+    pas le onze à un joueur de dix-huit ans **en août**, mais à force de le voir il finit par le
+    lancer. Sans ce dégel, un joueur mal classé en août l'était encore en mai.
+  - **Trois familles d'arrêts qui ne se déclenchent que là** (`S.sansJouer` compte les journées
+    d'affilée sans une minute) : **`coachTemps`** (son bureau : demander ce qu'il faut faire,
+    poser un ultimatum, attendre son tour), **`agentTemps`** (« je peux te sortir de là dès cet
+    hiver, ou on serre les dents »), **`tempsLibre`** (« pour la première fois depuis longtemps,
+    samedi t'appartient » : rentrer chez tes parents, aller au stade en tribune, travailler seul).
+    Mesuré : **8 % / 6 % / 5 %** des arrêts, quinze familles au total.
+  - **Le coup de fil du père ne tombe plus quand tu as tout ton temps** : `famille` exige
+    maintenant que tu joues (`sansJouer < 2`), et `tempsLibre` prend le relais sinon. C'était son
+    exemple : « j'ai pas mal de soucis avec mon père alors que j'ai peu de temps de jeu, donc
+    normalement j'ai du temps pour lui ».
+  - **Le rang est affiché** (`direRang()`), dans « Toi » : « 7ᵉ sur 7 à ton poste, 4 places dans le
+    onze », suivi de **`direCommentMonter()`**, la phrase qui nomme le levier le plus court — le
+    bureau du coach quand sa confiance est basse, le travail au poste quand l'écart est grand, une
+    sortie en réserve quand c'est la forme qui manque.
+  - **Mesuré après**, mêmes 120 carrières par poste : les saisons à six matchs ou moins passent de
+    **3 % à 0 %** pour un joueur de champ et de **63 % à 36 %** pour un gardien ; le dixième
+    centile monte de 15-17 à **20-21 matchs** (gardien : médiane 4 → **9**). L'arbitrage de la
+    semaine tient toujours : l'or des matchs à « deux séances puis un repos » aux trois
+    croisements (22,5 à 25,5), l'or de la trace ailleurs (physique +11,1 / technique +9,3 /
+    poste +7,2).
 - **Le banc d'essai (`v2/labo.html`)**, demandé par le propriétaire : « le tableau que tu m'as
   partagé, je sais pas ce que ça représente… j'aimerais bien aussi que je puisse faire [les
   simulations] sur le nombre de matchs en fonction des choix qu'on a fait. » La page rejoue des
