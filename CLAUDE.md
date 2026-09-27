@@ -818,9 +818,25 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     « quinze points en plus sur un axe, quinze en moins sur un autre, dans tes chiffres dès le
     premier match. Ça ne bougera plus : c'est ce que tu es. » `prefers-reduced-motion` les pose
     directement, sans animation.
-  - **Chacun nomme son axe** (« ton mental — le stade hurle et tes mains ne tremblent pas »), et ils
-    reviennent **dans la section « Toi »** comme il le demande : une fois qu'on sait ce qu'ils sont,
-    ils n'ont plus besoin d'une section à part.
+  - **Chacun nomme son axe**, et ils reviennent **dans la section « Toi »** comme il le demande : une
+    fois qu'on sait ce qu'ils sont, ils n'ont plus besoin d'une section à part. Au poste, l'étiquette
+    nomme la **spécialité réelle** (« ta finition », « ta vision », « ton placement », « tes
+    réflexes ») et non un « ton poste » abstrait.
+  - **LES HUIT TEXTES DISENT D'ABORD LE NIVEAU** (le propriétaire, 27/09/2026 : « les formulations ne
+    sont pas très bonnes… “tu arrives où le ballon était”, on ne comprend pas forcément. Et pareil
+    pour la frappe : on ne comprend pas trop si c'est bien ou pas bien quand tu dis “ta frappe n'est
+    pas normale”. Ça peut être “une frappe supérieure à la moyenne, le staff apprécie ta qualité de
+    tir”… et pour le poste, “tu es en dessous de la moyenne dans tes qualités au poste, c'est
+    quelque chose que tu traînes depuis toujours” »). Chaque phrase commence donc par **au-dessus**
+    ou **en dessous de la moyenne**, suivie de ce que ça change concrètement — « Une qualité de tir
+    au-dessus de la moyenne : le staff s'arrête pour regarder tes séances de frappe », « Un sens du
+    jeu en dessous de la moyenne : tu réagis une demi-seconde après les autres, et tu traînes ça
+    depuis toujours ». Les noms aussi (« Une frappe » → « La frappe », « Toujours un temps de
+    retard » → « Le temps de retard »).
+    **Deux pièges évités en relisant les huit textes aux quatre postes** : une première version
+    insérait le nom de la spécialité dans la phrase, ce qui **répétait l'étiquette** (« tes réflexes
+    — Tes réflexes est au-dessus… ») **et cassait l'accord** au pluriel. La phrase ne nomme plus
+    l'axe : l'étiquette s'en charge.
   - **La découverte en jouant disparaît** : `decouverte()` les révélait au fil des matchs, ce qui était
     précisément la cause de l'incompréhension. `nouvellePartie()` les pose **déjà vus**, et `charger()`
     les donne aussi aux carrières commencées avant — sinon plus rien ne les leur montrerait.

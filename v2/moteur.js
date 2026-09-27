@@ -37,10 +37,10 @@ const tameXG = x => x <= 2.6 ? x : 2.6 + (x - 2.6) / (1 + (x - 2.6) / 2.2);
 
 /* ---------- création ---------- */
 const POSTES = [
-  { id:'G', nom:"Gardien",            spec:"Réflexes",  w:{ tech:.22, phys:.26, ment:.30, spec:.22 } },
-  { id:'D', nom:"Défenseur",          spec:"Placement", w:{ tech:.22, phys:.32, ment:.24, spec:.22 } },
-  { id:'M', nom:"Milieu de terrain",  spec:"Vision",    w:{ tech:.32, phys:.22, ment:.24, spec:.22 } },
-  { id:'A', nom:"Attaquant",          spec:"Finition",  w:{ tech:.30, phys:.24, ment:.20, spec:.26 } },
+  { id:'G', nom:"Gardien",            spec:"Réflexes",  mot:"tes réflexes",  w:{ tech:.22, phys:.26, ment:.30, spec:.22 } },
+  { id:'D', nom:"Défenseur",          spec:"Placement", mot:"ton placement", w:{ tech:.22, phys:.32, ment:.24, spec:.22 } },
+  { id:'M', nom:"Milieu de terrain",  spec:"Vision",    mot:"ta vision",     w:{ tech:.32, phys:.22, ment:.24, spec:.22 } },
+  { id:'A', nom:"Attaquant",          spec:"Finition",  mot:"ta finition",   w:{ tech:.30, phys:.24, ment:.20, spec:.26 } },
 ];
 /* Les trois origines, recalées par le propriétaire le 27/09/2026. L'ordre des
    clés est l'ordre des pastilles : les forces d'abord, le défaut en dernier. */
@@ -68,17 +68,35 @@ const AMBITIONS = [
 ];
 /* Une qualité et un défaut, tirés au sort, sur deux axes différents. Les points
    sont dans tes chiffres dès le premier match ; le nom se découvre en jouant. */
+/* LES HUIT TEXTES DISENT D'ABORD LE NIVEAU (le propriétaire, 27/09/2026 : « les
+   formulations ne sont pas très bonnes… “tu arrives où le ballon était”, on ne
+   comprend pas forcément. Et pareil pour la frappe : on ne comprend pas trop si
+   c'est bien ou pas bien quand tu dis “ta frappe n'est pas normale”. Ça peut être
+   “une frappe supérieure à la moyenne, le staff apprécie ta qualité de tir”… et
+   pour le poste, “tu es en dessous de la moyenne dans tes qualités au poste,
+   c'est quelque chose que tu traînes depuis toujours” »). Chaque phrase commence
+   donc par **au-dessus** ou **en dessous de la moyenne**, et la suite dit ce que
+   ça change concrètement. La phrase ne répète pas l'axe : l'étiquette le nomme déjà,
+   et au poste elle le nomme précisément (« ta finition », « tes réflexes »). */
 const QUALITES = [
-  { id:'frappe', axe:'tech', nom:"Une frappe", dit:"Ta frappe n'est pas normale. Le staff s'arrête pour regarder les séances de tirs." },
-  { id:'poumons', axe:'phys', nom:"Des poumons", dit:"Tu finis les matchs plus frais que tu ne les as commencés." },
-  { id:'nerfs', axe:'ment', nom:"Des nerfs d'acier", dit:"Le stade hurle et tes mains ne tremblent pas." },
-  { id:'lecture', axe:'spec', nom:"La lecture du jeu", dit:"Tu es là où le ballon va arriver. C'est tout, et c'est énorme." },
+  { id:'frappe', axe:'tech', nom:"La frappe",
+    dit:"Une qualité de tir au-dessus de la moyenne : le staff s'arrête pour regarder tes séances de frappe." },
+  { id:'poumons', axe:'phys', nom:"Le moteur",
+    dit:"Un volume de course au-dessus de la moyenne : tu finis les matchs plus frais que ceux d'en face." },
+  { id:'nerfs', axe:'ment', nom:"Le sang-froid",
+    dit:"Une tête au-dessus de la moyenne : le stade hurle et tes mains ne tremblent pas." },
+  { id:'lecture', axe:'spec', nom:"La lecture du jeu",
+    dit:"Une lecture du jeu au-dessus de la moyenne : tu prends l'information avant les autres." },
 ];
 const DEFAUTS = [
-  { id:'gauche', axe:'tech', nom:"Un pied gauche absent", dit:"Côté gauche, tu ne fais rien. Les défenseurs l'ont compris avant toi." },
-  { id:'ischios', axe:'phys', nom:"Des ischios en verre", dit:"Encore cette gêne derrière la cuisse. Le kiné soupire." },
-  { id:'doute', axe:'ment', nom:"Le doute", dit:"Un geste raté et tu joues petit pendant vingt minutes." },
-  { id:'placement', axe:'spec', nom:"Toujours un temps de retard", dit:"Tu arrives où le ballon était. On te l'a déjà dit." },
+  { id:'gauche', axe:'tech', nom:"Le pied faible",
+    dit:"Une qualité balle au pied en dessous de la moyenne : côté gauche tu ne fais rien, et les défenseurs l'ont compris avant toi." },
+  { id:'ischios', axe:'phys', nom:"Les ischios",
+    dit:"Un corps en dessous de la moyenne : cette gêne derrière la cuisse revient chaque hiver, et le kiné soupire." },
+  { id:'doute', axe:'ment', nom:"Le doute",
+    dit:"Une tête en dessous de la moyenne : un geste raté et tu joues petit pendant vingt minutes." },
+  { id:'placement', axe:'spec', nom:"Le temps de retard",
+    dit:"Un sens du jeu en dessous de la moyenne : tu réagis une demi-seconde après les autres, et tu traînes ça depuis toujours." },
 ];
 
 const AXES = ['tech', 'phys', 'ment', 'spec'];
@@ -103,6 +121,13 @@ const AXE_NOM = { tech:"Technique", phys:"Physique", ment:"Mental", spec:"Au pos
 /* « Au poste » est un nom de code : à l'écran, c'est Vision, Finition, Réflexes
    ou Placement, selon le poste. */
 function axeNom(a){ return a === 'spec' && S && S.moi ? S.moi.specNom : AXE_NOM[a]; }
+/* « ta finition », « tes réflexes »… : le possessif suit le poste. */
+function motAxe(a){
+  if (a !== 'spec') return { tech:"ta technique", phys:"ton physique", ment:"ton mental" }[a];
+  const p = S && S.moi ? POSTES.find(x => x.id === S.moi.poste) : null;
+  return p ? p.mot : "ton poste";
+}
+
 
 /* ---------- les trois lignes ----------
    Le propriétaire, 27/09/2026 : « il y a une petite réserve sur la relation avec

@@ -104,7 +104,6 @@ function setAmbition(i){
    C'est bien s'il y a une petite animation comme une roulette et tout. » Ils
    étaient révélés au fil des matchs, donc ils apparaissaient dans « Ta
    situation » sans qu'on sache ce qu'ils étaient. */
-const AXE_MOT = { tech:"ta technique", phys:"ton physique", ment:"ton mental", spec:"ton poste" };
 function ecranTirage(){
   setTimeout(lancerRoulette, 40);
   return `<div class="card">
@@ -127,7 +126,7 @@ function lancerRoulette(){
   const q = QUALITES.find(x => x.id === S.moi.qual.id), f = DEFAUTS.find(x => x.id === S.moi.def.id);
   const poser = (id, it, cb) => {
     const n = document.getElementById(id + 'n'), d = document.getElementById(id + 'd');
-    if (n){ n.textContent = it.nom; d.textContent = `${AXE_MOT[it.axe]} — ${it.dit}`; }
+    if (n){ n.textContent = it.nom; d.textContent = `${motAxe(it.axe)} — ${it.dit}`; }
     const box = document.getElementById(id); if (box) box.classList.add('pose');
     if (cb) cb();
   };
@@ -228,9 +227,9 @@ function situationHTML(ouvert){
      son axe, et une ligne dit d'où ils viennent. */
   let tire = '';
   if (S.moi.qual.vu){ const q = QUALITES.find(x => x.id === S.moi.qual.id);
-    tire += celSit('\u2728', q.nom, `${AXE_MOT[q.axe]} — ${q.dit}`, true); }
+    tire += celSit('\u2728', q.nom, `${motAxe(q.axe)} — ${q.dit}`, true); }
   if (S.moi.def.vu){ const f = DEFAUTS.find(x => x.id === S.moi.def.id);
-    tire += celSit('\u26a0\ufe0f', f.nom, `${AXE_MOT[f.axe]} — ${f.dit}`, true); }
+    tire += celSit('\u26a0\ufe0f', f.nom, `${motAxe(f.axe)} — ${f.dit}`, true); }
   return `<details class="fold sit-fold"${ouvert ? ' open' : ''}><summary>Ta situation</summary>
     <h3>Autour de toi</h3><div class="sit">${gens}${maLigne}${grp}</div>
     ${concurrenceHTML()}
