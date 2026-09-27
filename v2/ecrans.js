@@ -38,15 +38,15 @@ function rendre(){
   if (!S) { el.innerHTML = creationHTML(); window.scrollTo(0, 0); return; }
   const f = { semaine:ecranSemaine, arret:ecranArret, moment:ecranMoment,
     resultat:ecranResultat, bilan:ecranBilan, journal:ecranJournal,
-    ete:ecranEte, offres:ecranOffres, carriere:ecranCarriere }[S.ecran];
-  el.innerHTML = topHTML() + (f ? f() : `<div class="card"><h2>Écran inconnu</h2><p class="sub">${esc(S.ecran)}</p></div>`);
+    ete:ecranEte, offres:ecranOffres, carriere:ecranCarriere, tirage:ecranTirage }[S.ecran];
+  el.innerHTML = (S.ecran === 'tirage' ? '' : topHTML()) + (f ? f() : `<div class="card"><h2>Écran inconnu</h2><p class="sub">${esc(S.ecran)}</p></div>`);
   window.scrollTo(0, 0);
 }
 
 /* ---------------- création ---------------- */
 function creationHTML(){
   if (ETAPE === 0) return `<div class="card">
-    <div class="step">Création · étape 1 sur 3</div>
+    <div class="step">Création · étape 1 sur 4</div>
     <h2>Qui tu es, et quand</h2>
     <p class="narr">Un nom, un poste, une époque. Le reste, tu le découvriras en jouant.</p>
     <h3>Ton nom</h3>
@@ -60,16 +60,16 @@ function creationHTML(){
   </div>`;
 
   if (ETAPE === 1) return `<div class="card">
-    <div class="step">Création · étape 2 sur 3</div>
+    <div class="step">Création · étape 2 sur 4</div>
     <h2>Où tu as appris à jouer</h2>
     <p class="narr">Ton époque et ton poste sont derrière toi. Reste le plus lourd : d'où tu viens.</p>
     ${ORIGINES.map((o, i) => optHTML(o.ico, o.nom, o.sub, origineDit(o), `setOrigine(${i})`)).join('')}
     <div class="btn-row"><button class="btn ghost" onclick="etape(0)">Retour</button></div>
-    <p class="sub">Une qualité et un défaut sont tirés au sort autour de cette origine. Ils sont dans tes chiffres dès le premier match, mais <b>on ne te les nomme pas</b> : tu les découvriras en jouant.</p>
+    <p class="sub">Une qualité et un défaut seront tirés au sort à la fin de la création. Tu ne les choisis pas, et ils te tiendront toute la carrière.</p>
   </div>`;
 
   return `<div class="card">
-    <div class="step">Création · étape 3 sur 3</div>
+    <div class="step">Création · étape 3 sur 4</div>
     <h2>Ce que tu veux de cette vie</h2>
     <p class="narr">À dix-huit ans, on a tous une idée de pourquoi on court. Elle changera peut-être.</p>
     ${AMBITIONS.map((a, i) => optHTML(a.ico, a.nom, a.sub, null, `setAmbition(${i})`)).join('')}
@@ -94,8 +94,63 @@ function setAmbition(i){
   NEW.ambition = AMBITIONS[i];
   if (!NEW.nom) NEW.nom = "Le joueur";
   nouvellePartie({ nom:NEW.nom, poste:NEW.poste, annee:NEW.annee, origine:NEW.origine, ambition:NEW.ambition });
-  rendre();
+  S.ecran = 'tirage'; sauver(); rendre();
 }
+
+/* ---------------- le tirage ----------------
+   Le propriétaire, 27/09/2026 : « pour les qualités et défauts, il faut que ce
+   soit dans la page de création qu'on les découvre. Une fois qu'on a choisi ce
+   qu'on voulait pour la partie hors football, on doit les voir apparaître.
+   C'est bien s'il y a une petite animation comme une roulette et tout. » Ils
+   étaient révélés au fil des matchs, donc ils apparaissaient dans « Ta
+   situation » sans qu'on sache ce qu'ils étaient. */
+const AXE_MOT = { tech:"ta technique", phys:"ton physique", ment:"ton mental", spec:"ton poste" };
+function ecranTirage(){
+  setTimeout(lancerRoulette, 40);
+  return `<div class="card">
+    <div class="step">Création · étape 4 sur 4</div>
+    <div class="big-ico">🎰</div>
+    <h2>Ce qu'on ne t'a pas demandé</h2>
+    <p class="narr">Un joueur ne choisit pas tout. Il y a ce que tu as depuis toujours,
+      et ce qui te manquera toujours. On te le dit une fois, maintenant.</p>
+    <div class="roul" id="rq"><span class="i">✨</span>
+      <div><b id="rqn">—</b><span class="sub" id="rqd">Ta qualité</span></div></div>
+    <div class="roul bad" id="rf"><span class="i">⚠️</span>
+      <div><b id="rfn">—</b><span class="sub" id="rfd">Ton défaut</span></div></div>
+    <p class="sub" id="rtxt" style="opacity:0">Quinze points en plus sur un axe, quinze en moins sur
+      un autre, dans tes chiffres dès le premier match. Ça ne bougera plus : c'est ce que tu es.</p>
+    <div class="btn-row" id="rbtn" style="opacity:0;pointer-events:none">
+      <button class="btn" onclick="finirTirage()">Commencer la saison</button></div>
+  </div>`;
+}
+function lancerRoulette(){
+  const q = QUALITES.find(x => x.id === S.moi.qual.id), f = DEFAUTS.find(x => x.id === S.moi.def.id);
+  const poser = (id, it, cb) => {
+    const n = document.getElementById(id + 'n'), d = document.getElementById(id + 'd');
+    if (n){ n.textContent = it.nom; d.textContent = `${AXE_MOT[it.axe]} — ${it.dit}`; }
+    const box = document.getElementById(id); if (box) box.classList.add('pose');
+    if (cb) cb();
+  };
+  const fini = () => ['rtxt', 'rbtn'].forEach(id => { const e = document.getElementById(id);
+    if (e){ e.style.transition = 'opacity .5s'; e.style.opacity = '1'; e.style.pointerEvents = 'auto'; } });
+  // on respecte ceux qui ne veulent pas d'animation
+  const calme = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (calme){ poser('rq', q); poser('rf', f); return fini(); }
+  const tourner = (id, liste, cible, duree, cb) => {
+    const n = document.getElementById(id + 'n'); if (!n) return cb();
+    const t0 = Date.now();
+    const tic = () => {
+      const t = Date.now() - t0;
+      if (t >= duree) return poser(id, cible, cb);
+      n.textContent = liste[Math.floor(Math.random() * liste.length)].nom;
+      // ça ralentit en arrivant : c'est ce qui fait la roulette
+      setTimeout(tic, 55 + 240 * Math.pow(t / duree, 3));
+    };
+    tic();
+  };
+  tourner('rq', QUALITES, q, 1500, () => tourner('rf', DEFAUTS, f, 1500, fini));
+}
+function finirTirage(){ S.ecran = 'semaine'; sauver(); rendre(); }
 
 /* ---------------- bandeau ---------------- */
 const LIEN_NOM = { coach:"Le coach", vestiaire:"Le vestiaire", club:"Le club", supporters:"Le stade", agent:"Ton agent" };
@@ -171,7 +226,6 @@ function situationHTML(ouvert){
      ça se tend, tu joues petit » (ta réserve, en ce moment) — et les deux se
      contredisaient à l'œil. Ils ont désormais leur propre section, chacun nomme
      son axe, et une ligne dit d'où ils viennent. */
-  const AXE_MOT = { tech:"ta technique", phys:"ton physique", ment:"ton mental", spec:"ton poste" };
   let tire = '';
   if (S.moi.qual.vu){ const q = QUALITES.find(x => x.id === S.moi.qual.id);
     tire += celSit('\u2728', q.nom, `${AXE_MOT[q.axe]} — ${q.dit}`, true); }
@@ -180,10 +234,7 @@ function situationHTML(ouvert){
   return `<details class="fold sit-fold"${ouvert ? ' open' : ''}><summary>Ta situation</summary>
     <h3>Autour de toi</h3><div class="sit">${gens}${maLigne}${grp}</div>
     ${concurrenceHTML()}
-    <h3>Toi</h3><div class="sit">${toi}</div>
-    ${tire ? `<h3>Ce qu'on sait de toi</h3><div class="sit">${tire}</div>
-      <p class="sub">Tirés au sort à ta naissance de joueur, et dans tes chiffres depuis le
-      premier jour. Ça ne bouge pas : c'est ce que tu es, pas ce que tu vaux cette semaine.</p>` : ''}
+    <h3>Toi</h3><div class="sit">${toi}${tire}</div>
     <p class="narr" style="margin-top:12px">${esc(direStaff())}</p>
     <p class="sub">${S.stats.matchs} match${S.stats.matchs > 1 ? 's' : ''} jou\u00e9${S.stats.matchs > 1 ? 's' : ''}${S.stats.titus ? `, dont ${S.stats.titus} comme titulaire` : ''}${S.stats.buts ? ` \u00b7 ${S.stats.buts} but${S.stats.buts > 1 ? 's' : ''}` : ''}${S.stats.notes.length ? ` \u00b7 moyenne ${virg(moyenneNotes())}` : ''}.</p>
   </details>`;
@@ -341,10 +392,6 @@ function ecranResultat(){
       ${m.seance ? `<p class="narr">${esc(m.seance.texte)}</p>` : ''}` : ''}
     <h3>Le film du match</h3>
     <div class="tl">${filmHTML(m)}</div>
-    ${m.decouverte ? `<h3>${m.decouverte.bon ? "Ce qu'on a vu en toi" : "Ce qui s'est vu aussi"}</h3>
-      <div class="bloc ${m.decouverte.bon ? 'gagne' : 'perdu'}"><span class="i">${m.decouverte.ico}</span>
-        <div><h4>${esc(m.decouverte.nom)}</h4><p class="narr" style="margin:0">${esc(m.decouverte.dit)}</p>
-        <p class="sub" style="margin:4px 0 0">${esc(m.decouverte.axe)} · c'était dans tes chiffres depuis le premier jour.</p></div></div>` : ''}
     ${m.notes && m.notes.length > 1 ? `<h3>Les notes du match</h3>
       ${m.jugement ? `<p class="narr">${esc(m.jugement)}</p>` : ''}
       <div class="notes">${m.notes.map(j => `<div${j.moi ? ' class="me"' : ''}>
