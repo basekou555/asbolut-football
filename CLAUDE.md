@@ -581,6 +581,24 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
      `vestiaire()` : il décide encore de deux familles d'arrêts et d'une ligne du bilan. Et
      l'effectif répond une fois pour toutes à la question : « L'entente du vestiaire, c'est la
      moyenne de ces trois lignes. »
+- **LES SIX CARTES DE SÉANCE, RACCOURCIES** (le propriétaire, 27/09/2026 : « on peut réduire la
+  taille de la section semaine, le truc des choix prend beaucoup de place, ça me fait beaucoup
+  scroller, et du coup j'ai même pas tout en bas parfois alors que j'aimerais bien aller voir
+  l'effectif plus souvent »). C'était le bloc que j'avais **explicitement laissé intact** deux
+  passes plus tôt parce qu'il venait de dire l'aimer ; il le reprend, donc on le coupe — mais en
+  gardant ce qu'il aime, c'est-à-dire **l'effet annoncé avant le clic**.
+  - **Les sous-titres tiennent sur une ligne** (« Frappes, centres, gestés répétés jusqu'à la nuit »
+    → « Frappes, centres, gestes répétés »), c'est ce qui doublait la hauteur d'une carte.
+  - **Les pastilles sont resserrées** (« la technique, sur les faits de match » → « technique : les
+    faits de match », « ta place : le coach te titularise » → « ta place dans le onze ») : à trois
+    mots de moins elles tiennent sur **une seule rangée** au lieu de deux.
+  - **Moins d'air** : `.opt` passe de 12/14 à 9/12 de marge intérieure, la colonne d'icône de 28 à
+    24, l'interligne des pastilles de 7 à 5.
+  - **La narration de l'écran disparaît** : « Trois jours de travail, et une seule chose que tu
+    peux vraiment décider » était la même **trente-quatre fois par saison**.
+  Mesuré à 430 px, même carrière : quatre cartes sur six tombent à **87 px** (une rangée de
+  pastilles), la carte « Ta semaine » entière passe de **1 123 à 757 px (−33 %)**, et surtout
+  **L'EFFECTIF remonte de 2 279 à 1 896 px** — 383 pixels de défilement en moins pour l'atteindre.
 - **Le banc d'essai (`v2/labo.html`)**, demandé par le propriétaire : « le tableau que tu m'as
   partagé, je sais pas ce que ça représente… j'aimerais bien aussi que je puisse faire [les
   simulations] sur le nombre de matchs en fonction des choix qu'on a fait. » La page rejoue des

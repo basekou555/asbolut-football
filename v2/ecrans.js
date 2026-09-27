@@ -222,7 +222,6 @@ function ecranSemaine(){
   <div class="card">
     <div class="step">${esc(entete)}</div>
     <h2>Ta semaine</h2>
-    <p class="narr">Trois jours de travail, et une seule chose que tu peux vraiment décider.</p>
     ${empeche === 'blessure' ? `<div class="lack"><b>Tu es à l'infirmerie.</b> Encore ${S.etats.blessure} journée${S.etats.blessure > 1 ? 's' : ''}. Ce que tu fais de la semaine compte quand même.</div>` : ''}
     ${empeche === 'suspension' ? `<div class="lack"><b>Tu es suspendu.</b> Encore ${S.etats.suspension} match${S.etats.suspension > 1 ? 's' : ''}. Tu t'entraînes sans jouer.</div>` : ''}
     <h3>Ce que tu travailles</h3>
