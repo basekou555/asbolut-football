@@ -538,6 +538,28 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     semaine tient toujours : l'or des matchs à « deux séances puis un repos » aux trois
     croisements (22,5 à 25,5), l'or de la trace ailleurs (physique +11,1 / technique +9,3 /
     poste +7,2).
+- **UNE JAUGE QUI BOUGE SANS QUE LES MOTS BOUGENT N'EXISTE PAS** (le propriétaire, 27/09/2026 :
+  « la stat "ta ligne", elle bouge jamais, du coup je comprends pas trop l'utilité »). Mesuré
+  avant de toucher à quoi que ce soit, 60 carrières : la jauge parcourt bien **22 points** par
+  saison, mais les bandes générales (`BANDES`) font **seize points de large**, donc la phrase ne
+  changeait que **3,5 fois en 34 journées** — dix semaines avec le même mot, et **3 carrières sur
+  60 où elle ne changeait jamais**. Il avait raison : du point de vue du joueur, elle ne bougeait
+  pas. Deux corrections.
+  1. **Huit paliers au lieu de six**, resserrés autour de là où une entente vit vraiment
+     (`BANDES_LIGNE = [30, 38, 45, 51, 57, 63, 70]`, six à sept points de large). Deux phrases de
+     plus par ligne.
+  2. **La direction, qui est le vrai correctif.** Une jauge qui se déplace de deux points par
+     journée ne change pas de palier avant des semaines. `S.ligneRef` est une moyenne lissée
+     (`ref × .82 + valeur × .18` à chaque journée) ; l'écart à elle donne « Et ça va dans le bon
+     sens » ou « Et ça se dégrade », **à l'intérieur même d'un palier**.
+  Mesuré après, mêmes 60 carrières : la lecture de ta ligne change **13,1 fois par saison** (contre
+  3,5), **7,3 lectures différentes** sur huit (contre 2,4 sur six), et **plus aucune carrière** où
+  elle reste fixe. Aucune migration : `S.ligneRef` se pose tout seul au premier passage.
+- **« Ta place » n'existe plus qu'à un seul endroit** (« il y a deux emplacements, celui dans la
+  situation et celui dans ta semaine »). C'était vrai : la case **TA PLACE** (rang + levier) était
+  dans la fiche et la **liste du poste** sur la carte de la semaine. Les deux sont réunies en une
+  section **Ta place** dans « Ta situation » — le rang et le levier en tête, la hiérarchie complète
+  en dessous. L'écran de la semaine ne garde que **la décision**, ce qui est sa fonction.
 - **Le banc d'essai (`v2/labo.html`)**, demandé par le propriétaire : « le tableau que tu m'as
   partagé, je sais pas ce que ça représente… j'aimerais bien aussi que je puisse faire [les
   simulations] sur le nombre de matchs en fonction des choix qu'on a fait. » La page rejoue des
