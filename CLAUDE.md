@@ -774,6 +774,48 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     erreur ; les six invariants du tableau des notes à zéro écart ; et une vraie sauvegarde de la
     version déployée passe la trêve (les effectifs adverses se fabriquent au premier été) et rejoue
     une saison entière.
+- **LA COUPE ET L'EUROPE, EN MILIEU DE SEMAINE** (le propriétaire, 21/09/2026 : « la **coupe doit
+  devenir jouable** — comme suite de décisions, pas de matchs à opérer » ; 27/09/2026 : « une fois
+  qu'on a vu ça, on peut passer à l'Europe aussi, et à la coupe »).
+  - **Elles ne rallongent pas ta semaine, elles la coûtent.** Le match de coupe ou d'Europe se joue
+    **avant** qu'on pose le groupe du week-end : ses minutes et sa fatigue entrent donc dans le choix
+    du onze de samedi. Un mercredi européen, c'est des jambes en moins samedi — c'est là qu'est
+    l'arbitrage, et il n'a pas besoin d'un écran de plus. La semaine garde ses trois clics : le
+    mercredi se **lit**, il ne s'opère pas, et il n'a pas de fait de match (ceux-là restent pour
+    samedi). L'écran de la semaine **l'annonce avant que tu choisisses ta séance**.
+  - **La coupe** : cinq tours (`J_COUPE` = 8, 14, 20, 26, 31). Les deux premiers contre un club de
+    division inférieure — c'est là que les surprises arrivent — puis un club du championnat. Un
+    match nul se décide en prolongation. **Le coach tourne davantage en coupe** (`ROTATION_COUPE`=7,
+    contre 3,5) : c'est la vérité du football, et ça donne au remplaçant une porte d'entrée qui
+    n'existait pas.
+  - **L'Europe** : on y va si on a fini **sur le podium** ou si on a **gagné la coupe**, donc jamais
+    la première saison. Six matchs de groupe (huit points qualifient), puis quarts, demie, finale.
+    L'adversaire sort de `EU_CLUBS` à l'époque jouée, avec une pente plus raide que celle du
+    championnat de France (`PENTE_EURO`=4,2) : un grand d'Europe est au-dessus d'un grand de France.
+  - **Mesuré, 600 saisons** : **44 % des saisons en Europe**, 3,1 tours de coupe par saison (on sort
+    généralement en quarts), **79 coupes et 11 Europes gagnées** — la coupe une saison sur sept,
+    l'Europe une campagne sur vingt-cinq. 3 628 matchs de mercredi, dont **70 % joués par toi**, et
+    28,3 matchs par saison toutes compétitions confondues.
+  - **L'équilibre de la semaine tient** aux trois croisements, avec une conséquence émergente qui
+    est exactement l'effet recherché : quand le mercredi existe, « lever le pied » reprend de la
+    valeur (25,6 matchs contre 26,1 pour « deux séances puis un repos » en académie milieu) — une
+    saison européenne se paie.
+  - Les trophées entrent dans la carrière (`carriere.coupes`, `carriere.europes`), le bilan de saison
+    porte une case **Les coupes**, et le bilan de carrière marque chaque saison d'un 🏆, 🏅 ou ⭐.
+- **TA QUALITÉ ET TON DÉFAUT NE SONT PAS DES JAUGES** (le propriétaire, 27/09/2026 : « je ne comprends
+  pas ce que représente nerfs d'acier et ischios en verre, pourquoi ils sont là et comme cela »).
+  Ils étaient rangés **dans la même grille que la fraîcheur et le mental**, sans dire de quel axe ils
+  parlent : « DES NERFS D'ACIER » (+15 de mental, pour toujours) se lisait donc à côté de « MENTAL :
+  quand ça se tend, tu joues petit » (la réserve du moment) — et les deux se contredisaient à
+  l'œil. Ils ont désormais **leur propre section « Ce qu'on sait de toi »**, chacun **nomme son axe**
+  (« ton mental — le stade hurle et tes mains ne tremblent pas »), et une ligne dit d'où ils
+  viennent : tirés au sort à la naissance du joueur, et dans ses chiffres depuis le premier jour.
+- **TES BUTS DE FAIT DE MATCH N'AVAIENT PAS DE PASTILLE** (capture à l'appui : l'entête dit « 1 but »
+  et la ligne de notes n'affiche que la passe). `faits` est construit depuis `m.evs`, or un but
+  marqué sur un fait de match fait `m.bn++ ; m.buts++` **sans créer d'événement** : il était donc
+  invisible. On lit `m.buts`, le vrai total, comme la note le faisait déjà. Mesuré : **zéro écart**
+  entre la pastille et le total sur 600 saisons. Et le 🅰️ de la passe décisive, qui se lit comme un
+  carton sur un téléphone, devient un crampon 👟.
 - **Le banc d'essai (`v2/labo.html`)**, demandé par le propriétaire : « le tableau que tu m'as
   partagé, je sais pas ce que ça représente… j'aimerais bien aussi que je puisse faire [les
   simulations] sur le nombre de matchs en fonction des choix qu'on a fait. » La page rejoue des
@@ -878,8 +920,8 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     eux, sont justes (11,6 buts pour un attaquant, 5,3 pour un milieu, 1,3 pour un défenseur) : c'est
     donc le nombre de buts d'une **équipe dominante** qui gonfle, pas la part que tu en prends. Le
     levier serait `tameXG`, et il touche tous les scores : à mesurer avant d'y toucher.
-- **Ce qui n'est pas encore là** : la vie et ses chantiers, la boutique, le mercato, la sélection
-  nationale, le mode entraîneur·euse, la coupe et l'Europe. (La trêve, les offres, la progression
+- **Ce qui n'est pas encore là** : la vie et ses chantiers, la boutique, le mercato (montantes,
+  descentes et transferts entre clubs), la sélection nationale, le mode entraîneur·euse. (La trêve, les offres, la progression
   d'une saison sur l'autre et l'usure sont livrées — voir « La carrière continue ».) Les **contenus** sont volontairement repoussés après le moteur (décision du propriétaire) :
   un contenu n'est une donnée qu'une fois les quatre canaux d'impact et le `ctx` figés. Les quatre
   `ARRETS` et les huit `MOMENTS` en place sont des marqueurs de forme, pas le contenu final.

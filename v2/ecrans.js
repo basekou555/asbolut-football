@@ -163,13 +163,27 @@ function situationHTML(ouvert){
     + celSit('\u{1F4AA}', "Ton corps", direFond())
     + celSit('\u26bd', "Technique", direGeste())
     + celSit('\u{1F9E0}', "Mental", direEncaisse());
+  /* TA QUALITÉ ET TON DÉFAUT NE SONT PAS DES JAUGES (le propriétaire, 27/09/2026 :
+     « je ne comprends pas ce que représente nerfs d'acier et ischios en verre,
+     pourquoi ils sont là et comme cela »). Ils étaient rangés dans la même grille
+     que la fraîcheur et le mental, sans dire de quel axe ils parlent : « DES NERFS
+     D'ACIER » (+15 de mental, pour toujours) se lisait à côté de « MENTAL : quand
+     ça se tend, tu joues petit » (ta réserve, en ce moment) — et les deux se
+     contredisaient à l'œil. Ils ont désormais leur propre section, chacun nomme
+     son axe, et une ligne dit d'où ils viennent. */
+  const AXE_MOT = { tech:"ta technique", phys:"ton physique", ment:"ton mental", spec:"ton poste" };
   let tire = '';
-  if (S.moi.qual.vu){ const q = QUALITES.find(x => x.id === S.moi.qual.id); tire += celSit('\u2728', q.nom, q.dit); }
-  if (S.moi.def.vu){ const f = DEFAUTS.find(x => x.id === S.moi.def.id); tire += celSit('\u26a0\ufe0f', f.nom, f.dit); }
+  if (S.moi.qual.vu){ const q = QUALITES.find(x => x.id === S.moi.qual.id);
+    tire += celSit('\u2728', q.nom, `${AXE_MOT[q.axe]} — ${q.dit}`, true); }
+  if (S.moi.def.vu){ const f = DEFAUTS.find(x => x.id === S.moi.def.id);
+    tire += celSit('\u26a0\ufe0f', f.nom, `${AXE_MOT[f.axe]} — ${f.dit}`, true); }
   return `<details class="fold sit-fold"${ouvert ? ' open' : ''}><summary>Ta situation</summary>
     <h3>Autour de toi</h3><div class="sit">${gens}${maLigne}${grp}</div>
     ${concurrenceHTML()}
-    <h3>Toi</h3><div class="sit">${toi}${tire}</div>
+    <h3>Toi</h3><div class="sit">${toi}</div>
+    ${tire ? `<h3>Ce qu'on sait de toi</h3><div class="sit">${tire}</div>
+      <p class="sub">Tirés au sort à ta naissance de joueur, et dans tes chiffres depuis le
+      premier jour. Ça ne bouge pas : c'est ce que tu es, pas ce que tu vaux cette semaine.</p>` : ''}
     <p class="narr" style="margin-top:12px">${esc(direStaff())}</p>
     <p class="sub">${S.stats.matchs} match${S.stats.matchs > 1 ? 's' : ''} jou\u00e9${S.stats.matchs > 1 ? 's' : ''}${S.stats.titus ? `, dont ${S.stats.titus} comme titulaire` : ''}${S.stats.buts ? ` \u00b7 ${S.stats.buts} but${S.stats.buts > 1 ? 's' : ''}` : ''}${S.stats.notes.length ? ` \u00b7 moyenne ${virg(moyenneNotes())}` : ''}.</p>
   </details>`;
@@ -228,6 +242,7 @@ function ecranSemaine(){
   <div class="card">
     <div class="step">${esc(entete)}</div>
     <h2>Ta semaine</h2>
+    ${direMercredi() ? `<p class="narr" style="margin:0 0 8px"><b>${esc(direMercredi())}</b> Ce que tu travailles se paiera deux fois cette semaine.</p>` : ''}
     ${empeche === 'blessure' ? `<div class="lack"><b>Tu es à l'infirmerie.</b> Encore ${S.etats.blessure} journée${S.etats.blessure > 1 ? 's' : ''}. Ce que tu fais de la semaine compte quand même.</div>` : ''}
     ${empeche === 'suspension' ? `<div class="lack"><b>Tu es suspendu.</b> Encore ${S.etats.suspension} match${S.etats.suspension > 1 ? 's' : ''}. Tu t'entraînes sans jouer.</div>` : ''}
     <h3>Ce que tu travailles</h3>
@@ -288,6 +303,24 @@ function ecranMoment(){
 }
 
 /* ---------------- le résultat ---------------- */
+/* Le mercredi de coupe ou d'Europe : lu, pas opéré — « la coupe doit devenir
+   jouable comme suite de décisions, pas de matchs à opérer ». Ce qu'on en retient
+   à l'écran : le résultat, ton temps de jeu, et ce que ça coûte à samedi. */
+const COMP_NOM = { coupe:"Coupe", euro:"Europe" };
+function annexeHTML(a){
+  if (!a) return '';
+  const tours = a.comp === 'coupe' ? TOURS_COUPE : TOURS_EURO;
+  const ton = a.res === 'V' ? 'gagne' : a.res === 'D' ? 'perdu' : '';
+  const ico = a.comp === 'coupe' ? '🏅' : '⭐';
+  return `<h3>Mercredi — ${COMP_NOM[a.comp]}</h3>
+    <div class="bloc ${ton}"><span class="i">${ico}</span><div>
+      <h4>${esc(tours[a.tour])} · ${a.bn}–${a.be} contre ${esc(a.adv)}${a.prolong ? ' (après prolongation)' : ''}</h4>
+      <p class="narr" style="margin:0">${a.minutes
+        ? `Tu as joué ${a.minutes} min, note ${virg(a.note)}${a.buts ? `, ${a.buts} but${a.buts > 1 ? 's' : ''}` : ''}${a.passes ? `, ${a.passes} passe${a.passes > 1 ? 's' : ''} décisive${a.passes > 1 ? 's' : ''}` : ''}. Samedi partira de plus loin.`
+        : a.statut === 'banc' ? `Tu étais sur le banc et tu n'es pas entré.`
+        : `Tu n'étais pas du voyage.`}</p></div></div>`;
+}
+
 function ecranResultat(){
   const m = S.dernier;
   const gauche = m.adv.dom ? S.club.nom : m.adv.nom, droite = m.adv.dom ? m.adv.nom : S.club.nom;
@@ -302,6 +335,7 @@ function ecranResultat(){
   return `<div class="card">
     <div class="step">${ordinal(S.journee + 1)} journée · terminé</div>
     <div class="score"><span class="big">${score}</span><div><b>${esc(gauche)}</b> – ${esc(droite)}<br><span class="sub">${maLigne}</span></div></div>
+    ${annexeHTML(m.annexe)}
     ${m.arret || m.seance ? `<h3>Ta semaine</h3>
       ${m.arret ? `<p class="narr" style="margin-bottom:6px"><b>${esc(m.arret.titre)}</b> \u2014 tu as choisi : \u00ab ${esc(m.arret.choix)} \u00bb.</p>` : ''}
       ${m.seance ? `<p class="narr">${esc(m.seance.texte)}</p>` : ''}` : ''}
@@ -336,7 +370,8 @@ function faitsHTML(f){
   if (!f) return '';
   const l = [];
   if (f.b) l.push('⚽'.repeat(Math.min(f.b, 3)) + (f.b > 3 ? `×${f.b}` : ''));
-  if (f.p) l.push('🅰️'.repeat(Math.min(f.p, 3)));
+  // le 🅰️ se lit comme un carton sur un téléphone : on prend le crampon
+  if (f.p) l.push('👟'.repeat(Math.min(f.p, 3)));
   if (f.j) l.push('🟨');
   if (f.r) l.push('🟥');
   if (f.bl) l.push('🩼');
@@ -394,6 +429,16 @@ function ecranBilan(){
       ${b.perdu.map(t => `<p class="narr" style="margin:0 0 5px">${esc(t)}</p>`).join('')}</div></div>
     <div class="bloc suite"><span class="i">➡️</span><div><h4>Ce qui vient</h4>
       ${b.suite.map(t => `<p class="narr" style="margin:0 0 5px">${esc(t)}</p>`).join('')}</div></div>
+    ${(S.coupe && (S.coupe.gagnee || S.coupe.hist.length)) || (S.euro && S.euro.engage) ? `
+      <div class="bloc ${(S.coupe && S.coupe.gagnee) || (S.euro && S.euro.gagnee) ? 'gagne' : ''}"><span class="i">🏅</span><div><h4>Les coupes</h4>
+        <p class="narr" style="margin:0">${[
+          S.coupe && S.coupe.gagnee ? `<b>Vous gagnez la Coupe.</b>`
+            : S.coupe && S.coupe.hist.length ? `Coupe : éliminés ${TOURS_COUPE[S.coupe.hist[S.coupe.hist.length - 1].t]}.` : '',
+          S.euro && S.euro.gagnee ? `<b>Et l'Europe.</b>`
+            : S.euro && S.euro.engage ? (S.euro.hist.length > 6
+                ? `Europe : éliminés ${TOURS_EURO[S.euro.hist[S.euro.hist.length - 1].t]}.`
+                : `Europe : sortis en phase de groupes.`) : ''
+        ].filter(Boolean).join(' ')}</p></div></div>` : ''}
     ${carriereHTML()}
     <div class="btn-row"><button class="btn ghost" onclick="ouvrirJournal()">📓 Le journal</button>
       <button class="btn" onclick="ouvrirEte()">L'été →</button></div>
@@ -494,14 +539,15 @@ function ecranCarriere(){
       <div><div class="v">${c.buts}</div><div class="k">buts</div></div>
       <div><div class="v">${c.passes}</div><div class="k">passes déc.</div></div>
       <div><div class="v">${moy == null ? '—' : virg(Math.round(moy * 100) / 100)}</div><div class="k">moyenne</div></div>
-      <div><div class="v">${c.titres}</div><div class="k">titre${c.titres > 1 ? 's' : ''}</div></div>
+      <div><div class="v">${c.titres}${c.coupes ? `+${c.coupes}` : ''}${c.europes ? `+${c.europes}` : ''}</div>
+        <div class="k">${[c.titres ? 'championnat' : '', c.coupes ? 'coupe' : '', c.europes ? 'europe' : ''].filter(Boolean).join(' · ') || 'trophée'}</div></div>
     </div>
     ${meilleure ? `<div class="bloc gagne"><span class="i">⭐</span><div><h4>Ta saison</h4>
       <p class="narr" style="margin:0">${meilleure.annee}-${meilleure.annee + 1} à ${esc(meilleure.club)} : ${meilleure.matchs} matchs, ${meilleure.buts} but${meilleure.buts > 1 ? 's' : ''}${meilleure.note == null ? '' : `, ${virg(meilleure.note)} de moyenne`}${meilleure.pos ? ` — ${meilleure.pos}ᵉ du championnat` : ''}.</p></div></div>` : ''}
     <h3>Saison par saison</h3>
     <div class="notes">${(c.annees || []).map(a => `<div>
       <span class="p">${String(a.annee).slice(2)}</span>
-      <span>${esc(a.club)} <i>${a.matchs} m·${a.buts} b${a.pos ? ` · ${a.pos}ᵉ` : ''}</i></span>
+      <span>${esc(a.club)} <i>${a.matchs} m·${a.buts} b${a.pos ? ` · ${a.pos}ᵉ` : ''}</i>${a.pos === 1 ? ' 🏆' : ''}${a.coupe ? ' 🏅' : ''}${a.euro ? ' ⭐' : ''}</span>
       <span class="n">${a.note == null ? '—' : virg(a.note)}</span></div>`).join('')}</div>
     <p class="sub">Les clubs : ${esc((c.clubs || []).join(', ')) || '—'}.</p>
     <div class="btn-row"><button class="btn ghost" onclick="ouvrirJournal()">📓 Le journal</button>
