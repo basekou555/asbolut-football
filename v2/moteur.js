@@ -319,6 +319,115 @@ const PENTE_CLUB = 2.4;
 const ELAN_CLUB = .12;
 const TIRAGE_CLUB = 7.5;   // c'est lui qui fait qu'on ne sait jamais qui sera fort
 const RAPPEL_CLUB = .35;   // et lui qui empêche un club de s'échapper
+
+/* ========== LES CLUBS ADVERSES ONT UN EFFECTIF, PAS UN NOMBRE ==========
+   Le propriétaire, 27/09/2026 : « les équipes en face et les joueurs d'en face qui
+   ont leur potentiel aléatoire et qui ont leur croissance de leur côté, qui est
+   dans les mêmes proportions que la nôtre. » Un club adverse était un nombre qui
+   bougeait tout seul ; c'est maintenant **vingt-deux joueurs nommés**, avec un âge
+   et un potentiel, qui suivent **la même courbe d'âge que tes coéquipiers**. La
+   force du club n'est plus tirée : elle **découle** de son onze.
+   Ce que ça change vraiment : un club tombe parce que sa génération vieillit et
+   remonte parce qu'il recrute — le mouvement a enfin une cause, et le buteur d'en
+   face a un nom. L'élan, le tirage et le rappel vers le potentiel n'agissent plus
+   sur la force directement mais sur **ce que le club arrive à recruter**, ce qui
+   revient au même de loin et veut dire quelque chose de près. */
+function nomAdverse(pris){
+  for (let k = 0; k < 400; k++){
+    const n = `${pick(INITIALES)}. ${pick(NOMS_ADV)}`;
+    if (!pris.has(n)){ pris.add(n); return n; }
+  }
+  return `${pick(INITIALES)}. ${pick(NOMS_ADV)}`;
+}
+/* Le niveau du onze, pondéré comme une équipe : c'est ça, la force d'un club. */
+function forceEffectif(sq){
+  let t = 0, n = 0;
+  Object.entries(FORMATION).forEach(([po, k]) => {
+    sq.filter(j => j.p === po).sort((a, b) => b.v - a.v).slice(0, k)
+      .forEach(j => { t += j.v; n++; });
+  });
+  return n ? Math.round(clamp(t / n, 40, 82)) : 50;
+}
+function creerEffectifAdverse(niveau, pris){
+  const sq = [];
+  Object.entries(EFFECTIF).forEach(([po, n]) => {
+    for (let i = 0; i < n; i++){
+      const age = ri(18, 33);
+      // les titulaires sont au-dessus du niveau du club, les doublures en dessous
+      /* Les titulaires sont **centrés** sur le niveau du club, pas au-dessus : sinon
+         `forceEffectif()` (la moyenne du onze) rendait systématiquement trois points
+         de plus que le niveau demandé, et comme tes coéquipiers se construisent à
+         partir de la force de ton club, tu perdais ta place — mesuré, 24,8 matchs
+         en première saison tombés à 18,5. */
+      const v = clamp(niveau + (i < FORMATION[po] ? rnd(-2.5, 2.5) : rnd(-12, -2)), 38, 84);
+      sq.push({ n: nomAdverse(pris), p: po, a: age,
+        v: Math.round(v * 10) / 10,
+        // le potentiel : ce qu'il peut devenir, borné par ce qu'il est déjà
+        t: Math.round(clamp(v + (age <= 23 ? rnd(2, 12) : rnd(0, 4)), 40, 88) * 10) / 10 });
+    }
+  });
+  return sq;
+}
+/* Une année passe chez eux aussi : chacun vieillit et suit sa courbe vers son
+   potentiel, les plus vieux s'en vont, et le club recrute à la hauteur de ce
+   qu'il pèse — mieux s'il a bien fini, moins bien sinon, avec un vrai tirage. */
+function recrue(po, niveau, pris){
+  const age = ri(18, 29);
+  const v = clamp(niveau, 38, 84);
+  return { n: nomAdverse(pris), p: po, a: age, v: Math.round(v * 10) / 10,
+    t: Math.round(clamp(v + (age <= 23 ? rnd(2, 12) : rnd(0, 4)), 40, 88) * 10) / 10 };
+}
+function vivreEffectifAdverse(e, vise, pris){
+  e.sq.forEach(j => {
+    j.a++;
+    const c = courbeAge(j.a);
+    j.v = Math.round(clamp(j.v + (c > 0 ? Math.min(c, Math.max(0, j.t - j.v)) : c) + rnd(-.8, .8), 38, 86) * 10) / 10;
+  });
+  e.sq = e.sq.filter(j => j.a < 35 && !(j.a >= 31 && Math.random() < .3) && Math.random() > .1);
+  Object.entries(EFFECTIF).forEach(([po, n]) => {
+    while (e.sq.filter(j => j.p === po).length < n){
+      const titu = e.sq.filter(j => j.p === po).length < FORMATION[po];
+      e.sq.push(recrue(po, vise + (titu ? rnd(-2.5, 2.5) : rnd(-12, -2)), pris));
+    }
+  });
+  /* LE MERCATO DU CLUB. Sans lui, un effectif de vingt-deux **lisse tout** : chaque
+     joueur bouge d'un point par an, la force du onze suit à peine, et le
+     championnat se refige (mesuré : 4,2 champions différents sur vingt saisons au
+     lieu de 5,8, titre conservé 49 %). Un club qui a bien fini **achète** et
+     remplace ses plus faibles ; un club qui a coulé **perd ses meilleurs**, partis
+     ailleurs. C'est ça qui fait bouger une hiérarchie, et c'est vrai. */
+  const postes = Object.keys(EFFECTIF);
+  for (let k = 0; k < 8; k++){
+    const ecart = vise - forceEffectif(e.sq);
+    if (Math.abs(ecart) < 1.2) break;
+    const po = pick(postes);
+    const l = e.sq.filter(j => j.p === po);
+    if (l.length < 2) continue;
+    // on achète par le bas, on se fait piller par le haut
+    const cible = ecart > 0 ? l.sort((a, b) => a.v - b.v)[0] : l.sort((a, b) => b.v - a.v)[0];
+    e.sq.splice(e.sq.indexOf(cible), 1);
+    e.sq.push(recrue(po, ecart > 0 ? vise + rnd(-1, 4) : vise + rnd(-10, -2), pris));
+  }
+}
+/* Qui marque chez eux : quelqu'un de leur onze, et plutôt un attaquant. */
+function buteurAdverse(adv){
+  const e = (S.ligue.equipes || []).find(x => x.nom === adv.nom);
+  if (!e || !e.sq || !e.sq.length) return null;
+  const onze = [];
+  Object.entries(FORMATION).forEach(([po, k]) => {
+    onze.push(...e.sq.filter(j => j.p === po).sort((a, b) => b.v - a.v).slice(0, k));
+  });
+  const poids = onze.map(j => ({ G:.02, D:.5, M:1.4, A:3 }[j.p] || 1));
+  let t = poids.reduce((a, x) => a + x, 0) * Math.random(), i = 0;
+  while (i < onze.length - 1 && (t -= poids[i]) > 0) i++;
+  return onze[i] ? onze[i].n : null;
+}
+function nomsPris(){
+  const s = new Set();
+  (S.ligue.equipes || []).forEach(e => (e.sq || []).forEach(j => s.add(j.n)));
+  return s;
+}
+
 function creerLigue(annee){
   const dk = typeof decadeKey === 'function' ? decadeKey(annee) : '10';
   const gros = (typeof FR_CLUBS !== 'undefined' ? FR_CLUBS : []).filter(c => (c.s[dk] || 0) >= 2).map(c => ({ nom:c.n, s:c.s[dk] }));
@@ -329,11 +438,13 @@ function creerLigue(annee){
      titre était joué avant août : mesuré, 3,9 champions différents sur vingt saisons
      et le titre conservé 59 % du temps. À 2,4, l'écart tombe à neuf ou dix, et une
      saison peut basculer. */
+  const pris = new Set();
   const equipes = noms.map(x => {
     const ancre = clamp(52 + x.s * PENTE_CLUB, 44, 74);
     const pot = clamp(ancre + rnd(-3, 3), 44, 78);
+    const sq = creerEffectifAdverse(clamp(pot + rnd(-3, 3), 42, 80), pris);
     return { nom:x.nom, ancre: Math.round(ancre * 10) / 10, pot: Math.round(pot * 10) / 10,
-      force: Math.round(clamp(pot + rnd(-3, 3), 42, 80)) };
+      sq, force: forceEffectif(sq) };
   }).sort((a, b) => b.force - a.force);
   const N = equipes.length;
   return { equipes, N, classement: Object.fromEntries(equipes.map(e => [e.nom, { pts:0, j:0, v:0, n:0, d:0, bp:0, bc:0 }])) };
@@ -342,6 +453,7 @@ function creerLigue(annee){
    même porte que les autres — il n'a plus de règle à lui. */
 function faireVivreLigue(){
   const cl = classementTrie(), N = S.ligue.equipes.length;
+  const pris = nomsPris();
   S.ligue.equipes.forEach(e => {
     if (e.ancre == null){ e.ancre = e.force; e.pot = e.force; }   // ligue d'avant
     const rang = cl.findIndex(x => x.nom === e.nom) + 1;
@@ -350,11 +462,14 @@ function faireVivreLigue(){
     // le potentiel dérive lentement, rappelé vers ce que le club pèse historiquement :
     // un petit club peut monter dans la hiérarchie, jamais d'un coup
     e.pot = Math.round(clamp(e.pot * .95 + e.ancre * .05 + rnd(-1.6, 1.6), 44, 78) * 10) / 10;
-    /* Et la force se rejoue : élan + tirage + rappel vers le potentiel. L'élan est
-       sur la **force** et non sur le potentiel : un bon résultat donne sa chance
-       l'année d'après, puis le rappel le ramène — sinon c'est une rente. */
-    e.force = Math.round(clamp(e.force + elan + rnd(-TIRAGE_CLUB, TIRAGE_CLUB)
-      + (e.pot - e.force) * RAPPEL_CLUB, 42, 80));
+    /* Le club recrute à la hauteur de `vise` : élan de la saison passée, tirage,
+       et rappel vers son potentiel. La force n'est plus posée, elle **découle** de
+       l'effectif une fois qu'il a vieilli et qu'on a comblé les trous. */
+    const vise = clamp(e.force + elan + rnd(-TIRAGE_CLUB, TIRAGE_CLUB)
+      + (e.pot - e.force) * RAPPEL_CLUB, 42, 80);
+    if (!e.sq) e.sq = creerEffectifAdverse(e.force, pris);
+    vivreEffectifAdverse(e, vise, pris);
+    e.force = forceEffectif(e.sq);
   });
   S.ligue.equipes.sort((a, b) => b.force - a.force);
   S.ligue.classement = Object.fromEntries(S.ligue.equipes.map(e => [e.nom, { pts:0, j:0, v:0, n:0, d:0, bp:0, bc:0 }]));
@@ -1090,7 +1205,7 @@ function lancerMatch(){
     if (e.min > 88) e.min = 88;
     if (!e.moi){
       const l = [...finissent].filter(x => !x.moi);
-      if (!l.length){ e.nous = false; e.qui = adv.nom; return; }
+      if (!l.length){ e.nous = false; e.qui = buteurAdverse(adv) || adv.nom; return; }
       const x = pick(l); finissent.delete(x); e.qui = x.nom;
     }
     m.expulses.push({ nom: e.qui, min: e.min });
@@ -1148,7 +1263,9 @@ function lancerMatch(){
       if (p !== e.qui) e.passe = p;
     }
   });
-  evs.filter(e => e.type === 'but' && !e.nous).forEach(e => e.qui = adv.nom);
+  /* Le buteur d'en face a un nom : c'est le premier bénéfice visible de leur
+     donner un effectif. Un attaquant marque plus souvent qu'un défenseur. */
+  evs.filter(e => e.type === 'but' && !e.nous).forEach(e => e.qui = buteurAdverse(adv) || adv.nom);
   // faits de match  // faits de match : zéro à deux, seulement si je suis sur le terrain
   if (m.minutes){
     const n = Math.random() < .45 ? 0 : Math.random() < .8 ? 1 : 2;
@@ -1188,6 +1305,42 @@ const NOMS = ["Diallo", "Lefort", "Perrin", "Traoré", "Semis", "Bakayoko", "Men
   "Sarr", "Boucher", "Lavigne", "Cissé", "Roussel", "Aubert", "Pereira", "Keita",
   "Fontaine", "Moreau", "Barbosa", "Zidani", "Chevalier", "Ndiaye", "Rossi", "Guillon"];
 function coequipier(){ return pick(NOMS); }
+/* LE VIVIER DES AUTRES CLUBS. Dix-sept adversaires à vingt-deux joueurs, il en
+   faut près de quatre cents distincts : les quarante de `NOMS` ne suffisent pas.
+   Un joueur adverse porte une initiale (« A. Sagna »), tes coéquipiers non — on
+   connaît les siens par leur nom. */
+const NOMS_ADV = [
+  "Abadie", "Amrani", "Andrieu", "Angevin", "Aubry", "Bacar", "Badji", "Balde",
+  "Barreto", "Bastos", "Baudry", "Beaumont", "Bellanger", "Benali", "Benitez", "Bernard",
+  "Berthier", "Besson", "Bianchi", "Bocquet", "Bonnet", "Bordes", "Bourgeois", "Boutin",
+  "Brancato", "Brisset", "Cabral", "Cadiou", "Camara", "Cardoso", "Carlier", "Carpentier",
+  "Castel", "Cavalli", "Chabert", "Chapuis", "Charrier", "Chauvin", "Clement", "Cointe",
+  "Colin", "Cormier", "Costa", "Coulibaly", "Courtois", "Crespo", "Dabo", "Dagba",
+  "Daniel", "Danjou", "Darmon", "Dauphin", "Delage", "Delaunay", "Deschamps", "Desmarets",
+  "Devaux", "Dieng", "Dione", "Dubois", "Ducret", "Dufour", "Dumas", "Dupire",
+  "Durand", "Eloi", "Esteves", "Fabre", "Faivre", "Fall", "Fauvel", "Ferrand",
+  "Fournier", "Fresnel", "Gaillard", "Galtier", "Gantier", "Garcia", "Gaspard", "Gauthier",
+  "Gendron", "Genest", "Gomis", "Gonçalves", "Goncalves", "Gosselin", "Goujon", "Gourdon",
+  "Grandin", "Grasset", "Gremont", "Guerin", "Guilbert", "Haddad", "Hamon", "Herault",
+  "Hulot", "Imbert", "Jacquet", "Jallet", "Janvier", "Joubert", "Jourdain", "Kanté",
+  "Karim", "Kebe", "Kerbrat", "Khelifi", "Labbé", "Lacroix", "Lagarde", "Lambert",
+  "Lanvin", "Laporte", "Larose", "Lassalle", "Laurent", "Lebreton", "Leclerc", "Ledoux",
+  "Lefranc", "Legrand", "Lemarchand", "Leroy", "Lesage", "Lombard", "Loiseau", "Lopes",
+  "Lucas", "Maillard", "Malinowski", "Mangin", "Marechal", "Marinho", "Martel", "Martins",
+  "Masson", "Mathieu", "Maurel", "Menard", "Mercier", "Meunier", "Michaud", "Millet",
+  "Miranda", "Monnier", "Montel", "Morel", "Moulin", "Nallet", "Navarro", "Nectoux",
+  "Neveu", "Nicolas", "Nogueira", "Nunes", "Obispo", "Olivier", "Ouattara", "Paillard",
+  "Pascal", "Pastore", "Payet", "Pelletier", "Peron", "Petit", "Pichon", "Pinto",
+  "Poirier", "Pontet", "Pouget", "Prevost", "Quentin", "Rabier", "Ramos", "Raynaud",
+  "Rebelo", "Regnier", "Remy", "Renaud", "Ribeiro", "Richard", "Rivet", "Robin",
+  "Rocha", "Rodrigues", "Rolland", "Roques", "Rouault", "Rouvier", "Sabatier", "Sagna",
+  "Salmon", "Sanchez", "Sangaré", "Sauvage", "Savary", "Schmitt", "Sebastien", "Seck",
+  "Serrano", "Sissoko", "Soares", "Sorel", "Sow", "Stefani", "Talbot", "Tanguy",
+  "Teixeira", "Theron", "Thibault", "Thomas", "Toure", "Tremblay", "Turpin", "Valero",
+  "Vallet", "Varela", "Vasconcelos", "Verdier", "Vergne", "Verne", "Vial", "Vidal",
+  "Vieira", "Vigier", "Vincent", "Vitali", "Voisin", "Weber", "Zanetti", "Zerbo"];
+const INITIALES = "ABCDEFGHJKLMNOPRSTVY".split("");
+
 /* Les faits de match, par poste. Aucune probabilité n'est affichée :
    la résolution croise tes axes et le hasard. */
 const MOMENTS = {

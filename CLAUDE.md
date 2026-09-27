@@ -706,10 +706,7 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     **5,8 champions différents, titre conservé 44 %**, et le nombre de clubs plus forts que le tien
     varie vraiment d'une année sur l'autre (0 dans 21 % des saisons, 1 à 5 dans 43 %, six ou plus
     dans 20 %) — son exemple, tel quel.
-  - **Ce qui n'est pas fait** : les clubs adverses n'ont pas d'effectif nommé. Leur **force est leur
-    effectif**, et elle suit la même logique potentiel + croissance que la tienne ; il n'y a pas de
-    joueur adverse qui vieillit individuellement. Pas de montée ni de descente non plus : ça viendra
-    avec la coupe et l'Europe.
+  - *(Les clubs adverses ont reçu un effectif nommé juste après — voir la section suivante.)*
 - **TON POTENTIEL ET CELUI DES CLUBS SONT SUR LA MÊME ÉCHELLE.** Première version du championnat
   vivant : j'avais resserré la hiérarchie des clubs **sans** toucher à la tienne. Mesuré :
   niveau 88 quand le meilleur club vaut 66, donc `(niveauJour() − force) × .12` te faisait valoir
@@ -737,6 +734,46 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
   être un bon joueur, ce qu'il demandait.
   **L'équilibre de la semaine tient** aux trois croisements après tous ces changements, et
   « toujours lever le pied » n'est la meilleure politique nulle part.
+- **LES CLUBS ADVERSES ONT UN EFFECTIF, PAS UN NOMBRE** (le propriétaire, 27/09/2026 : « les équipes
+  en face et les joueurs d'en face qui ont leur potentiel aléatoire et qui ont leur croissance de
+  leur côté, qui est dans les mêmes proportions que la nôtre »). Un club adverse était un nombre qui
+  bougeait tout seul ; c'est maintenant **vingt-deux joueurs nommés** par club, avec un âge et un
+  potentiel, qui suivent **la même courbe d'âge que tes coéquipiers**. La force du club n'est plus
+  tirée : elle **découle** de son onze (`forceEffectif()`).
+  - **Ce que ça change vraiment** : un club tombe parce que sa génération vieillit et remonte parce
+    qu'il recrute — le mouvement a enfin une cause. Et le buteur d'en face a un nom : « 11ᵉ But de
+    R. Chauvin (Olympique de Marseille) », le même homme d'un match à l'autre et d'une saison à
+    l'autre. Mesuré : **763 buts adverses sur 763 sont nommés**.
+  - **Le vivier** : dix-sept adversaires à vingt-deux joueurs, il en faut près de quatre cents
+    distincts — les quarante de `NOMS` ne suffisaient pas. `NOMS_ADV` (232 noms) croisé avec une
+    initiale donne 4 640 combinaisons. Un joueur adverse porte son initiale (« A. Sagna »), tes
+    coéquipiers non : on connaît les siens par leur nom. Mesuré : **396 joueurs, zéro doublon**, au
+    départ comme après vingt saisons.
+  - **L'élan, le tirage et le rappel n'agissent plus sur la force mais sur ce que le club arrive à
+    recruter** (`vise`). C'est le même mécanisme de loin, et il veut dire quelque chose de près.
+  - **Un effectif de vingt-deux lisse tout, et il a fallu lui rendre un mercato.** Chaque joueur
+    bouge d'un point par an, donc la force du onze suivait à peine et **le championnat s'est
+    refigé** : 4,2 champions différents sur vingt saisons au lieu de 5,8, titre conservé 49 %.
+    Désormais un club qui a bien fini **achète** et remplace ses plus faibles ; un club qui a coulé
+    **perd ses meilleurs**, partis ailleurs (jusqu'à huit mouvements par été, tant que l'écart à
+    `vise` dépasse 1,2). Mesuré après : **5,5 champions différents, titre conservé 45 %** — la bande
+    où le réglage avait été posé.
+  - **Un piège trouvé à la mesure** : `forceEffectif()` rend la moyenne du onze, et les titulaires
+    étaient tirés **au-dessus** du niveau demandé (`+rnd(1,6)`). La force d'un club valait donc trois
+    points de plus que ce qu'on lui avait donné — et comme tes coéquipiers se construisent à partir
+    de la force de **ton** club, tu perdais ta place : mesuré, **24,8 matchs en première saison
+    tombés à 18,5**, et les titularisations de 10,8 à 5,7. Les titulaires sont maintenant centrés
+    (`rnd(-2.5, 2.5)`), les doublures en dessous.
+  - **Le coût** : la sauvegarde passe de 25 Ko à 268 Ko après vingt saisons — l'essentiel est le
+    journal, les 396 joueurs pèsent une vingtaine de kilo-octets. Très loin de la limite de
+    `localStorage`.
+  - **Ce qui n'est toujours pas fait** : pas de montée ni de descente, et aucun transfert entre le
+    club adverse et le tien. Ça viendra avec la coupe et l'Europe.
+  - **Vérifié** : l'équilibre de la semaine tient aux trois croisements (l'or des matchs à « deux
+    séances puis un repos », l'or de la trace ailleurs) ; 40 carrières jouées de 18 à 38 ans sans une
+    erreur ; les six invariants du tableau des notes à zéro écart ; et une vraie sauvegarde de la
+    version déployée passe la trêve (les effectifs adverses se fabriquent au premier été) et rejoue
+    une saison entière.
 - **Le banc d'essai (`v2/labo.html`)**, demandé par le propriétaire : « le tableau que tu m'as
   partagé, je sais pas ce que ça représente… j'aimerais bien aussi que je puisse faire [les
   simulations] sur le nombre de matchs en fonction des choix qu'on a fait. » La page rejoue des
