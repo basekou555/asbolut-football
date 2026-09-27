@@ -123,24 +123,66 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
   sheet, +0,35 à un but, −0,5 à partir de quatre). Mesuré après, seize saisons par poste :
   **6,3 / 6,4 / 6,5 / 6,8** et 18 à 22 matchs. Et un gardien ne délivre plus trois passes décisives
   par saison (`chancePasse` par poste).
-- **Les trois origines, recalées par le propriétaire (27/09/2026)** : « le terrain du quartier a la
-  technique en bas alors que c'est le physique qui est plus juste ; pour celui qui arrive de
-  l'étranger c'est l'inverse, le mental en haut et la technique en bas, et agent en positif à la
-  place de vestiaire en négatif ; tu as mis agent dans la grande académie, mets le physique à la
-  place et mets vestiaire en positif. » Sa lecture du football est plus juste que la mienne : **la
-  rue donne le geste, pas le corps préparé** (le quartier passe de physique +12 / technique −6 à
-  technique +12 / physique −8), et **partir à six mille kilomètres est d'abord du mental**
-  (l'étranger passe de technique +8 / mental −4 à mental +12 / technique −6). L'académie prend le
-  physique que lui donnait le centre et garde son vestiaire, en positif cette fois. **Un choix que
-  j'ai fait seul et qu'il faut savoir** : le mental de l'académie passe en négatif — sans lui
-  l'académie n'avait plus aucun défaut et dominait les deux autres ; c'est l'axe que dit déjà son
-  sous-titre (« on t'a aussi appris à attendre »). Chaque origine a donc deux forces, un défaut et
-  un lien positif, et un seul agent dans tout l'écran. L'ordre des clés de `axes` est l'ordre des
-  pastilles : les forces d'abord, le défaut en dernier. Mesuré après, douze saisons par croisement
-  origine × poste : niveau de départ **51,9 à 54,8**, 16,6 à 24,8 matchs, **aucune saison à zéro
-  match**, et les origines ne se valent plus indifféremment selon le poste — l'académie est la
-  meilleure au milieu (24,8 matchs), l'étranger la meilleure dans les buts (le mental pèse 0,30 au
-  poste de gardien) et la plus dure devant (16,6 matchs, la technique en défaut).
+- **L'origine est un PRESET, et il tient toute la carrière** (le propriétaire, 27/09/2026 :
+  « si avant ça tout est à 50-50-50, choisir *arrivé de l'étranger* fait que je commence avec 60 en
+  mental, 60 en physique et 40 en technique… c'est mon preset, ça me tient sur toute ma carrière,
+  entre guillemets je peux pas descendre, j'ai toujours eu un gros mental »). Deux conséquences dans
+  le code : (1) les trois origines sont en **valeurs rondes — deux axes à 60, un à 40**, le quatrième
+  (celui du poste) à 50 ; rien d'autre, pour que le départ se lise d'un coup d'œil ; (2) `S.moi.socle`
+  est posé à la création (`min(50 + origine, base de départ)`) et **`bougerAxe()` est la seule porte
+  par laquelle un axe bouge** : une hausse est libre jusqu'au plafond, une baisse s'arrête au socle.
+  L'usure, quand elle viendra, passera par là et n'aura rien de plus à savoir.
+  Il avait d'abord recalé le contenu des trois : « le terrain du quartier a la technique en bas alors
+  que c'est le physique qui est plus juste ; pour l'étranger c'est l'inverse, le mental en haut et la
+  technique en bas, et agent en positif à la place de vestiaire en négatif ; tu as mis agent dans la
+  grande académie, mets le physique à la place et mets vestiaire en positif. » Sa lecture du football
+  est plus juste que la mienne : **la rue donne le geste, pas le corps préparé**, et **partir à six
+  mille kilomètres est d'abord du mental**. Académie = technique + physique, mental à 40, vestiaire ;
+  quartier = technique + mental, physique à 40, le stade ; étranger = mental + physique, technique à
+  40, l'agent. **Un choix que j'ai fait seul** : le mental de l'académie en défaut — sans lui elle
+  n'avait aucun défaut et dominait les deux autres ; c'est l'axe que dit déjà son sous-titre.
+  La **qualité et le défaut tirés au sort restent libres** et peuvent tomber sur n'importe quel axe,
+  y compris sur le point fort de l'origine : demandé explicitement (« avoir des défauts ça rajoute un
+  peu plus de flou… sinon on peut un peu trop optimiser si on connaît ce qui fonctionne »). Le socle
+  est borné par le départ réel, donc un défaut qui passe sous lui ne le contredit pas.
+- **L'arbitrage de la semaine : l'immédiat contre la trace.** Le banc d'essai a trouvé un défaut que
+  je n'avais pas vu — **« toujours le mental » gagnait partout** pour un joueur formé en académie
+  (21,4 matchs, 15,1 titularisations et +8,3 de trace, contre 18,8 et +2,7 pour la technique), donc le
+  choix de la semaine n'en était pas un. Deux causes séparées, chacune corrigée et re-mesurée :
+  1. **Les deux couches répondaient à la même chose.** `boost` et `base` étaient tous deux
+     proportionnels au rendement `r = tirage × marge`, donc travailler son point faible gagnait sur
+     les deux tableaux. Désormais `boost += BOOST_SEANCE × tirage × acquis` (ce que tu **tiens déjà**)
+     et `base += TRACE_SEANCE × tirage × marge` (la **distance au plafond**). Travailler ta force
+     répond tout de suite et ne monte plus beaucoup ; travailler ta faiblesse ne se voit pas samedi
+     mais reste. `BOOST_SEANCE` retombe de 9 à 3,5 puisqu'il ne passe plus par la marge. Le compte
+     rendu de séance dit laquelle des deux tu viens de faire, sans chiffre.
+  2. **La séance la moins chère gagnait quoi qu'elle travaille** : la vidéo coûtait −3 de fraîcheur
+     quand les autres coûtaient −6 à −11. Les quatre sont alignées (−8 / −11 / −7 / −8).
+- **Le fond, la contrepartie du travail physique.** Une fois les coûts alignés, le banc montrait
+  « toujours le physique » **dominé partout** (13 à 15 matchs, 24 % de fraîcheur, et pas la meilleure
+  trace) : la séance la plus chère n'avait aucune contrepartie. `S.etats.fond` est la réserve que
+  seul le travail physique construit (+3,5 par séance, +1 pour la séance de poste, −1,5 par journée) :
+  on laisse moins de jambes dans un match (`×(1 − fond×.0022)`), on récupère mieux entre deux journées
+  (`+ fond×.05`) et on se blesse moins (`.05 − fond×.0006`, plancher .012). Lisible en mots dans « Ta
+  situation » (`direFond()`), jamais en chiffre. Premier calibrage trop fort (+7 par séance) : le
+  physique devenait le meilleur choix partout, 23,3 matchs et 96 % de fraîcheur. Mesuré après
+  calibrage, 30 saisons par ligne, trois croisements origine × poste : **aucune politique ne domine**,
+  et le schéma est le même aux trois — celle qui fait le plus jouer (lever le pied, 17 à 19 matchs)
+  laisse presque rien (+0,6), celle qui laisse le plus de trace (l'axe faible, +8 à +9) fait jouer
+  deux à quatre matchs de moins, et « deux séances puis un repos » est au milieu (18 à 21 matchs,
+  +4 de trace).
+- **Le banc d'essai (`v2/labo.html`)**, demandé par le propriétaire : « le tableau que tu m'as
+  partagé, je sais pas ce que ça représente… j'aimerais bien aussi que je puisse faire [les
+  simulations] sur le nombre de matchs en fonction des choix qu'on a fait. » La page rejoue des
+  saisons entières avec le moteur du jeu et en fait la moyenne. Deux bancs : les **trois origines aux
+  quatre postes**, et les **huit politiques de semaine** pour une origine et un poste choisis.
+  Réglages : 5 à 50 saisons par ligne, l'époque. Les colonnes `matchs` et `trace` sont peintes en or
+  et en rouge — **si une seule ligne prend les deux, le choix n'en est pas un**, c'est le test de
+  l'équilibre. C'est le seul écran du 2.0 où les chiffres sont permis : ce n'est pas le jeu, c'est
+  l'outil qui sert à le régler. `SIM = true` coupe `sauver()` pour que les milliers de saisons
+  simulées n'écrasent pas la carrière rangée dans `localStorage` (vérifié par sonde). Accessible
+  depuis l'écran du journal, et copié par `vercel.json` / le workflow Pages.
+  `VERSION` passe à **2** : une sauvegarde v1 n'a ni `socle` ni `fond`, autant repartir propre.
 - **Ce qui n'est pas encore là** : la trêve, les offres, la progression d'une saison sur l'autre,
   l'usure, la vie et ses chantiers, la boutique, le mercato, le mode entraîneur·euse, la coupe et
   l'Europe. Les **contenus** sont volontairement repoussés après le moteur (décision du propriétaire) :

@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="fr" data-mode="joueur">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Le banc d'essai — Absolut Coach 2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Libre+Baskerville:ital,wght@0,400;1,400&family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+<style>
+  /* Ici, et ici seulement, les chiffres sont permis : ce n'est pas le jeu,
+     c'est l'outil qui sert à le régler. */
+  table.lab{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  table.lab th{ text-align:right; font-size:10px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--muted); font-weight:600; padding:6px 7px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  table.lab th:first-child{ text-align:left; }
+  table.lab td{ padding:7px; border-bottom:1px solid var(--line); text-align:right;
+    font-variant-numeric:tabular-nums; white-space:nowrap; }
+  table.lab td:first-child{ text-align:left; white-space:normal; min-width:150px; }
+  table.lab th:first-child{ min-width:150px; }
+  table.lab tr:last-child td{ border-bottom:0; }
+  table.lab td.best{ color:var(--gold); font-weight:600; }
+  table.lab td.worst{ color:var(--red); }
+  .prog{ height:6px; border-radius:99px; background:var(--panel-2); overflow:hidden; border:1px solid var(--line); margin:10px 0 4px; }
+  .prog i{ display:block; height:100%; background:var(--gold-dim); width:0; transition:width .15s linear; }
+  .ctl{ display:grid; gap:12px; margin:0 0 6px; }
+  .ctl label{ font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--gold); font-weight:600; display:block; margin-bottom:6px; }
+  .lire{ font-family:var(--narr); font-size:13px; color:#d9d4c3; border-left:3px solid var(--gold-dim);
+    padding:2px 0 2px 12px; margin:12px 0 0; }
+  .legend{ display:grid; gap:4px; font-size:12px; color:var(--muted); margin:10px 0 0; }
+  .legend b{ color:var(--cream); font-weight:600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <div><div class="who">Le banc d'essai</div>
+      <div class="sub">Absolut Coach 2 · l'outil qui sert à régler le jeu</div></div>
+    <div class="meta"><a href="./" style="color:var(--gold)">← le jeu</a></div>
+  </div>
+
+  <div class="card">
+    <p class="narr">Cette page rejoue des saisons entières en accéléré, avec le même moteur que le jeu,
+      et fait la moyenne. C'est comme ça que je vérifie qu'un choix compte vraiment et qu'aucune option
+      n'écrase les autres. Ta carrière en cours n'est pas touchée.</p>
+    <div class="ctl">
+      <div><label>Combien de saisons par ligne</label>
+        <div class="row" id="nSais"></div>
+        <p class="sub" style="margin:6px 0 0">Plus il y en a, plus les moyennes sont fiables, plus c'est long.
+          Dix suffisent pour voir une tendance, trente pour trancher.</p></div>
+      <div><label>Époque</label><div class="row" id="nAnnee"></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="step">Banc n° 1</div>
+    <h2>Ce que valent les trois origines</h2>
+    <p class="narr">Une première saison complète, avec des semaines d'entraînement tirées au hasard,
+      pour chaque origine à chaque poste. Rien d'autre ne change.</p>
+    <div class="btn-row"><button class="btn" id="go1">Lancer</button></div>
+    <div class="prog" hidden id="pr1"><i></i></div>
+    <div id="out1"></div>
+  </div>
+
+  <div class="card">
+    <div class="step">Banc n° 2</div>
+    <h2>Ce que valent les semaines d'entraînement</h2>
+    <p class="narr">Le même joueur, une saison entière, avec huit façons différentes de décider
+      de sa semaine. C'est la mesure qui dit si la décision hebdomadaire sert à quelque chose.</p>
+    <div class="ctl">
+      <div><label>Origine</label><div class="row" id="nOrig"></div></div>
+      <div><label>Poste</label><div class="row" id="nPoste"></div></div>
+    </div>
+    <div class="btn-row"><button class="btn" id="go2">Lancer</button></div>
+    <div class="prog" hidden id="pr2"><i></i></div>
+    <div id="out2"></div>
+  </div>
+
+</div>
+
+<script src="../eras.js"></script>
+<script src="moteur.js"></script>
+<script>
+/* Le moteur appelle rendre() quand il change d'écran. Ici il n'y a pas d'écran
+   de jeu : on l'absorbe, et SIM coupe la sauvegarde. */
+function rendre(){}
+SIM = true;
+
+const POLITIQUES = [
+  { id:'auto',    nom:"Au hasard",                   f:()=>pick(['tech','phys','ment','spec','normale','repos']) },
+  { id:'tech',    nom:"Toujours la technique",       f:()=>'tech' },
+  { id:'phys',    nom:"Toujours le physique",        f:()=>'phys' },
+  { id:'ment',    nom:"Toujours le mental",          f:()=>'ment' },
+  { id:'spec',    nom:"Toujours ton poste",          f:()=>'spec' },
+  { id:'normale', nom:"Toujours la semaine normale", f:()=>'normale' },
+  { id:'repos',   nom:"Toujours lever le pied",      f:()=>'repos' },
+  { id:'alterne', nom:"Deux séances, puis un repos", f:i=>i % 3 === 2 ? 'repos' : 'spec' },
+];
+const ANNEES = [[1962,"60"],[1975,"70"],[1987,"80"],[1998,"90"],[2008,"2000"],[2018,"aujourd'hui"]];
+const REG = { n:10, annee:2018, orig:0, poste:'M' };
+
+/* ---------- une saison jouée en accéléré ---------- */
+function uneSaison(iOrig, poste, polF){
+  nouvellePartie({ nom:"Essai", poste, annee:REG.annee, origine:ORIGINES[iOrig], ambition:AMBITIONS[0] });
+  const dep = { ...S.moi.base };
+  let k = 0;
+  for (let i = 0; i < 400 && S.ecran !== 'bilan'; i++){
+    if (S.ecran === 'semaine') choisirSemaine(polF(k++));
+    else if (S.ecran === 'arret') choisirArret(Math.floor(Math.random() * S.arret.options.length));
+    else if (S.ecran === 'moment') choisirMoment(Math.floor(Math.random() * S.match.moments[S.momentIdx].opts.length));
+    else if (S.ecran === 'resultat') apresMatch();
+    else break;
+  }
+  const g = {}; AXES.forEach(a => g[a] = S.moi.base[a] - dep[a]);
+  return { m:S.stats.matchs, t:S.stats.titus, b:S.stats.buts, pa:S.stats.passes,
+    note: S.stats.notes.length ? moyenneNotes() : 0, pos:S.bilan ? S.bilan.pos : 18,
+    fr:S.etats.fraicheur, fond:S.etats.fond, g, zero: S.stats.matchs === 0 ? 1 : 0 };
+}
+function moyenner(lignes){
+  const n = lignes.length, s = k => lignes.reduce((a, x) => a + x[k], 0) / n;
+  const ga = {}; AXES.forEach(a => ga[a] = lignes.reduce((x, l) => x + l.g[a], 0) / n);
+  return { m:s('m'), t:s('t'), b:s('b'), pa:s('pa'), note:s('note'), pos:s('pos'),
+    fr:s('fr'), fond:s('fond'), zero:s('zero') * 100, g:ga };
+}
+const v1 = x => x.toFixed(1).replace('.', ',');
+const vd = x => (x > 0 ? '+' : x < 0 ? '−' : '') + Math.abs(x).toFixed(1).replace('.', ',');
+
+/* ---------- réglages ---------- */
+function chips(el, items, get, set){
+  document.getElementById(el).innerHTML = items.map(([v, l]) =>
+    `<button class="chip${get() === v ? ' on' : ''}" data-v="${v}">${l}</button>`).join('');
+  document.getElementById(el).onclick = e => {
+    const b = e.target.closest('button'); if (!b) return;
+    set(isNaN(+b.dataset.v) ? b.dataset.v : +b.dataset.v); reglages();
+  };
+}
+function reglages(){
+  chips('nSais', [[5,"5"],[10,"10"],[20,"20"],[30,"30"],[50,"50"]], () => REG.n, v => REG.n = v);
+  chips('nAnnee', ANNEES.map(([a, l]) => [a, l]), () => REG.annee, v => REG.annee = v);
+  chips('nOrig', ORIGINES.map((o, i) => [i, o.nom]), () => REG.orig, v => REG.orig = v);
+  chips('nPoste', POSTES.map(p => [p.id, p.nom]), () => REG.poste, v => REG.poste = v);
+}
+reglages();
+
+/* ---------- le moteur de la page : un lot par image, pour que ça respire ---------- */
+function lancer(taches, barre, fini){
+  const pr = document.getElementById(barre); pr.hidden = false;
+  const bar = pr.querySelector('i'); let i = 0;
+  const pas = () => {
+    const t0 = Date.now();
+    while (i < taches.length && Date.now() - t0 < 60) { taches[i](); i++; }
+    bar.style.width = Math.round(i / taches.length * 100) + '%';
+    if (i < taches.length) requestAnimationFrame(pas);
+    else { pr.hidden = true; bar.style.width = '0'; fini(); }
+  };
+  requestAnimationFrame(pas);
+}
+function tableau(cols, lignes, marquees){
+  // marquees : les colonnes où l'on peint le meilleur en or et le pire en rouge
+  const bornes = {};
+  (marquees || []).forEach(k => { const v = lignes.map(l => l.cells[k]);
+    bornes[k] = { hi:Math.max(...v), lo:Math.min(...v) }; });
+  return `<div class="scrollx"><table class="lab"><thead><tr>${
+    cols.map(c => `<th>${c[1]}</th>`).join('')}</tr></thead><tbody>${
+    lignes.map(l => `<tr>${cols.map(c => {
+      const brut = l.cells[c[0]];
+      let cl = ''; const bo = bornes[c[0]];
+      if (bo) cl = brut === bo.hi ? ' class="best"' : brut === bo.lo ? ' class="worst"' : '';
+      return `<td${cl}>${l.txt[c[0]]}</td>`;
+    }).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+const COLS = [['nom',''],['m','matchs'],['t','titul.'],['b','buts'],['pa','passes'],
+  ['note','note'],['pos','place'],['fr','fraîch.'],['fond','fond'],['tr','trace'],
+  ['tech','techn.'],['phys','phys.'],['ment','mental'],['spec','poste']];
+function ligne(nom, r){
+  const tr = AXES.reduce((a, x) => a + r.g[x], 0);
+  return { cells:{ nom:0, m:r.m, t:r.t, b:r.b, pa:r.pa, note:r.note, pos:-r.pos, fr:r.fr, fond:r.fond, tr,
+      tech:r.g.tech, phys:r.g.phys, ment:r.g.ment, spec:r.g.spec },
+    txt:{ nom, m:v1(r.m), t:v1(r.t), b:v1(r.b), pa:v1(r.pa), note:v1(r.note),
+      pos:v1(r.pos) + 'ᵉ', fr:Math.round(r.fr) + ' %', fond:Math.round(r.fond), tr:vd(tr),
+      tech:vd(r.g.tech), phys:vd(r.g.phys), ment:vd(r.g.ment), spec:vd(r.g.spec) } };
+}
+const LEGENDE = `<div class="legend">
+  <div><b>matchs</b> — combien de matchs tu as joués dans la saison, sur 34.</div>
+  <div><b>titul.</b> — combien de fois tu as commencé le match. Le reste, tu es entré en jeu.</div>
+  <div><b>place</b> — où ton club a fini au classement, sur 18.</div>
+  <div><b>fraîch.</b> — ce qui te reste dans les jambes à la fin de la saison.</div>
+  <div><b>fond</b> — la réserve construite par le travail physique : on récupère mieux et on se blesse moins.</div>
+  <div><b>trace</b> — le total des quatre colonnes suivantes : tout ce que la saison a laissé.</div>
+  <div><b>techn. / phys. / mental / poste</b> — ce que la saison a ajouté à chaque axe, pour toujours.
+    C'est la trace : ce que tu emportes dans la saison suivante.</div>
+</div>`;
+
+/* ---------- banc 1 : les origines ---------- */
+document.getElementById('go1').onclick = () => {
+  const res = [], taches = [];
+  ORIGINES.forEach((o, i) => POSTES.forEach(p => {
+    const bac = []; res.push({ nom:`${o.nom} · ${p.nom.toLowerCase()}`, bac });
+    for (let k = 0; k < REG.n; k++) taches.push(() => bac.push(uneSaison(i, p.id, POLITIQUES[0].f)));
+  }));
+  document.getElementById('out1').innerHTML = '';
+  lancer(taches, 'pr1', () => {
+    const lignes = res.map(r => ligne(r.nom, moyenner(r.bac)));
+    document.getElementById('out1').innerHTML = tableau(COLS, lignes, ['m']) + LEGENDE
+      + `<p class="lire">Chaque ligne est la moyenne de ${REG.n} premières saisons jouées entièrement.
+        La colonne <b>matchs</b> est marquée en or pour le meilleur croisement et en rouge pour le pire :
+        c'est elle qui dit si une origine te fait jouer à ce poste. Les quatre dernières colonnes disent
+        ce que la saison a laissé sur chaque axe.</p>`;
+  });
+};
+
+/* ---------- banc 2 : les semaines ---------- */
+document.getElementById('go2').onclick = () => {
+  const res = [], taches = [];
+  POLITIQUES.forEach(pol => {
+    const bac = []; res.push({ nom:pol.nom, bac });
+    for (let k = 0; k < REG.n; k++) taches.push(() => bac.push(uneSaison(REG.orig, REG.poste, pol.f)));
+  });
+  document.getElementById('out2').innerHTML = '';
+  lancer(taches, 'pr2', () => {
+    const lignes = res.map(r => ligne(r.nom, moyenner(r.bac)));
+    const o = ORIGINES[REG.orig], p = POSTES.find(x => x.id === REG.poste);
+    document.getElementById('out2').innerHTML = tableau(COLS, lignes, ['m','tr']) + LEGENDE
+      + `<p class="lire">${o.nom}, ${p.nom.toLowerCase()}, ${REG.n} saisons par ligne.
+        Deux colonnes sont peintes : <b>matchs</b> et <b>trace</b>. C'est l'arbitrage du jeu.
+        Ce qu'on veut voir : l'or dans <b>matchs</b> et l'or dans <b>trace</b> sur deux lignes
+        <b>différentes</b>, et le compromis entre les deux. Si une seule ligne prend les deux,
+        le choix de la semaine n'en est pas un et il faut recalibrer.</p>`;
+  });
+};
+</script>
+</body>
+</html>

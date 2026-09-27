@@ -22,7 +22,7 @@ jobs:
         run: |
           mkdir -p _site/v2
           cp index.html styles.css profile.js players.js eras.js content.js core.js match.js coach.js player.js ui.js _site/
-          cp v2/index.html v2/style.css v2/moteur.js v2/ecrans.js _site/v2/
+          cp v2/index.html v2/labo.html v2/style.css v2/moteur.js v2/ecrans.js _site/v2/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:
