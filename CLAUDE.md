@@ -846,6 +846,39 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
   invisible. On lit `m.buts`, le vrai total, comme la note le faisait déjà. Mesuré : **zéro écart**
   entre la pastille et le total sur 600 saisons. Et le 🅰️ de la passe décisive, qui se lit comme un
   carton sur un téléphone, devient un crampon 👟.
+- **LE MENTAL DIT DEUX CHOSES, ET IL FAUT LES DEUX** (le propriétaire, 27/09/2026 : « malgré le fait
+  que j'ai un bon mental, je suis toujours, depuis le début de ma carrière, dans un mental de “quand
+  ça se tend, tu joues petit”. Du coup je ne sais pas si c'est positif ou négatif. J'ai l'impression
+  que mon mental n'évolue pas alors que je l'ai quand même pas mal entraîné »). `direEncaisse()` ne
+  lisait que la **réserve du moment**, qui se vide à chaque coup dur : un joueur avec quinze points
+  de mental en plus restait toute sa carrière dans la bande basse, **sans jamais savoir que c'était
+  sa force**. Elle dit maintenant **ce que tu vaux quand tu vas bien** (`pic.ment`, ce que lit déjà
+  `niveau()`) **et où en est ta réserve** — « Une tête au-dessus de la moyenne, et elle est
+  entière », « Une tête dans la moyenne — et là elle est à plat : seule la séance mentale la
+  remonte ». Mesuré, 30 carrières de vingt saisons : la ligne change **49 fois par carrière** quand
+  on entraîne le mental (90 % du temps « entière ») et **63 fois** quand on ne l'entraîne jamais
+  (31 % du temps « entamée » ou « à plat », contre 19 % « entière ») — avant, elle ne bougeait
+  pratiquement pas.
+- **LA PHRASE DU STAFF ÉTAIT FAUSSE, ET FIGÉE** (même retour, deux reproches) :
+  1. « La finition : c'est ce qui te fait jouer. Mental : tu es en retard sur le groupe — alors que
+     depuis le début j'ai plus quinze de mental. » `direStaff()` classait les axes sur `base.ment`,
+     **la réserve qui se vide** : un joueur au mental fort y passait dernier dès le premier coup dur.
+     Elle lit `pic.ment`, comme `niveau()`.
+  2. « Cette phrase, elle n'évolue pas, et c'est dommage : ce qui me fait jouer au début, c'est
+     peut-être pas ce qui me fait jouer après. » Elle comparait tes axes **entre eux**, un classement
+     qui ne se réordonne presque jamais. Ils sont désormais **pesés par ce que ton poste en demande**
+     (`POSTES[].w`) et comparés au **niveau du club**, et la phrase nomme ce qui a bougé depuis août
+     (`S.moi.an0`, la photo des axes au coup d'envoi). Mesuré : elle change **202 fois par carrière**.
+  Un piège évité à la relecture : la première version pouvait **nommer deux fois le même axe** et se
+  contredire (« Mental : tu es en retard sur le groupe. Mental a pris un cran depuis août »). Quand
+  l'axe qui bouge est déjà nommé, le mouvement se fond dans sa proposition (« … c'est ce qui te
+  fait jouer, et ça monte »).
+  **Une leçon de méthode, re-apprise à mes dépens** : j'ai écrit `v2/moteur.js` avec un
+  `io.open(p,'w')` direct au lieu du temporaire + `os.replace` que ce fichier impose depuis le
+  27/09/2026. Une sonde lancée dans la foulée a lu le fichier à moitié écrit et a signalé de faux
+  écarts sur le tableau des notes — dix mille deux cents matchs les ont ensuite démentis. L'écriture
+  atomique n'est pas une précaution contre les erreurs d'encodage seulement : c'est aussi ce qui
+  empêche de mesurer un fichier qui n'existe pas encore.
 - **Le banc d'essai (`v2/labo.html`)**, demandé par le propriétaire : « le tableau que tu m'as
   partagé, je sais pas ce que ça représente… j'aimerais bien aussi que je puisse faire [les
   simulations] sur le nombre de matchs en fonction des choix qu'on a fait. » La page rejoue des
