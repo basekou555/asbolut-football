@@ -143,7 +143,10 @@ function situationHTML(ouvert){
      Qui manque, et ce que \u00e7a co\u00fbte au onze de samedi. */
   const grp = celSit('\u{1F3E5}', "L'infirmerie", direInfirmerie())
     + celSit('\u{1F465}', "Le groupe", direProfondeur());
-  const toi = celSit('\u{1FAC1}', "Fra\u00eecheur", direFraicheur() + " avant le match.")
+  /* Le rang dans la hi\u00e9rarchie du poste, et la phrase qui nomme le levier le plus
+     court : \u00ab je sais pas trop quoi faire pour entrer dedans \u00bb. */
+  const toi = celSit('\u{1F522}', "Ta place", direRang() + ' ' + direCommentMonter())
+    + celSit('\u{1FAC1}', "Fra\u00eecheur", direFraicheur() + " avant le match.")
     + celSit('\u{1FA7C}', "Blessure", direCorps())
     + celSit('\u{1F4AA}', "Ton corps", direFond())
     + celSit('\u26bd', "Technique", direGeste())

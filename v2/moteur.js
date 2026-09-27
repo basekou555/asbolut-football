@@ -400,6 +400,47 @@ const ARRETS = [
       { l:"Demander ce qui te manque", liens:{ coach:2 }, axes:{ ment:1 }, dit:[{c:'foot',t:"🎽 il te dit la vérité"},{c:'risk',t:"🧠 elle pique"}] },
       { l:"Lui dire que tu mérites mieux", liens:{ coach:-6, vestiaire:4 }, dit:[{c:'risk',t:"🎽 il ne l'oubliera pas"},{c:'foot',t:"✊ le vestiaire te respecte"}] },
     ] },
+  /* QUAND TU NE JOUES PAS, LA VIE PREND LA PLACE (le propriétaire, 27/09/2026 :
+     « j'ai joué 4 matchs alors que c'est la 22ᵉ journée… soit j'ai mon agent qui
+     vient me voir, soit il y a des discussions avec le coach qui doivent
+     s'installer… ça doit amener des événements hors football pour compenser le
+     fait qu'au niveau football il se passe pas grand-chose. Là, étant donné que
+     je ne suis même pas dans le groupe le week-end, ce serait bien qu'il y ait
+     des trucs positifs comme le temps avec la famille »). Trois familles qui ne
+     se déclenchent que là, et qui sont les seules portes de sortie. */
+  { id:'coachTemps', quand: () => (S.sansJouer || 0) >= 3,
+    titre:"Tu frappes à la porte du coach",
+    texte:"« Entre. Je sais pourquoi tu viens. » Il repousse son ordinateur. Tu as deux minutes et une phrase à trouver.",
+    options:[
+      { l:"« Dites-moi ce que je dois faire pour jouer »", liens:{ coach:9 }, fit:-5, axes:{ spec:1.2 },
+        dit:[{c:'foot',t:"🎽 il te donne un programme"},{c:'risk',t:"🫁 des séances en plus"},{c:'foot',t:"🎯 juste à ton poste"}] },
+      { l:"« Je veux jouer, sinon je pars en juin »", liens:{ coach:-7, agent:10, club:-5 },
+        dit:[{c:'risk',t:"🎽 il n'aime pas les ultimatums"},{c:'foot',t:"🤝 ton agent se met au travail"}] },
+      { l:"« Je vais attendre mon tour »", liens:{ coach:3 }, axes:{ ment:1.4 },
+        dit:[{c:'foot',t:"🎽 il apprécie"},{c:'foot',t:"🧠 tu tiens"},{c:'neutre',t:"↔️ rien ne change samedi"}] },
+    ] },
+  { id:'agentTemps', quand: () => (S.sansJouer || 0) >= 4 && S.journee >= 8,
+    titre:"Ton agent ne prend plus de gants",
+    texte:"« Tu n'as pas joué depuis un moment. Je peux te sortir de là dès cet hiver, ou on serre les dents. Ce n'est pas la même carrière. »",
+    options:[
+      { l:"Qu'il cherche un club où tu joues", liens:{ agent:12, club:-8, coach:-3 },
+        dit:[{c:'foot',t:"🤝 il décroche son téléphone"},{c:'risk',t:"🏟️ le club le saura"}] },
+      { l:"Rester et se battre", liens:{ coach:6, club:5, agent:-4 }, axes:{ ment:1.2 },
+        dit:[{c:'foot',t:"🎽 le coach le remarque"},{c:'risk',t:"🤝 ton agent soupire"}] },
+      { l:"Ne pas répondre tout de suite", ment:-.8, coup:"cette décision que tu repousses",
+        dit:[{c:'risk',t:"🧠 ça te travaille"},{c:'neutre',t:"🤝 il rappellera"}] },
+    ] },
+  { id:'tempsLibre', quand: () => (S.sansJouer || 0) >= 2,
+    titre:"Un week-end à toi",
+    texte:"Tu n'es même pas dans le groupe. Pour la première fois depuis longtemps, samedi t'appartient.",
+    options:[
+      { l:"Rentrer chez tes parents", axes:{ ment:1.4 }, corps:3, fit:4,
+        dit:[{c:'vie',t:"🏡 deux jours qui font du bien"},{c:'foot',t:"🧠 tu respires"}] },
+      { l:"Aller voir le match depuis la tribune", liens:{ coach:4, vestiaire:3 },
+        dit:[{c:'foot',t:"🎽 il t'a vu dans les tribunes"},{c:'foot',t:"✊ le groupe aussi"}] },
+      { l:"Travailler seul au centre", fit:-6, axes:{ spec:1.4 }, ment:-.6, coup:"ce samedi à t'entraîner seul",
+        dit:[{c:'foot',t:"🎯 personne ne te le demandait"},{c:'risk',t:"🫁 tu y laisses ta semaine"},{c:'risk',t:"🧠 le stade te manque"}] },
+    ] },
   { id:'presse', quand: () => S.stats.notes.length >= 3 && moyenneNotes() >= 6.8,
     titre:"Un journaliste t'attend à la sortie",
     texte:"« Trois bons matchs de suite. On commence à parler de vous ailleurs. Vous vous sentez à l'étroit ici ? »",
@@ -487,7 +528,8 @@ const ARRETS = [
       { l:"Expliquer que le problème vient de l'équipe", liens:{ coach:-7, vestiaire:-5 }, ment:-1,
         coup:"cette phrase que tu n'aurais pas dû dire", dit:[{c:'risk',t:"🎽 très mauvaise idée"},{c:'risk',t:"✊ ça a fuité"}] },
     ] },
-  { id:'famille', quand: () => S.journee >= 9,
+  // celle-ci suppose une semaine chargée : quand tu ne joues pas, `tempsLibre` prend le relais
+  { id:'famille', quand: () => S.journee >= 9 && (S.sansJouer || 0) < 2,
     titre:"Un coup de fil de chez toi",
     texte:"« Ton père a fait un malaise. Rien de grave, il est rentré. Mais il a demandé si tu venais dimanche. »",
     options:[
@@ -567,10 +609,14 @@ function appliquer(o){
 function valeurAuPoste(){
   return niveauJour() + (S.moi.base.spec + S.moi.boost.spec - 50) * .09
     + (S.liens.coach - 50) * .16
-    /* L'âge pèse plus qu'avant : depuis que ta place se décide dans le classement
-       de tout l'effectif, c'est le seul frein qui reste à un débutant, et un coach
-       ne donne pas le onze à un joueur de dix-huit ans. */
-    + (S.moi.age <= 18 ? -8 : S.moi.age === 19 ? -5 : S.moi.age === 20 ? -2.5 : 0);
+    /* L'âge pèse : depuis que ta place se décide dans le classement de tout
+       l'effectif, c'est le principal frein d'un débutant, et un coach ne donne pas
+       le onze à un joueur de dix-huit ans **en août**. Mais il se desserre au fil
+       de la saison : à force de le voir tous les jours, il finit par te lancer.
+       Sans ce dégel, un joueur mal classé en août l'était encore en mai, et sa
+       saison n'avait aucune issue. */
+    + Math.min(0, (S.moi.age <= 18 ? -8 : S.moi.age === 19 ? -5 : S.moi.age === 20 ? -2.5 : 0)
+      + S.journee * .13);
 }
 function concurrentsDispos(){ return S.concurrents.filter(c => c.blesse <= 0); }
 /* TOUS CEUX QUI JOUENT À TON POSTE, toi compris, classés comme le coach les
@@ -985,6 +1031,7 @@ function finirMatch(){
       - cumul(m.moments.filter(f => f.reussi === false).length, POIDS_FAIT)
       - (m.perduLeFil ? .7 : 0) + (m.moments.some(f => f.tenu) ? .35 : 0) + aleaNote(), 3, 10);
     m.note = Math.round(m.note * 10) / 10;
+    S.sansJouer = 0;
     S.stats.matchs++; S.stats.minutes += m.minutes; S.stats.buts += m.buts; S.stats.passes += m.passes;
     S.stats.notes.push(m.note); if (m.statut === 'titulaire') S.stats.titus++;
     /* Entrer en jeu coûte moins que commencer : on arrive frais, sur une demi-heure.
@@ -1022,7 +1069,12 @@ function finirMatch(){
     if (m.rouge){ m.suspendu = 2; S.cartons = 0; }
     else if (S.cartons >= 5){ m.suspendu = 1; S.cartons = 0; }
   } else {
-    S.liens.coach = clamp(S.liens.coach - (m.statut === 'banc' ? .5 : .2));
+    /* Un coach ne perd pas indéfiniment confiance en quelqu'un qu'il n'utilise
+       simplement pas. Sans ce plancher, ne pas jouer faisait baisser `coach`,
+       qui pèse .16 dans `valeurAuPoste()`, donc on jouait encore moins : la même
+       spirale que celle du mental, et la seule porte de sortie se refermait. */
+    if (S.liens.coach > 42) S.liens.coach = clamp(S.liens.coach - (m.statut === 'banc' ? .5 : .2));
+    S.sansJouer = (S.sansJouer || 0) + 1;
   }
   /* Rester sur le banc ne retire PAS de mental : ça fermait la spirale sur
      elle-même. Le banc coûte déjà la confiance du coach, ça suffit. */
@@ -1366,6 +1418,29 @@ function direProfondeur(){
     : e > -.8 ? "Le coach bricole un peu, sans plus."
     : e > -1.8 ? "Deux ou trois remplaçants entrent : ça se sentira."
     : "Le groupe est à l'os. Ce match part de plus loin.";
+}
+/* Le propriétaire, 27/09/2026 : « on peut mettre le numéro qu'on est dans la
+   hiérarchie… je sais pas trop quoi faire pour entrer dedans ». Le rang, et la
+   phrase qui nomme le levier le plus court — sans quoi on subit sans comprendre. */
+function monRang(){
+  const l = monPoste();
+  return { rang: l.findIndex(x => x.moi) + 1, sur: l.length, places: FORMATION[S.moi.poste] };
+}
+function direRang(){
+  const r = monRang();
+  return `${r.rang}\u1d49 sur ${r.sur} \u00e0 ton poste, ${r.places} place${r.places > 1 ? 's' : ''} dans le onze.`;
+}
+function direCommentMonter(){
+  const r = monRang();
+  if (r.rang <= r.places) return "Tu es dans les plans. Reste-y.";
+  const l = monPoste();
+  const devant = l[Math.min(r.places, l.length) - 1];   // le dernier titulaire du poste
+  if (!devant) return "Il n'y a personne devant toi \u00e0 ton poste.";
+  const ecart = devant.niv - valeurAuPoste();
+  if (S.liens.coach < 46) return "Le coach ne te voit pas. \u00c7a se gagne dans son bureau autant qu'\u00e0 l'entra\u00eenement.";
+  if (ecart > 6) return `Tu es encore loin de ${devant.nom}. Il n'y a que le travail \u00e0 ton poste.`;
+  if (S.etats.forme < 55) return "Tu n'es pas en forme. Une bonne sortie, m\u00eame en r\u00e9serve, et il te regardera.";
+  return `${devant.nom} n'est pas loin. Une blessure, une suspension, une bonne semaine, et la place s'ouvre.`;
 }
 function direPlace(){
   const l = monPoste(), places = FORMATION[S.moi.poste];
