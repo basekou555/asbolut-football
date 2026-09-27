@@ -134,6 +134,10 @@ function situationHTML(ouvert){
     direLigne(cle) + ' ' + ENJEU_LIGNE[S.moi.poste], true);
   /* Les mots du joueur, pas les miens : blessure, corps, technique, mental.
      « Je comprends pas pourquoi on a des mots différents. » */
+  /* Le groupe : c'est ce qui rend vingt-deux joueurs utiles plut\u00f4t que d\u00e9coratifs.
+     Qui manque, et ce que \u00e7a co\u00fbte au onze de samedi. */
+  const grp = celSit('\u{1F3E5}', "L'infirmerie", direInfirmerie())
+    + celSit('\u{1F465}', "Le groupe", direProfondeur());
   const toi = celSit('\u{1FAC1}', "Fra\u00eecheur", direFraicheur() + " avant le match.")
     + celSit('\u{1FA7C}', "Blessure", direCorps())
     + celSit('\u{1F4AA}', "Ton corps", direFond())
@@ -143,7 +147,7 @@ function situationHTML(ouvert){
   if (S.moi.qual.vu){ const q = QUALITES.find(x => x.id === S.moi.qual.id); tire += celSit('\u2728', q.nom, q.dit); }
   if (S.moi.def.vu){ const f = DEFAUTS.find(x => x.id === S.moi.def.id); tire += celSit('\u26a0\ufe0f', f.nom, f.dit); }
   return `<details class="fold sit-fold"${ouvert ? ' open' : ''}><summary>Ta situation</summary>
-    <h3>Autour de toi</h3><div class="sit">${gens}${maLigne}</div>
+    <h3>Autour de toi</h3><div class="sit">${gens}${maLigne}${grp}</div>
     <h3>Toi</h3><div class="sit">${toi}${tire}</div>
     <p class="narr" style="margin-top:12px">${esc(direStaff())}</p>
     <p class="sub">${S.stats.matchs} match${S.stats.matchs > 1 ? 's' : ''} jou\u00e9${S.stats.matchs > 1 ? 's' : ''}${S.stats.titus ? `, dont ${S.stats.titus} comme titulaire` : ''}${S.stats.buts ? ` \u00b7 ${S.stats.buts} but${S.stats.buts > 1 ? 's' : ''}` : ''}${S.stats.notes.length ? ` \u00b7 moyenne ${virg(moyenneNotes())}` : ''}.</p>
@@ -162,14 +166,14 @@ function effectifHTML(){
     const j = l.filter(x => x.cle === k);
     if (!j.length) return '';
     return `<div class="lineHead">${LIEN_ICO[k]} ${esc(LIGNE_NOM[k])}<span>${esc(direLigne(k))}</span></div>
-      <div class="lineup">${j.map(x => `<div${x.moi ? ' class="me"' : ''}>
+      <div class="lineup">${j.map(x => `<div class="${x.moi ? 'me' : ''}${x.blesse || x.susp ? ' out' : ''}">
         <b>${esc(x.nom)}</b><span class="n">${x.moy == null ? '\u2014' : virg(x.moy)}</span>
-        <span class="s">${x.age} ans \u00b7 ${x.nb} m${x.moi ? ' \u00b7 toi' : x.rival ? ' \u00b7 ton poste' : x.monte ? ' \u00b7 il monte' : ''}${x.blesse ? ' \u00b7 bless\u00e9' : ''}</span>
+        <span class="s">${x.age} ans \u00b7 ${x.nb} m${x.moi ? ' \u00b7 toi' : x.rival ? ' \u00b7 ton poste' : x.monte ? ' \u00b7 il monte' : ''}${x.blesse ? ' \u00b7 \u{1FA7C} bless\u00e9' : x.susp ? ' \u00b7 \u{1F7E5} suspendu' : ''}</span>
       </div>`).join('')}</div>`;
   };
   return `<details class="fold"><summary>L'effectif</summary>
     ${LIGNES.map(bloc).join('')}
-    <p class="sub">La moyenne de chacun sur la saison, et le nombre de matchs not\u00e9s.</p>
+    <p class="sub">Vingt-deux joueurs, onze titulaires. La moyenne de chacun sur la saison, et le nombre de matchs not\u00e9s.</p>
   </details>`;
 }
 const virg = v => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');

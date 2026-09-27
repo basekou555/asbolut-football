@@ -182,9 +182,10 @@ button.chip.on{border-color:var(--gold);color:var(--gold);background:color-mix(i
 .sit{columns:2 152px;column-gap:7px}
 .sit > div{background:var(--panel-2);border-radius:8px;padding:7px 10px 8px;
   margin:0 0 7px;break-inside:avoid;-webkit-column-break-inside:avoid}
+/* le libellé passe à la ligne plutôt que de se couper : « un pied gauche
+   absent » devenait « un pied gauche abse… » */
 .sit .k{display:block;color:var(--muted);font-size:10px;letter-spacing:.07em;
-  text-transform:uppercase;margin-bottom:2px;white-space:nowrap;
-  overflow:hidden;text-overflow:ellipsis}
+  text-transform:uppercase;margin-bottom:2px;line-height:1.25}
 .sit .v{display:block;font-size:12.5px;line-height:1.35}
 .sit .cle{outline:1px solid var(--gold-dim)}
 .sit-fold h3{margin:14px 0 7px}
@@ -207,3 +208,4 @@ button.chip.on{border-color:var(--gold);color:var(--gold);background:color-mix(i
 .lineup .s{grid-column:1/-1;color:var(--muted);font-size:10.5px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lineup .me{outline:1px solid var(--gold-dim)}
+.lineup .out{opacity:.5}

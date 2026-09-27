@@ -391,6 +391,38 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
      - **Ce qui n'a pas été touché** : les six cartes de séance, qui font à elles seules le tiers de
        l'écran. C'est exactement ce qu'il vient de dire aimer (« c'est bien expliqué, surtout,
        l'effet que ça a sur ton match ») : raccourcir là aurait coûté ce qu'il garde.
+- **VINGT-DEUX JOUEURS, ET DES TROUS QUI SE BOUCHENT** (le propriétaire, 27/09/2026 : « il me
+  faut au moins 18 joueurs voire 22, parce que là s'il y a des blessures, des suspensions, il y a
+  des trous dans l'équipe »). Le groupe était un onze pile (`PLAN = {G:1, D:4, M:4, A:2}`) : un
+  blessé laissait littéralement une case vide, et `notesEquipe()` notait tout le monde avec 12 % de
+  chance de ne pas avoir joué — dix à dix-sept notes pour un match à onze.
+  - **`EFFECTIF = {G:3, D:7, M:7, A:5}`** (22, toi et tes rivaux compris) et **`FORMATION =
+    {G:1, D:4, M:4, A:2}`** (le onze). `NOMS` passe de 16 à 40 : il en faut vingt et un distincts.
+  - **Chaque coéquipier vit** (`vivreEquipe()`) : une forme qui dérive, 2,8 % de blessure et 1,3 %
+    de suspension par journée. Mesuré : **1,8 absent en moyenne**, aucun absent 17 % des semaines,
+    trois ou plus 29 %.
+  - **`onzeDuJour(statut)` aligne le onze** parmi les valides et **mesure ce que l'infirmerie
+    coûte** : chaque titulaire est comparé à celui qu'il remplace, rang par rang, et l'écart
+    étalé sur onze entre dans `nous`. Mesuré : **−0,4 de force en moyenne, −4 au pire** — à
+    comparer aux 2,4 de l'avantage du terrain. Un groupe profond absorbe, un groupe court paie.
+    *Première version fausse* : je comparais les **sommes** des deux onze, donc un absent comptait
+    pour tout son niveau et le onze perdait jusqu'à **onze points de force** pour trois blessés.
+  - **`ROTATION` = 3,5** : sans tirage, le onze se choisissait strictement au niveau et **un tiers du
+    groupe finissait la saison à zéro match** — vingt-deux joueurs dont onze décoratifs, c'est-à-dire
+    le problème d'avant déguisé. Le même tirage sert au onze réel et au onze idéal, pour que
+    l'écart ne mesure que l'infirmerie. Mesuré après : **1,1 joueur à zéro match** (le troisième
+    gardien, en général), du moins utilisé au plus utilisé : 0 à 33 matchs.
+  - **Seuls les onze titulaires sont notés** : **11,2 notes par match** au lieu de 10 à 17.
+  - **À l'écran** : deux cases dans la fiche — **L'infirmerie** (qui manque, nommé) et **Le
+    groupe** (ce que ça coûte au onze) — et les tuiles des absents grisées, marquées 🩼 ou 🟥.
+    `direProfondeur()` tient compte du nombre d'absents : « quatre absents » à côté de « le onze est
+    au complet » se lisait comme une contradiction, alors que c'est exactement ce qu'un groupe de
+    vingt-deux est censé faire ; il dit maintenant « le groupe absorbe ».
+  - **Migration 6 → 7** : le groupe est **complété poste par poste** depuis la sauvegarde existante,
+    sans doublon de nom. Vérifié sur une vraie partie v6 (13 joueurs, 17ᵉ journée) : 22 joueurs
+    après, lignes conservées, saison terminée sans erreur.
+  - **L'équilibre ne bouge pas** : banc d'essai rejoué, « deux séances puis un repos » reste devant
+    sur les matchs (17,3 / 16,3 / 15,2) et aucune politique ne prend à la fois les matchs et la trace.
 - **Le banc d'essai (`v2/labo.html`)**, demandé par le propriétaire : « le tableau que tu m'as
   partagé, je sais pas ce que ça représente… j'aimerais bien aussi que je puisse faire [les
   simulations] sur le nombre de matchs en fonction des choix qu'on a fait. » La page rejoue des
