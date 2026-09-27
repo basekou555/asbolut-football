@@ -127,22 +127,49 @@ const ENJEU_LIGNE = { G:"C'est avec eux que tu encaisses, ou pas.",
   M:"Plus tu les trouves, plus tu passes décisif.",
   A:"Plus ils te trouvent, plus tu marques." };
 /* Chaque ligne a son vocabulaire : trois fois la même phrase, et le lecteur
-   conclut que les lignes ne servent à rien. Une ligne parle de ce qu'elle fait. */
+   conclut que les lignes ne servent à rien. Une ligne parle de ce qu'elle fait.
+   **HUIT PALIERS ET NON SIX** (le propriétaire, 27/09/2026 : « la stat "ta ligne",
+   elle bouge jamais, du coup je comprends pas trop l'utilité »). Mesuré avant de
+   toucher à quoi que ce soit : la jauge parcourt **22 points** par saison, mais
+   les bandes générales font seize points de large, donc la phrase ne changeait
+   que **3,5 fois en 34 journées** — dix semaines avec le même mot. Les paliers
+   d'une ligne sont resserrés autour de là où elle vit vraiment (36 à 73). */
 const MOTS_LIGNE = {
   def: ["Derrière, chacun joue pour soi.", "On se marche dessus.",
-    "Ça tient un match sur deux.", "On se couvre.",
+    "Chacun défend son bout.", "Ça tient un match sur deux.",
+    "On commence à se couvrir.", "On se couvre.",
     "On défend à quatre, jamais à un.", "Personne ne passe entre nous."],
   mil: ["Au milieu, personne ne lève la tête.", "On joue les uns à côté des autres.",
-    "Un ballon sur deux se trouve.", "On se trouve.",
+    "On se trouve une fois sur trois.", "Un ballon sur deux se trouve.",
+    "Ça commence à circuler.", "On se trouve.",
     "Trois passes et on est de l'autre côté.", "On joue les yeux fermés."],
   att: ["Devant, on se gêne.", "On se cherche encore.",
-    "Un centre sur deux arrive.", "On commence à se trouver.",
+    "Un centre sur trois arrive.", "Un centre sur deux arrive.",
+    "On se regarde un peu moins.", "On commence à se trouver.",
     "Un appel, un ballon.", "On sait où l'autre va avant lui."],
 };
+const BANDES_LIGNE = [30, 38, 45, 51, 57, 63, 70];
+function bandeLigne(v){
+  for (let i = 0; i < BANDES_LIGNE.length; i++) if (v < BANDES_LIGNE[i]) return i;
+  return BANDES_LIGNE.length;
+}
+/* Et surtout : **la direction**. Une jauge qui se déplace de deux points par
+   journée ne change pas de palier avant des semaines, donc le joueur la croit
+   immobile. `S.ligneRef` est une moyenne lissée : l'écart entre la valeur du
+   jour et elle dit si ça monte ou si ça se dégrade, même à l'intérieur d'un
+   palier. C'est ce qui rend le mouvement visible toutes les semaines. */
+function tendanceLigne(k){
+  if (!S.ligneRef) return 0;
+  return S.lignes[k] - S.ligneRef[k];
+}
+function direTendance(k){
+  const d = tendanceLigne(k);
+  return d > 1.6 ? " Et ça va dans le bon sens." : d < -1.6 ? " Et ça se dégrade." : "";
+}
 function vestiaire(){ return (S.lignes.def + S.lignes.mil + S.lignes.att) / 3; }
 function bougerLigne(k, v){ if (v) S.lignes[k] = clamp(S.lignes[k] + v); }
 function bougerVestiaire(v){ LIGNES.forEach(k => bougerLigne(k, v)); }
-function direLigne(k){ return MOTS_LIGNE[k][bande(S.lignes[k])]; }
+function direLigne(k){ return MOTS_LIGNE[k][bandeLigne(S.lignes[k])]; }
 function ligneFaible(){
   const k = LIGNES.slice().sort((a, b) => S.lignes[a] - S.lignes[b])[0];
   return S.lignes[k] < 44 ? k : null;
@@ -235,7 +262,7 @@ function nouvellePartie(c){
       qual: { id:q.id, vu:false }, def: { id:f.id, vu:false },
       histo: {} },
     club: { nom: club.nom, force: club.force }, concurrents, equipe,
-    ligue, liens, lignes,
+    ligue, liens, lignes, ligneRef: { ...lignes },
     /* `fond` est la réserve que construit le travail physique : on récupère plus
        vite d'un match à l'autre, on se blesse moins, et on laisse moins de jambes
        dans un match. Il s'use d'une journée sur l'autre : il faut l'entretenir.
@@ -1284,6 +1311,8 @@ function apresMatch(){
      non plus : un rappel de 1 % vers 50 tient l'écart-type autour de sept points,
      assez pour que les arrêts et le match pèsent plus que le hasard. */
   LIGNES.forEach(k => S.lignes[k] = clamp(S.lignes[k] * .99 + .5 + rnd(-1.8, 1.8)));
+  S.ligneRef = S.ligneRef || { ...S.lignes };
+  LIGNES.forEach(k => S.ligneRef[k] = S.ligneRef[k] * .82 + S.lignes[k] * .18);
   if (S.etats.blessure > 0) S.etats.blessure--;
   if (S.etats.suspension > 0) S.etats.suspension--;
   if (d && d.blessure) S.etats.blessure = d.blessure;

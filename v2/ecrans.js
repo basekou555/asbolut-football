@@ -136,7 +136,7 @@ function situationHTML(ouvert){
      **ta ligne** qu'il faut annoncer, et la phrase dit laquelle. */
   const cle = LIGNE_CLE[S.moi.poste];
   const maLigne = celSit(LIEN_ICO[cle], "Ta ligne",
-    `Avec ${LIGNE_LA[cle]} : ${minuscule(direLigne(cle))} ${ENJEU_LIGNE[S.moi.poste]}`, true);
+    `Avec ${LIGNE_LA[cle]} : ${minuscule(direLigne(cle))}${direTendance(cle)} ${ENJEU_LIGNE[S.moi.poste]}`, true);
   /* Les mots du joueur, pas les miens : blessure, corps, technique, mental.
      « Je comprends pas pourquoi on a des mots différents. » */
   /* Le groupe : c'est ce qui rend vingt-deux joueurs utiles plut\u00f4t que d\u00e9coratifs.
@@ -145,8 +145,7 @@ function situationHTML(ouvert){
     + celSit('\u{1F465}', "Le groupe", direProfondeur());
   /* Le rang dans la hi\u00e9rarchie du poste, et la phrase qui nomme le levier le plus
      court : \u00ab je sais pas trop quoi faire pour entrer dedans \u00bb. */
-  const toi = celSit('\u{1F522}', "Ta place", direRang() + ' ' + direCommentMonter())
-    + celSit('\u{1FAC1}', "Fra\u00eecheur", direFraicheur() + " avant le match.")
+  const toi = celSit('\u{1FAC1}', "Fra\u00eecheur", direFraicheur() + " avant le match.")
     + celSit('\u{1FA7C}', "Blessure", direCorps())
     + celSit('\u{1F4AA}', "Ton corps", direFond())
     + celSit('\u26bd', "Technique", direGeste())
@@ -156,6 +155,7 @@ function situationHTML(ouvert){
   if (S.moi.def.vu){ const f = DEFAUTS.find(x => x.id === S.moi.def.id); tire += celSit('\u26a0\ufe0f', f.nom, f.dit); }
   return `<details class="fold sit-fold"${ouvert ? ' open' : ''}><summary>Ta situation</summary>
     <h3>Autour de toi</h3><div class="sit">${gens}${maLigne}${grp}</div>
+    ${concurrenceHTML()}
     <h3>Toi</h3><div class="sit">${toi}${tire}</div>
     <p class="narr" style="margin-top:12px">${esc(direStaff())}</p>
     <p class="sub">${S.stats.matchs} match${S.stats.matchs > 1 ? 's' : ''} jou\u00e9${S.stats.matchs > 1 ? 's' : ''}${S.stats.titus ? `, dont ${S.stats.titus} comme titulaire` : ''}${S.stats.buts ? ` \u00b7 ${S.stats.buts} but${S.stats.buts > 1 ? 's' : ''}` : ''}${S.stats.notes.length ? ` \u00b7 moyenne ${virg(moyenneNotes())}` : ''}.</p>
@@ -217,7 +217,6 @@ function ecranSemaine(){
     <p class="narr">Trois jours de travail, et une seule chose que tu peux vraiment décider.</p>
     ${empeche === 'blessure' ? `<div class="lack"><b>Tu es à l'infirmerie.</b> Encore ${S.etats.blessure} journée${S.etats.blessure > 1 ? 's' : ''}. Ce que tu fais de la semaine compte quand même.</div>` : ''}
     ${empeche === 'suspension' ? `<div class="lack"><b>Tu es suspendu.</b> Encore ${S.etats.suspension} match${S.etats.suspension > 1 ? 's' : ''}. Tu t'entraînes sans jouer.</div>` : ''}
-    ${concurrenceHTML()}
     <h3>Ce que tu travailles</h3>
     ${SEMAINES.map(s => optHTML(s.ico, s.nom, s.sub, s.dit, `choisirSemaine('${s.id}')`)).join('')}
   </div>
@@ -241,8 +240,9 @@ function concurrenceHTML(){
     }</span><span>${esc(x.nom)}${x.moi ? ' <i>toi</i>' : ''}${
       !x.dispo ? ` <i>${esc(x.raison || '')}</i>` : dedans ? ' <i>dans le onze</i>' : ''}</span></div>`;
   }).join('');
-  return `<h3>Ta place</h3><div class="words">${lignes}</div>
-    <p class="sub">${places} place${places > 1 ? 's' : ''} \u00e0 ton poste dans le onze.</p>`;
+  return `<h3>Ta place</h3>
+    <p class="sub" style="margin:0 0 8px">${esc(direRang())} ${esc(direCommentMonter())}</p>
+    <div class="words">${lignes}</div>`;
 }
 
 /* ---------------- un arrêt ---------------- */
