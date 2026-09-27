@@ -217,3 +217,15 @@ button.chip.on{border-color:var(--gold);color:var(--gold);background:color-mix(i
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lineup .me{outline:1px solid var(--gold-dim)}
 .lineup .out{opacity:.5}
+
+/* ---- le tirage de la qualité et du défaut ---- */
+.roul{display:grid;grid-template-columns:34px 1fr;gap:12px;align-items:center;
+  background:var(--panel-2);border:1px solid var(--line);border-radius:12px;
+  padding:14px 16px;margin:0 0 8px;min-height:74px}
+.roul .i{font-size:24px;line-height:1;text-align:center}
+.roul b{display:block;font-size:17px;letter-spacing:.2px}
+.roul .sub{display:block;margin-top:2px}
+.roul.pose{border-color:var(--gold-dim);animation:pose .45s ease-out}
+.roul.bad.pose{border-color:var(--red)}
+@keyframes pose{0%{transform:scale(.97);opacity:.6}60%{transform:scale(1.015)}100%{transform:scale(1);opacity:1}}
+@media(prefers-reduced-motion:reduce){.roul.pose{animation:none}}

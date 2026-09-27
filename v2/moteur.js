@@ -266,7 +266,7 @@ function nouvellePartie(c){
     moi: { nom: c.nom, poste: poste.id, posteNom: poste.nom, specNom: poste.spec,
       age: 18, base, boost: { tech:0, phys:0, ment:0, spec:0 }, plafond, socle,
       u0: c.origine.u0, origine: c.origine.id, ambition: c.ambition.id, pic,
-      qual: { id:q.id, vu:false }, def: { id:f.id, vu:false },
+      qual: { id:q.id, vu:true }, def: { id:f.id, vu:true },
       histo: {} },
     club: { nom: club.nom, force: club.force }, concurrents, equipe,
     ligue, liens, lignes, ligneRef: { ...lignes },
@@ -1711,7 +1711,6 @@ function finirMatch(){
     + (m.noteReserve != null ? ` · match avec la réserve, note ${nb(m.noteReserve)}` : '')
     + (m.blessure ? ` · sorti touché, ${m.blessure} journée${m.blessure > 1 ? 's' : ''} d'absence` : '')
     + (m.suspendu ? ` · suspendu ${m.suspendu} match${m.suspendu > 1 ? 's' : ''}` : ''));
-  decouverte(m);
   S.ecran = 'resultat'; sauver(); rendre();
 }
 /* « On ne connaît pas la note de ses coéquipiers, du coup on ne sait pas si on a
@@ -1872,21 +1871,14 @@ function autresMatchs(){
 }
 /* La qualité et le défaut se révèlent sur un match qui leur ressemble,
    et au plus tard au douzième match. */
-function decouverte(m){
-  const tard = S.stats.matchs >= 12;
-  const cands = [];
-  const q = QUALITES.find(x => x.id === S.moi.qual.id), f = DEFAUTS.find(x => x.id === S.moi.def.id);
-  const vu = { frappe: m.buts > 0, poumons: m.minutes >= 80, nerfs: m.note >= 7, lecture: m.note >= 7.2 };
-  const vuD = { gauche: m.note != null && m.note < 6, ischios: m.blessure > 0 || m.minutes >= 75,
-    doute: m.note != null && m.note < 5.8, placement: m.minutes >= 45 && m.note != null && m.note < 6.3 };
-  if (!S.moi.qual.vu && (tard || vu[q.id])) cands.push(['qual', q, "✨"]);
-  if (!S.moi.def.vu && (tard || vuD[f.id])) cands.push(['def', f, "⚠️"]);
-  if (!cands.length) return;
-  const [k, it, ico] = pick(cands);
-  S.moi[k].vu = true;
-  m.decouverte = { ico, nom: it.nom, dit: it.dit, axe: axeNom(it.axe), bon: k === 'qual' };
-  jrn('decouverte', `${ico} ${it.nom} — ${it.dit}`);
-}
+/* LA QUALITÉ ET LE DÉFAUT SE DÉCOUVRENT À LA CRÉATION, PAS EN JOUANT (le
+   propriétaire, 27/09/2026 : « pour les qualités et défauts, il faut que ce soit
+   dans la page de création qu'on les découvre. Une fois qu'on a choisi ce qu'on
+   voulait pour la partie hors football, on doit les voir apparaître. C'est bien
+   s'il y a une petite animation comme une roulette »). Ils étaient révélés au
+   fil des matchs par `decouverte()`, ce qui les faisait apparaître dans « Ta
+   situation « sans qu'on sache ce qu'ils étaient. `nouvellePartie()` les pose
+   donc **déjà vus**, et l'écran du tirage les montre avant le premier match. */
 
 /* ---------- la suite ---------- */
 function apresMatch(){
@@ -2418,6 +2410,10 @@ function charger(){
     /* MIGRATION 9 → 10 : rien à reconstruire. La carrière naît au premier bilan,
        et une partie en cours au moment de la mise à jour la commence là. */
     if (d.v === 9) d.v = 10;
+    /* La qualité et le défaut se découvrent désormais à la création : une carrière
+       commencée avant ne les a peut-être pas encore vus, et plus rien ne les lui
+       montrerait. On les lui donne. */
+    if (d.moi && d.moi.qual){ d.moi.qual.vu = true; d.moi.def.vu = true; }
     if (d.v !== VERSION) return null;
     return d;
   } catch(e){ return null; }

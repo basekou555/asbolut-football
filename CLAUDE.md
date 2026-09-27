@@ -802,14 +802,28 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     saison européenne se paie.
   - Les trophées entrent dans la carrière (`carriere.coupes`, `carriere.europes`), le bilan de saison
     porte une case **Les coupes**, et le bilan de carrière marque chaque saison d'un 🏆, 🏅 ou ⭐.
-- **TA QUALITÉ ET TON DÉFAUT NE SONT PAS DES JAUGES** (le propriétaire, 27/09/2026 : « je ne comprends
-  pas ce que représente nerfs d'acier et ischios en verre, pourquoi ils sont là et comme cela »).
-  Ils étaient rangés **dans la même grille que la fraîcheur et le mental**, sans dire de quel axe ils
-  parlent : « DES NERFS D'ACIER » (+15 de mental, pour toujours) se lisait donc à côté de « MENTAL :
-  quand ça se tend, tu joues petit » (la réserve du moment) — et les deux se contredisaient à
-  l'œil. Ils ont désormais **leur propre section « Ce qu'on sait de toi »**, chacun **nomme son axe**
-  (« ton mental — le stade hurle et tes mains ne tremblent pas »), et une ligne dit d'où ils
-  viennent : tirés au sort à la naissance du joueur, et dans ses chiffres depuis le premier jour.
+- **LA QUALITÉ ET LE DÉFAUT SE DÉCOUVRENT À LA CRÉATION, À LA ROULETTE** (le propriétaire,
+  27/09/2026, en deux temps). D'abord : « je ne comprends pas ce que représente nerfs d'acier et
+  ischios en verre, pourquoi ils sont là et comme cela ». Ils étaient rangés **dans la même grille
+  que la fraîcheur et le mental**, sans dire de quel axe ils parlent : « DES NERFS D'ACIER » (+15 de
+  mental, pour toujours) se lisait à côté de « MENTAL : quand ça se tend, tu joues petit » (la
+  réserve du moment) — et les deux se contredisaient à l'œil. Puis, une fois l'explication donnée :
+  « il faut que ce soit dans la page de création qu'on les découvre. Une fois qu'on a choisi ce
+  qu'on voulait pour la partie hors football, on doit les voir apparaître. C'est bien s'il y a une
+  petite animation comme une roulette et tout… et là ensuite, tu peux les mettre dans la situation,
+  dans la section toi. »
+  - **Une quatrième étape de création** (`ecranTirage`), après le choix de l'ambition : deux rouleaux
+    défilent parmi les qualités puis parmi les défauts, ralentissent (`55 + 240 × (t/durée)³`) et se
+    posent sur les tiens, liséré d'or pour l'une, rouge pour l'autre. Une ligne dit ce que c'est :
+    « quinze points en plus sur un axe, quinze en moins sur un autre, dans tes chiffres dès le
+    premier match. Ça ne bougera plus : c'est ce que tu es. » `prefers-reduced-motion` les pose
+    directement, sans animation.
+  - **Chacun nomme son axe** (« ton mental — le stade hurle et tes mains ne tremblent pas »), et ils
+    reviennent **dans la section « Toi »** comme il le demande : une fois qu'on sait ce qu'ils sont,
+    ils n'ont plus besoin d'une section à part.
+  - **La découverte en jouant disparaît** : `decouverte()` les révélait au fil des matchs, ce qui était
+    précisément la cause de l'incompréhension. `nouvellePartie()` les pose **déjà vus**, et `charger()`
+    les donne aussi aux carrières commencées avant — sinon plus rien ne les leur montrerait.
 - **TES BUTS DE FAIT DE MATCH N'AVAIENT PAS DE PASTILLE** (capture à l'appui : l'entête dit « 1 but »
   et la ligne de notes n'affiche que la passe). `faits` est construit depuis `m.evs`, or un but
   marqué sur un fait de match fait `m.bn++ ; m.buts++` **sans créer d'événement** : il était donc
