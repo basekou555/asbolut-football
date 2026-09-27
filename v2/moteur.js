@@ -174,6 +174,12 @@ function bougerAxe(a, d){
   const v = clamp(S.moi.base[a] + d);
   S.moi.base[a] = d < 0 ? Math.max(v, S.moi.socle[a] == null ? 0 : S.moi.socle[a]) : v;
 }
+/* Ce que le mental porte : encaisser. Renvoie −1 (on prend tout de plein fouet)
+   à +1 (rien ne t'atteint vraiment). Amortit les mauvaises notes, les liens qui
+   se dégradent et le coût des décisions hors football — jamais les gains. */
+function encaisse(){
+  return clamp(((S.moi.base.ment + S.moi.boost.ment) - 50) / 45, -1, 1);
+}
 function niveau(){
   const p = POSTES.find(x => x.id === S.moi.poste);
   let n = 0; AXES.forEach(a => n += p.w[a] * (S.moi.base[a] + S.moi.boost[a]));
@@ -184,15 +190,24 @@ function niveauJour(){
 }
 
 /* ---------- la semaine ---------- */
+/* Chaque axe a **son** effet long terme, et ce n'est pas « du niveau » (retour du
+   propriétaire, 27/09/2026). Court terme, tout coûte de la fraîcheur ; long terme :
+   - physique  → le fond : on récupère plus vite et on se blesse moins ;
+   - technique → le geste : on réussit plus souvent les faits de match ;
+   - au poste  → ta place : le coach te titularise ;
+   - mental    → encaisser : les mauvais soirs et les coups durs t'abîment moins.
+   Et `rende` fait suivre la récompense au coût : le mental fatigue moins, donc il
+   rapporte moins. « Si le mental est toujours le plus intéressant, ce qu'il faut,
+   c'est que ce qu'on gagne avec soit un peu moins important que pour le reste. » */
 const SEMAINES = [
   { id:'tech', ico:'⚽', nom:"Rester après l'entraînement", sub:"Frappes, centres, gestes répétés jusqu'à la nuit.",
-    axe:'tech', fit:-8, dit:[{c:'risk',t:"🫁 samedi : jambes lourdes"},{c:'vie',t:"🏡 tu rentres tard"}] },
+    axe:'tech', fit:-8, rende:1, dit:[{c:'risk',t:"🫁 samedi : jambes lourdes"},{c:'foot',t:"⚡ le geste, sur les faits de match"},{c:'vie',t:"🏡 tu rentres tard"}] },
   { id:'phys', ico:'💪', nom:"La salle et les sprints", sub:"Le préparateur t'a fait un programme. Il est violent.",
-    axe:'phys', fit:-11, fond:3.5, dit:[{c:'risk',t:"🫁 samedi : fatigué"},{c:'foot',t:"💪 du fond, pour toute la saison"}] },
+    axe:'phys', fit:-11, fond:3.5, rende:1.15, dit:[{c:'risk',t:"🫁 samedi : fatigué"},{c:'foot',t:"💪 du fond : tu récupères plus vite"}] },
   { id:'ment', ico:'🧠', nom:"La vidéo et le calme", sub:"Tu revois tes matchs, tu parles au préparateur mental.",
-    axe:'ment', fit:-7, dit:[{c:'foot',t:"🎯 samedi : lucide"},{c:'vie',t:"🏡 du temps chez toi"}] },
+    axe:'ment', fit:-7, rende:.85, dit:[{c:'foot',t:"🛡️ encaisser les mauvais soirs"},{c:'vie',t:"🏡 du temps chez toi"}] },
   { id:'spec', ico:'🎯', nom:"Le travail de ton poste", sub:"Une heure seul avec l'adjoint, sur ce que ton poste demande.",
-    axe:'spec', fit:-8, fond:1, dit:[{c:'foot',t:"🎯 samedi : juste à ton poste"},{c:'risk',t:"🫁 une heure de plus dans les jambes"}] },
+    axe:'spec', fit:-8, fond:1, rende:1, dit:[{c:'foot',t:"🎽 ta place : le coach te titularise"},{c:'risk',t:"🫁 une heure de plus dans les jambes"}] },
   { id:'normale', ico:'🔁', nom:"La semaine normale", sub:"Ce que le coach demande, rien de plus, rien de moins.",
     axe:null, fit:-2, dit:[{c:'neutre',t:"↔️ un peu de tout, rien de marquant"}] },
   { id:'repos', ico:'🛌', nom:"Lever le pied", sub:"Le corps tire. Tu écoutes.",
@@ -208,15 +223,16 @@ function choisirSemaine(id){
     const a = s.axe, pl = plafondReel(a);
     const marge = clamp(1 - S.moi.base[a] / pl, .12, 1);   // ce qu'il te reste à prendre
     const acquis = clamp(1 - marge, .12, 1);               // ce que tu tiens déjà
-    const tirage = pick([.4, .4, 1, 1, 1, 1.6]);
+    const rende = s.rende == null ? 1 : s.rende;          // la récompense suit le coût
+    const tirage = pick([.4, .4, 1, 1, 1, 1.6]) * rende;
     const r = tirage * marge;
     S.moi.boost[a] += BOOST_SEANCE * tirage * acquis;
     bougerAxe(a, TRACE_SEANCE * r);
     S.seance = {
       axe: a,
-      mot: tirage >= 1.3 ? "excellente" : tirage >= .7 ? "correcte" : "pour rien",
-      texte: tirage >= 1.3 ? `Tout est rentré. L'adjoint t'a regardé deux fois.`
-           : tirage >= .7 ? `Du travail honnête, rien de spectaculaire.`
+      mot: tirage >= 1.3 * rende ? "excellente" : tirage >= .7 * rende ? "correcte" : "pour rien",
+      texte: tirage >= 1.3 * rende ? `Tout est rentré. L'adjoint t'a regardé deux fois.`
+           : tirage >= .7 * rende ? `Du travail honnête, rien de spectaculaire.`
            : `Tu n'as rien senti passer. Certaines séances ne servent à rien.`,
       plafond: marge < .25,
       terrain: acquis >= .6,
@@ -278,7 +294,9 @@ function choisirArret(i){
   S.arret = null; lancerMatch();
 }
 function appliquer(o){
-  Object.entries(o.liens || {}).forEach(([k, v]) => S.liens[k] = clamp(S.liens[k] + v));
+  const enc = encaisse();
+  Object.entries(o.liens || {}).forEach(([k, v]) =>
+    S.liens[k] = clamp(S.liens[k] + (v < 0 ? v * (1 - enc * .4) : v)));
   Object.entries(o.axes || {}).forEach(([k, v]) => bougerAxe(k, v));
   if (o.fit) S.etats.fraicheur = clamp(S.etats.fraicheur + o.fit);
   if (o.corps) S.etats.corps = clamp(S.etats.corps + o.corps);
@@ -289,7 +307,11 @@ function monStatut(adv){
   if (S.etats.blessure > 0) return 'blesse';
   if (S.etats.suspension > 0) return 'suspendu';
   const concurrent = S.club.force + rnd(-4, 4);
-  const credit = niveauJour() - concurrent + (S.liens.coach - 50) * .16 + (S.moi.age <= 18 ? -5 : S.moi.age === 19 ? -2.5 : 0) + rnd(-3, 3);
+  /* `spec` compte une deuxième fois ici : être juste à son poste, c'est ce que
+     le coach regarde pour faire un onze. C'est l'effet long de cette séance. */
+  const credit = niveauJour() - concurrent + (S.liens.coach - 50) * .16
+    + (S.moi.base.spec + S.moi.boost.spec - 50) * .09
+    + (S.moi.age <= 18 ? -5 : S.moi.age === 19 ? -2.5 : 0) + rnd(-3, 3);
   if (credit > 1.5) return 'titulaire';
   if (credit > -7) return Math.random() < .75 ? 'banc' : 'hors';
   return 'hors';
@@ -398,7 +420,15 @@ function suiteMatch(){
 }
 function choisirMoment(i){
   const m = S.match, f = m.moments[S.momentIdx], o = f.opts[i];
-  const bonus = (S.moi.base[f.axe] + S.moi.boost[f.axe] - 50) * .006 + (S.etats.fraicheur - 80) * .001;
+  /* L'axe du fait décide d'abord, mais la technique pèse sur **tous** les faits :
+     c'est elle qui fait que le geste sort, quel que soit le geste. Quand le fait
+     est déjà technique, on ne la compte pas deux fois. Mesuré à .0028 : l'écart
+     disparaissait dans le bruit, donc le joueur ne pouvait pas le sentir. */
+  const axeV = S.moi.base[f.axe] + S.moi.boost[f.axe];
+  const techV = S.moi.base.tech + S.moi.boost.tech;
+  const bonus = (f.axe === 'tech' ? (techV - 50) * .009
+      : (axeV - 50) * .006 + (techV - 50) * .005)
+    + (S.etats.fraicheur - 80) * .001;
   const reussi = Math.random() < clamp(o.p + bonus, .05, .95);
   f.choix = o.l; f.reussi = reussi;
   if (reussi && (f.id === 'tir' || f.id === 'face' || f.id === 'volee')){
@@ -411,6 +441,12 @@ function choisirMoment(i){
   jrn('moment', `${f.min}ᵉ — ${f.q} → ${o.l} : ${reussi ? f.ok : f.ko}`);
   S.momentIdx++; suiteMatch();
 }
+/* Le soir où rien ne va : c'est là que le mental se voit. Seul l'aléa
+   défavorable est amorti, jamais le favorable. */
+function aleaNote(){
+  const a = rnd(-.7, .7);
+  return a < 0 ? a * (1 - encaisse() * .55) : a;
+}
 function moyenneNotes(){ const n = S.stats.notes; return n.length ? n.reduce((a, b) => a + b, 0) / n.length : 6; }
 function finirMatch(){
   const m = S.match, res = m.bn > m.be ? 'V' : m.bn < m.be ? 'D' : 'N';
@@ -421,13 +457,15 @@ function finirMatch(){
     m.note = clamp(6.1 + (res === 'V' ? .5 : res === 'D' ? -.4 : 0) + m.buts * .7 + m.passes * .4
       + (derriere ? (m.be === 0 ? 1 : m.be === 1 ? .35 : m.be >= 4 ? -.5 : 0) : 0)
       + (niveauJour() - S.club.force) * .035 + m.moments.filter(f => f.reussi).length * .3
-      - m.moments.filter(f => f.reussi === false).length * .3 + rnd(-.7, .7), 3, 10);
+      - m.moments.filter(f => f.reussi === false).length * .3 + aleaNote(), 3, 10);
     m.note = Math.round(m.note * 10) / 10;
     S.stats.matchs++; S.stats.minutes += m.minutes; S.stats.buts += m.buts; S.stats.passes += m.passes;
     S.stats.notes.push(m.note); if (m.statut === 'titulaire') S.stats.titus++;
     S.etats.fraicheur = clamp(S.etats.fraicheur - (m.minutes / 90) * ri(10, 16) * (1 - S.etats.fond * .0022));
     S.etats.corps = clamp(S.etats.corps - (m.minutes / 90) * .4);
-    S.liens.coach = clamp(S.liens.coach + clamp((m.note - 6.2) * 2.4, -4, 4));
+    let dCoach = clamp((m.note - 6.2) * 2.4, -4, 4);
+    if (dCoach < 0) dCoach *= (1 - encaisse() * .5);       // on encaisse le jugement
+    S.liens.coach = clamp(S.liens.coach + dCoach);
     S.liens.vestiaire = clamp(S.liens.vestiaire + (m.note >= 7 ? 1.2 : m.note < 5.5 ? -1 : 0));
     S.liens.supporters = clamp(S.liens.supporters + (m.buts ? 2 : 0) + (m.note >= 7.5 ? 1 : 0) - (m.note < 5.4 ? 1 : 0));
     S.etats.forme = clamp(S.etats.forme + (m.note >= 7 ? 5 : m.note >= 6 ? 1 : -4));
@@ -574,6 +612,12 @@ function dire(lien){ return MOTS[lien] ? MOTS[lien][bande(S.liens[lien])] : ''; 
 function direFond(){ const v = S.etats.fond;
   return v > 55 ? "Tu tiens les quatre-vingt-dix minutes sans y penser." : v > 32 ? "Tu as du fond."
     : v > 14 ? "Tu tiens, sans plus." : "Tu manques de fond, et ça se paie en fin de match."; }
+function direEncaisse(){ const v = S.moi.base.ment + S.moi.boost.ment;
+  return v > 68 ? "Un mauvais soir ne te fait plus rien." : v > 54 ? "Tu encaisses bien ce qui ne va pas."
+    : v > 42 ? "Un mauvais match te reste en travers." : "Le moindre coup dur te met par terre."; }
+function direGeste(){ const v = S.moi.base.tech + S.moi.boost.tech;
+  return v > 68 ? "Quand il faut faire le geste, il sort." : v > 54 ? "Le geste sort le plus souvent."
+    : v > 42 ? "Le geste te trahit encore." : "Dans les moments qui comptent, tu rates le geste."; }
 function direCorps(){ const v = S.etats.corps;
   return v > 85 ? "Rien ne te fait mal." : v > 72 ? "Quelques douleurs, rien de sérieux." : v > 58 ? "Tu récupères moins vite qu'avant." : "Ton corps commence à te lâcher."; }
 function direJambes(){ const v = S.etats.fraicheur;
