@@ -38,7 +38,8 @@ function rendre(){
   if (!S) { el.innerHTML = creationHTML(); window.scrollTo(0, 0); return; }
   const f = { semaine:ecranSemaine, arret:ecranArret, moment:ecranMoment,
     resultat:ecranResultat, bilan:ecranBilan, journal:ecranJournal,
-    ete:ecranEte, offres:ecranOffres, carriere:ecranCarriere, tirage:ecranTirage }[S.ecran];
+    ete:ecranEte, offres:ecranOffres, mercato:ecranMercato,
+    carriere:ecranCarriere, tirage:ecranTirage }[S.ecran];
   el.innerHTML = (S.ecran === 'tirage' ? '' : topHTML()) + (f ? f() : `<div class="card"><h2>Écran inconnu</h2><p class="sub">${esc(S.ecran)}</p></div>`);
   window.scrollTo(0, 0);
 }
@@ -166,7 +167,7 @@ const LIEN_ICO = { coach:"🎽", vestiaire:"✊", club:"🏟️", supporters:"�
 function topHTML(){
   // hors saison, la journée et le classement sont ceux de l'année d'avant : on ne
   // les affiche pas, on dit où on en est vraiment
-  const hors = { ete:"L'été", offres:'Mercato', carriere:'Fin de carrière' }[S.ecran];
+  const hors = { ete:"L'été", offres:'Les offres', mercato:'Mercato', carriere:'Fin de carrière' }[S.ecran];
   const pos = hors ? 0 : maPlace();
   return `<div class="top">
     <div><div class="who">${esc(S.moi.nom)}</div>
@@ -174,7 +175,7 @@ function topHTML(){
     <div class="meta">${S.annee}${hors ? '' : `-${S.annee + 1}`}<br>${hors
       ? esc(hors) : `${ordinal(Math.min(S.journee + 1, JOURNEES))} journée sur ${JOURNEES}`}
       <br>${hors ? (S.carriere ? `${S.carriere.saisons} saison${S.carriere.saisons > 1 ? 's' : ''}` : '')
-        : `${esc(S.club.nom)} ${ordinal(pos)}`}</div>
+        : `${esc(S.club.nom)} ${ordinal(pos)} · ${abrDivision()}`}</div>
   </div>`;
 }
 function maPlace(){ return classementTrie().findIndex(x => x.nom === S.club.nom) + 1; }
@@ -270,11 +271,14 @@ const virg = v => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
 
 function classementHTML(){
   const t = classementTrie();
-  return `<details class="fold"><summary>Le classement</summary><div class="rank">
+  const N = t.length;
+  return `<details class="fold"><summary>Le classement · ${esc(nomDivision())}</summary><div class="rank">
     ${t.map((e, i) => `<div${e.nom === S.club.nom ? ' style="border-color:var(--gold-dim)"' : ''}>
       <span class="m">${i + 1}</span><span>${esc(e.nom)}</span>
       <span class="tag">${e.pts} pts · ${e.j} j · ${e.v || 0}V ${e.n || 0}N ${e.d || 0}D · ${e.bp - e.bc > 0 ? '+' : ''}${e.bp - e.bc}</span></div>`).join('')}
-  </div></details>`;
+  </div><p class="sub">${(S.division || 1) === 1
+    ? `Les ${MONTEES} derniers descendent en ${esc(nomDivision(2))}.`
+    : `Les ${MONTEES} premiers montent en ${esc(nomDivision(1))}.`}</p></details>`;
 }
 function liensJournal(){
   return `<div class="btn-row"><button class="btn ghost" onclick="ouvrirJournal()">📓 Le journal</button></div>`;
@@ -432,7 +436,9 @@ function filmHTML(m){
         : e.passe ? `But de ${esc(qui)}, servi par ${esc(e.passe)}` : `But de ${esc(qui)}` });
     if (e.type === 'jaune') lignes.push({ min:e.min, moi:!!e.moi, ico:'🟨', t: `${esc(e.moi ? S.moi.nom : qui)} averti` });
     if (e.type === 'rouge') lignes.push({ min:e.min, moi:!!e.moi, ico:'🟥', t: `${esc(e.moi ? S.moi.nom : qui)} exclu` });
-    if (e.type === 'penalty') lignes.push({ min:e.min, moi:false, ico:'🎪', t: `Penalty pour ${esc(e.nous ? S.club.nom : m.adv.nom)}` });
+    if (e.type === 'penalty') lignes.push({ min:e.min, moi:!!e.arrete, ico:'🎪',
+      t: e.arrete ? `Penalty pour ${esc(m.adv.nom)} — <b>tu l'arrêtes</b>`
+        : `Penalty pour ${esc(e.nous ? S.club.nom : m.adv.nom)}` });
     if (e.type === 'blessure') lignes.push({ min:e.min, moi:false, ico:'🩼', t: `Sortie sur blessure — ${esc(qui)}` });
   });
   // le coach change : ça fait vivre le groupe, et ça te concerne quand c'est toi
@@ -511,9 +517,15 @@ function ecranEte(){
   </div>`;
 }
 /* Les offres, une à la fois : on ne sait jamais si la suivante sera meilleure. */
-function motClub(f){
-  const l = S.ligue.equipes.map(e => e.force).sort((a, b) => b - a);
+function motClub(o){
+  const f = o.force == null ? o : o.force;
+  const d = o.div || (S.division || 1);
+  const liste = d === (S.division || 1) ? (S.ligue.equipes || []) : (S.ligue.autre || []);
+  const l = liste.map(x => x.force).sort((a, b) => b - a);
   const r = l.filter(x => x > f).length + 1;
+  if (d === 2) return r <= 3 ? "Ils jouent la montée, et ils ont ce qu'il faut pour."
+    : r <= 9 ? "Un club de l'échelon inférieur, ambitieux sans plus."
+    : "Ils joueront le maintien, un étage plus bas.";
   return r <= 2 ? "Ils jouent le titre, et ils le disent."
     : r <= 6 ? "Le haut du tableau, et l'Europe en ligne de mire."
     : r <= 12 ? "Un club installé, sans histoire."
@@ -544,7 +556,8 @@ function ecranOffres(){
     <div class="step">Mercato ${S.annee} · ${S.moi.age} ans · ${reste > 1 ? "une proposition parmi d'autres" : 'une proposition'}</div>
     <div class="big-ico">📞</div>
     <h2>${esc(o.nom)}</h2>
-    <p class="narr">${esc(motClub(o.force))} ${esc(motPlace(o.force))}</p>
+    <p class="sub">${esc(nomDivision(o.div))}</p>
+    <p class="narr">${esc(motClub(o))} ${esc(motPlace(o.force))}</p>
     ${situationTete()}
     ${S.libre ? `<p class="sub">${esc(S.club.nom)} n'a pas prolongé : tu n'as pas de club si tu refuses tout.</p>`
       : `<p class="sub">Refuser la fait disparaître. La suivante peut être pire, ou ne pas venir.</p>`}
@@ -554,6 +567,57 @@ function ecranOffres(){
     ${S.libre ? '' : `<div class="btn-row"><button class="btn ghost" onclick="resterAuClub()">Rester à ${esc(S.club.nom)}</button></div>`}
   </div>`;
 }
+/* ================== L'ÉCRAN DU MERCATO ==================
+   Le mercato d'un joueur n'est pas un marché qu'on opère, c'est un marché qu'on
+   **subit** : on lit qui arrive, qui part, ce que ça fait à sa place dans la
+   hiérarchie du poste — puis on décide quoi en faire. L'écran est donc une lecture
+   suivie d'une décision, et après la décision, ce qu'elle a produit. */
+function mvtHTML(l, sens){
+  return `<div class="mvts">${l.map(m => `<div class="${sens}">
+    <span class="i">${sens === 'in' ? '⬅' : '➡'}</span>
+    <span><b>${esc(m.nom)}</b> <i>${esc(POSTES.find(p => p.id === (m.poste || m.p)) ? POSTES.find(p => p.id === (m.poste || m.p)).nom.toLowerCase() : '')}${m.age ? `, ${m.age} ans` : ''} — ${sens === 'in'
+      ? (m.de ? `arrive de ${esc(m.de)}${m.div && m.div !== (S.division || 1) ? ` (${esc(abrDivision(m.div))})` : ''}` : 'sort du centre de formation')
+      : (m.vers ? `part à ${esc(m.vers)}${m.div && m.div !== (S.division || 1) ? ` (${esc(abrDivision(m.div))})` : ''}`
+        : m.age >= 33 ? 'raccroche' : "part à l'étranger")}</i></span>
+  </div>`).join('')}</div>`;
+}
+function ecranMercato(){
+  const M = S.mercato || {};
+  /* Les arrivées : celles qui viennent d'un club nommé le disent, les autres sortent
+     du centre de formation — c'est la même liste, et elle ne mélange rien. */
+  const achats = {};
+  (M.achats || []).forEach(a => achats[a.nom] = a);
+  const arrivees = (M.arrivees || []).map(a => ({ ...a, ...(achats[a.nom] || {}) }));
+  const ventes = {};
+  (M.ventes || []).forEach(v => ventes[v.nom] = v);
+  const departs = (M.partis || []).map(x => ventes[x.nom] || x);
+  const bouge = arrivees.length || departs.length;
+  const fait = !!M.choix;
+  return `<div class="card no-sticky">
+    <div class="step">Mercato ${S.annee} · ${esc(S.club.nom)} · ${esc(nomDivision())}</div>
+    <div class="big-ico">🔁</div>
+    <h2>${fait ? esc(M.choix.nom) : "L'été de ton club"}</h2>
+    ${fait ? `<p class="narr">${esc(M.suite)}</p>` : `<p class="narr">${M.reste
+      ? `Le groupe que tu retrouveras en août n'est pas celui que tu as quitté en mai.`
+      : `Tu arrives. Le vestiaire, lui, était déjà là.`}</p>`}
+    ${bouge ? `<h3>Ce que le club a fait</h3>
+      ${arrivees.length ? mvtHTML(arrivees, 'in') : ''}
+      ${departs.length ? mvtHTML(departs, 'out') : ''}` : `<p class="sub">Rien n'a bougé au club cet été.</p>`}
+    <h3>Ta place</h3>
+    <p class="narr">${esc(direMercatoPlace())}</p>
+    ${(M.montent || []).length || (M.descendent || []).length ? `<h3>Les divisions</h3>
+      <p class="sub">${(M.montent || []).length ? `Montent : ${esc((M.montent || []).join(', '))}.` : ''}
+        ${(M.descendent || []).length ? ` Descendent : ${esc((M.descendent || []).join(', '))}.` : ''}</p>` : ''}
+    ${(M.ailleurs || []).length ? `<details class="fold"><summary>Le mercato des autres</summary>
+      <div class="mvts">${M.ailleurs.map(m => `<div>
+        <span class="i">🔁</span><span><b>${esc(m.nom)}</b> <i>${m.age} ans — ${esc(m.de)} → ${esc(m.vers)}</i></span></div>`).join('')}</div>
+      </details>` : ''}
+    ${fait ? `<div class="btn-row"><button class="btn" onclick="finirMercato()">La saison qui vient →</button></div>`
+      : `<h3>Ce que tu fais de juillet</h3>
+        ${MERCATO_CHOIX.map(c => optHTML(c.ico, c.nom, c.sub, c.dit, `choisirMercato('${c.id}')`)).join('')}`}
+  </div>`;
+}
+
 /* Ce que l'été a changé en toi, en mots : jamais un chiffre d'axe à l'écran. */
 function situationTete(){
   const g = S.progres || {};
@@ -639,6 +703,9 @@ function recommencer(){
 /* ---------------- démarrage ---------------- */
 function demarrer(){
   const d = charger();
-  if (d){ S = d; if (S.ecran === 'journal') S.ecran = 'semaine'; }
+  if (d){ S = d; if (S.ecran === 'journal') S.ecran = 'semaine';
+    /* Ton club n'a qu'un effectif : le tien. Une sauvegarde d'avant le mercato en
+       portait deux (le fantôme de la ligue et le vrai) ; c'est ici que ça se règle. */
+    if (S.equipe && S.equipe.length) syncClubSq(); }
   rendre();
 }

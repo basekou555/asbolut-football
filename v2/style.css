@@ -219,6 +219,15 @@ button.chip.on{border-color:var(--gold);color:var(--gold);background:color-mix(i
 .lineup .out{opacity:.5}
 
 /* ---- le tirage de la qualité et du défaut ---- */
+/* le mercato : un mouvement se lit d'un bout à l'autre, en une ligne */
+.mvts{display:grid;gap:5px;margin:2px 0 8px}
+.mvts div{display:grid;grid-template-columns:18px 1fr;gap:9px;align-items:baseline;
+  background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12.5px}
+.mvts .i{text-align:center;font-size:11px;color:var(--muted)}
+.mvts b{font-weight:600}
+.mvts i{font-style:normal;color:var(--muted);font-size:11.5px}
+.mvts .in{border-color:var(--gold-dim)}
+.mvts .out{opacity:.7}
 .roul{display:grid;grid-template-columns:34px 1fr;gap:12px;align-items:center;
   background:var(--panel-2);border:1px solid var(--line);border-radius:12px;
   padding:14px 16px;margin:0 0 8px;min-height:74px}
