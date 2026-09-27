@@ -14,7 +14,7 @@
    - tout ce qui arrive est écrit dans `S.journal`, seule mémoire du jeu.
    ============================================================ */
 
-const VERSION = 4;   // le mental devient une réserve : `pic` et `coupsTete` sont neufs
+const VERSION = 5;   // un effectif nommé et stable : `S.equipe` est neuf
 let S = null;
 /* Mis à true par le banc d'essai (labo.html) : les milliers de saisons qu'il
    simule ne doivent pas écraser la carrière rangée dans localStorage. */
@@ -134,13 +134,27 @@ function nouvellePartie(c){
   const club = ligue.equipes[ri(10, 17)];   // on démarre dans le bas de tableau
   const nb = poste.id === 'G' ? 1 : 2;      // un gardien n'a qu'un rival, c'est binaire
   const pris = [];
+  const tirerNom = () => { let n; do { n = pick(NOMS); } while (pris.includes(n)); pris.push(n); return n; };
   const concurrents = [];
-  for (let i = 0; i < nb; i++){
-    let n; do { n = pick(NOMS); } while (pris.includes(n)); pris.push(n);
+  for (let i = 0; i < nb; i++)
     // le titulaire en place est devant toi ; le second est à ta portée
-    concurrents.push({ nom:n, niv: Math.round(club.force + (i === 0 ? rnd(2, 7) : rnd(-4, 2))),
+    concurrents.push({ nom:tirerNom(), niv: Math.round(club.force + (i === 0 ? rnd(2, 7) : rnd(-4, 2))),
       forme: 0, blesse: 0, age: ri(23, 31) });
-  }
+  /* L'EFFECTIF. Des coéquipiers **stables et nommés**, avec une relation qui vit :
+     sans eux, « un coéquipier progresse », « ça se tend avec ton attaquant » ou
+     « les notes du match » n'ont personne de qui parler. Chacun garde son poste,
+     son niveau, sa relation avec toi, et une progression sur la saison. */
+  const PLAN = { G:1, D:4, M:4, A:2 };
+  const equipe = [];
+  Object.entries(PLAN).forEach(([po, n]) => {
+    const combien = po === poste.id ? n - 1 : n;          // ta place et tes rivaux sont à part
+    for (let i = 0; i < combien; i++)
+      equipe.push({ nom:tirerNom(), poste:po, niv: Math.round(club.force + rnd(-6, 6)),
+        age: ri(19, 33), rel: ri(44, 58), prog: 0, note: null });
+  });
+  // un jeune qui monte : c'est de lui que parleront les arrêts « il progresse »
+  const jeune = equipe.filter(j => j.age <= 23).sort((a, b) => a.age - b.age)[0];
+  if (jeune) jeune.monte = true;
 
   S = {
     v: VERSION, mode: 'joueur', annee: c.annee,
@@ -149,7 +163,7 @@ function nouvellePartie(c){
       u0: c.origine.u0, origine: c.origine.id, ambition: c.ambition.id, pic,
       qual: { id:q.id, vu:false }, def: { id:f.id, vu:false },
       histo: {} },
-    club: { nom: club.nom, force: club.force }, concurrents,
+    club: { nom: club.nom, force: club.force }, concurrents, equipe,
     ligue, liens,
     /* `fond` est la réserve que construit le travail physique : on récupère plus
        vite d'un match à l'autre, on se blesse moins, et on laisse moins de jambes
@@ -175,7 +189,7 @@ function creerLigue(annee){
   const equipes = noms.map(x => ({ nom:x.nom, force: Math.round(clamp(52 + x.s * 4 + rnd(-3, 3), 44, 78)) }))
     .sort((a, b) => b.force - a.force);
   const N = equipes.length;
-  return { equipes, N, classement: Object.fromEntries(equipes.map(e => [e.nom, { pts:0, j:0, bp:0, bc:0 }])) };
+  return { equipes, N, classement: Object.fromEntries(equipes.map(e => [e.nom, { pts:0, j:0, v:0, n:0, d:0, bp:0, bc:0 }])) };
 }
 function adversaire(j){
   const autres = S.ligue.equipes.filter(e => e.nom !== S.club.nom);
@@ -331,6 +345,90 @@ const ARRETS = [
       { l:"Passer une heure", liens:{ vestiaire:4 }, dit:[{c:'neutre',t:"↔️ correct, sans plus"}] },
       { l:"Décliner", liens:{ vestiaire:-5 }, dit:[{c:'risk',t:"✊ on l'a remarqué"},{c:'vie',t:"🏡 une soirée chez toi"}] },
     ] },
+  /* Les gens autour de toi. Le propriétaire, 27/09/2026 : « pas assez d'éléments
+     liés au vestiaire ou au coach ; l'événement du kiné apparaît un peu tout le
+     temps. Mon concurrent au poste fait une meilleure séance que moi, est-ce que
+     je m'entraîne plus ? Un coéquipier qui s'améliore, est-ce que je passe du
+     temps avec lui ? Une situation qui se dégrade avec mon milieu ou mon
+     attaquant, comment je réagis ? » Chaque famille vise quelqu'un de nommé. */
+  { id:'rival', quand: () => S.journee >= 3 && devantToi(),
+    sujet: () => devantToi(),
+    titre: q => `${q.nom} a fait une séance énorme`,
+    texte: q => `L'adjoint n'a regardé que lui pendant une heure. Le coach a souri deux fois. Toi, tu as fini ton travail dans ton coin.`,
+    options:[
+      { l:"Rester une heure de plus, seul", fit:-7, axes:{ spec:1.2 }, dit:[{c:'foot',t:"🎽 ta place : tu grattes"},{c:'risk',t:"🫁 samedi dans les jambes"}] },
+      { l:"Aller le voir et lui demander comment il fait", liens:{ vestiaire:5 }, axes:{ spec:.5 }, dit:[{c:'foot',t:"✊ il est flatté"},{c:'neutre',t:"🎯 tu apprends un peu"}] },
+      { l:"Laisser couler, ton tour viendra", ment:-1.4, coup:"cette séance où il t'a dépassé", dit:[{c:'risk',t:"🧠 ça te reste en travers"},{c:'foot',t:"🫁 tu es frais samedi"}] },
+    ] },
+  { id:'jeune', quand: () => S.journee >= 6 && S.equipe.some(j => j.monte),
+    sujet: () => S.equipe.find(j => j.monte),
+    titre: q => `${q.nom} progresse vite`,
+    texte: q => `Le gamin est arrivé il y a six mois et il a déjà pris dix ans. Il traîne après la séance, il pose des questions. Souvent à toi.`,
+    options:[
+      { l:"Passer du temps avec lui", fit:-4, liens:{ vestiaire:7 }, dit:[{c:'foot',t:"✊ le vestiaire te voit autrement"},{c:'risk',t:"🫁 une heure de plus"}] },
+      { l:"Répondre quand il demande, sans plus", liens:{ vestiaire:2 }, dit:[{c:'neutre',t:"↔️ correct"}] },
+      { l:"Le laisser se débrouiller", liens:{ vestiaire:-4 }, dit:[{c:'risk',t:"✊ on l'a remarqué"},{c:'vie',t:"🏡 tu rentres à l'heure"}] },
+    ] },
+  { id:'tension', quand: () => S.journee >= 5 && S.equipe.some(j => j.rel < 44),
+    sujet: () => S.equipe.filter(j => j.rel < 44).sort((a, b) => a.rel - b.rel)[0],
+    titre: q => `Ça se tend avec ${q.nom}`,
+    texte: q => `Deux ballons mal donnés, un regard de trop, et maintenant il ne te parle plus à l'échauffement. Le groupe l'a vu.`,
+    options:[
+      { l:"Mettre les choses à plat, tout de suite", liens:{ vestiaire:6 }, rel:14, dit:[{c:'foot',t:"✊ le groupe respire"}] },
+      { l:"Attendre que ça passe", liens:{ vestiaire:-3 }, rel:3, dit:[{c:'risk',t:"✊ ça pourrit doucement"}] },
+      { l:"Lui répondre devant tout le monde", liens:{ vestiaire:-8, coach:-3 }, rel:-12, ment:-1.2,
+        coup:"cette engueulade devant tout le monde", dit:[{c:'risk',t:"✊ le vestiaire se fige"},{c:'risk',t:"🧠 tu rumines"}] },
+    ] },
+  { id:'agent', quand: () => S.journee >= 7 && (S.stats.matchs >= 5 || S.liens.coach < 45),
+    titre:"Ton agent t'appelle",
+    texte:"« Je regarde ta situation. Je peux commencer à bouger, ou on laisse la saison se faire et on voit en juin. Dis-moi. »",
+    options:[
+      { l:"Qu'il bouge dès maintenant", liens:{ agent:10, club:-5 }, dit:[{c:'foot',t:"🤝 il se met au travail"},{c:'risk',t:"🏟️ le club l'apprendra"}] },
+      { l:"Attendre juin", liens:{ agent:2 }, dit:[{c:'neutre',t:"🤝 il note"}] },
+      { l:"Lui dire que tu te sens bien ici", liens:{ club:7, agent:-4 }, dit:[{c:'foot',t:"🏟️ le club apprécie"},{c:'risk',t:"🤝 ton agent soupire"}] },
+    ] },
+  { id:'coachPlan', quand: () => S.journee >= 4,
+    titre:"Le coach te montre une vidéo",
+    texte:"« Regarde. Là, tu es en retard d'une demi-seconde. Je ne te demande pas d'être plus fort, je te demande d'être là avant. »",
+    options:[
+      { l:"Travailler ça toute la semaine", fit:-6, axes:{ spec:1 }, liens:{ coach:5 }, dit:[{c:'foot',t:"🎽 il te suit"},{c:'foot',t:"🎯 juste à ton poste"}] },
+      { l:"Dire que tu n'es pas d'accord", liens:{ coach:-5 }, axes:{ ment:1 }, dit:[{c:'risk',t:"🎽 il n'aime pas"},{c:'foot',t:"🧠 tu tiens ta position"}] },
+      { l:"Acquiescer et passer à autre chose", liens:{ coach:-1 }, dit:[{c:'neutre',t:"↔️ rien ne change"}] },
+    ] },
+  { id:'capitaine', quand: () => S.journee >= 8 && S.liens.vestiaire >= 55,
+    sujet: () => pick(S.equipe.filter(j => j.age >= 28)) || S.equipe[0],
+    titre: q => `${q.nom} te demande quelque chose`,
+    texte: q => `« On perd trop de matchs bêtement. J'organise une réunion entre nous, sans le staff. Tu viens, et tu parles ? »`,
+    options:[
+      { l:"Venir et prendre la parole", liens:{ vestiaire:9, coach:-2 }, axes:{ ment:1.5 }, dit:[{c:'foot',t:"✊ tu comptes ici"},{c:'risk',t:"🎽 le staff n'aime pas les réunions sans lui"}] },
+      { l:"Venir et écouter", liens:{ vestiaire:4 }, dit:[{c:'neutre',t:"✊ présent, c'est déjà ça"}] },
+      { l:"Ne pas y aller", liens:{ vestiaire:-6, coach:3 }, dit:[{c:'risk',t:"✊ ils t'ont attendu"},{c:'foot',t:"🎽 le coach le saura"}] },
+    ] },
+  { id:'serie', quand: () => S.stats.notes.length >= 4 && moyenneNotes() < 5.9,
+    titre:"Le coach ferme la porte du bureau",
+    texte:"« Quatre matchs que je ne te reconnais pas. Je te laisse encore un peu, mais tu as compris. »",
+    options:[
+      { l:"Demander à travailler avec lui", liens:{ coach:6 }, fit:-5, axes:{ spec:.8 }, dit:[{c:'foot',t:"🎽 il te donne du temps"},{c:'risk',t:"🫁 des séances en plus"}] },
+      { l:"Dire que tu vas le régler seul", liens:{ coach:1 }, axes:{ ment:1.2 }, dit:[{c:'foot',t:"🧠 tu te reprends en main"}] },
+      { l:"Expliquer que le problème vient de l'équipe", liens:{ coach:-7, vestiaire:-5 }, ment:-1,
+        coup:"cette phrase que tu n'aurais pas dû dire", dit:[{c:'risk',t:"🎽 très mauvaise idée"},{c:'risk',t:"✊ ça a fuité"}] },
+    ] },
+  { id:'famille', quand: () => S.journee >= 9,
+    titre:"Un coup de fil de chez toi",
+    texte:"« Ton père a fait un malaise. Rien de grave, il est rentré. Mais il a demandé si tu venais dimanche. »",
+    options:[
+      { l:"Y aller dimanche, quoi qu'il arrive", fit:-3, ment:-.4, dit:[{c:'vie',t:"🏡 tu seras là"},{c:'risk',t:"🫁 la route fatigue"}] },
+      { l:"Appeler tous les soirs de la semaine", ment:-.8, coup:"ce coup de fil", dit:[{c:'vie',t:"🏡 tu gardes le lien"},{c:'risk',t:"🧠 tu n'es pas à l'entraînement"}] },
+      { l:"Attendre la trêve", ment:-2, coup:"ce dimanche où tu n'es pas allé", dit:[{c:'risk',t:"🧠 ça te pèse"},{c:'foot',t:"🫁 ta semaine est intacte"}] },
+    ] },
+  { id:'supporters', quand: () => S.journee >= 6 && S.liens.supporters < 45,
+    titre:"Quelqu'un t'attend à la sortie du parking",
+    texte:"« Je te suis depuis le début. Là, franchement, tu nous fais quoi ? » Il n'est pas agressif. C'est presque pire.",
+    options:[
+      { l:"Prendre le temps de lui répondre", liens:{ supporters:8 }, dit:[{c:'foot',t:"📣 ça se raconte en tribune"}] },
+      { l:"Signer et partir", liens:{ supporters:1 }, dit:[{c:'neutre',t:"↔️ poli"}] },
+      { l:"Passer sans s'arrêter", liens:{ supporters:-6 }, ment:-.8, coup:"ce type sur le parking", dit:[{c:'risk',t:"📣 il le racontera aussi"}] },
+    ] },
   { id:'corps', quand: () => S.etats.fraicheur < 70,
     titre:"Le kiné veut te voir avant l'entraînement",
     texte:"« Tu tires sur la corde. Je peux te sortir de la séance de jeudi, mais c'est le coach qui décidera ce qu'il en pense. »",
@@ -339,10 +437,29 @@ const ARRETS = [
       { l:"Serrer les dents", fit:-4, corps:-3, liens:{ coach:3 }, dit:[{c:'foot',t:"🎽 il apprécie"},{c:'risk',t:"🩼 ton corps encaisse"}] },
     ] },
 ];
+/* « L'événement du kiné apparaît un peu tout le temps. » Il n'y avait pas de
+   mémoire : `pick()` sur les familles applicables, et celle qui l'est toujours
+   sortait sans cesse. Deux garde-fous : les trois derniers genres sont écartés,
+   et le tirage est pondéré par le nombre de passages de la saison. */
 function ouvrirArrets(){
-  const dispo = ARRETS.filter(a => { try { return a.quand(); } catch(e){ return false; } });
-  if (!dispo.length || S.arrets >= 2 || Math.random() < .45) return lancerMatch();
-  S.arret = pick(dispo); S.arrets++; S.ecran = 'arret'; sauver(); rendre();
+  let dispo = ARRETS.filter(a => { try { return a.quand(); } catch(e){ return false; } });
+  const recents = S.recentArrets || [];
+  const frais = dispo.filter(a => !recents.includes(a.id));
+  if (frais.length) dispo = frais;
+  if (!dispo.length || S.arrets >= 2 || Math.random() < .42) return lancerMatch();
+  S.vuArrets = S.vuArrets || {};
+  const poids = dispo.map(a => 1 / Math.pow(1 + (S.vuArrets[a.id] || 0), 1.8));
+  let t = poids.reduce((x, y) => x + y, 0) * Math.random(), k = 0;
+  while (k < dispo.length - 1 && (t -= poids[k]) > 0) k++;
+  const a = dispo[k];
+  S.vuArrets[a.id] = (S.vuArrets[a.id] || 0) + 1;
+  S.recentArrets = [a.id, ...recents].slice(0, 3);
+  // certaines familles parlent de quelqu'un : on fige qui, et les textes le nomment
+  const q = a.sujet ? a.sujet() : null;
+  S.arret = { id:a.id, options:a.options, sujet: q ? q.nom : null,
+    titre: typeof a.titre === 'function' ? a.titre(q) : a.titre,
+    texte: typeof a.texte === 'function' ? a.texte(q) : a.texte };
+  S.arrets++; S.ecran = 'arret'; sauver(); rendre();
 }
 function choisirArret(i){
   const a = S.arret, o = a.options[i]; if (!o) return;
@@ -351,6 +468,11 @@ function choisirArret(i){
   S.arret = null; lancerMatch();
 }
 function appliquer(o){
+  if (o.ment) coutMental(-o.ment, o.coup || "cette histoire");
+  if (o.rel && S.arret && S.arret.sujet){
+    const j = S.equipe.find(x => x.nom === S.arret.sujet);
+    if (j) j.rel = clamp(j.rel + o.rel);
+  }
   const enc = encaisse();
   Object.entries(o.liens || {}).forEach(([k, v]) =>
     S.liens[k] = clamp(S.liens[k] + (v < 0 ? v * (1 - enc * .4) : v)));
@@ -412,7 +534,12 @@ function lancerMatch(){
   const m = { adv, statut, bn, be, faits: [], minutes: 0, buts:0, passes:0, note:null, moments:[], jaune:0, blessure:0 };
   // entrée en jeu
   if (statut === 'titulaire') m.minutes = 90;
-  else if (statut === 'banc') m.minutes = Math.random() < .6 ? ri(12, 35) : 0;
+  else if (statut === 'banc'){
+    /* On ne remplace pas un gardien en cours de match : soit il commence, soit
+       il regarde. La seule exception est la vraie — le titulaire sort blessé. */
+    if (S.moi.poste === 'G') m.minutes = Math.random() < .05 ? ri(25, 70) : 0;
+    else m.minutes = Math.random() < .6 ? ri(12, 35) : 0;
+  }
   const entree = statut === 'banc' && m.minutes ? 90 - m.minutes : 0;
 
   // les buts, répartis dans le temps
@@ -569,9 +696,15 @@ function finirMatch(){
     const derriere = S.moi.poste === 'G' || S.moi.poste === 'D';
     m.note = clamp(6.1 + (res === 'V' ? .5 : res === 'D' ? -.4 : 0) + m.buts * .7 + m.passes * .4
       + (derriere ? (m.be === 0 ? 1 : m.be === 1 ? .35 : m.be >= 4 ? -.5 : 0) : 0)
-      + (niveauJour() - S.club.force) * .035 + m.moments.filter(f => f.reussi).length * .3
-      - m.moments.filter(f => f.reussi === false).length * .3
-      - (m.perduLeFil ? .5 : 0) + (m.moments.some(f => f.tenu) ? .25 : 0) + aleaNote(), 3, 10);
+      /* Un fait de match pèse **un point de note**, pas trois dixièmes (demande du
+         propriétaire, 27/09/2026 : « on fait quasiment que des matchs corrects, il
+         n'y a pas de très bons ni de très mauvais matchs ; on peut appuyer un peu
+         plus sur l'impact des faits de match sur la note, avec un point en plus ou
+         en moins »). C'est ce qui fait qu'une saison a des soirs de gala et des
+         soirs qu'on veut oublier. */
+      + (niveauJour() - S.club.force) * .035 + m.moments.filter(f => f.reussi).length * .95
+      - m.moments.filter(f => f.reussi === false).length * .95
+      - (m.perduLeFil ? .7 : 0) + (m.moments.some(f => f.tenu) ? .35 : 0) + aleaNote(), 3, 10);
     m.note = Math.round(m.note * 10) / 10;
     S.stats.matchs++; S.stats.minutes += m.minutes; S.stats.buts += m.buts; S.stats.passes += m.passes;
     S.stats.notes.push(m.note); if (m.statut === 'titulaire') S.stats.titus++;
@@ -608,8 +741,11 @@ function finirMatch(){
   const c = S.ligue.classement;
   c[S.club.nom].j++; c[S.club.nom].bp += m.bn; c[S.club.nom].bc += m.be;
   c[S.club.nom].pts += res === 'V' ? 3 : res === 'N' ? 1 : 0;
+  c[S.club.nom][res === 'V' ? 'v' : res === 'N' ? 'n' : 'd']++;
   c[m.adv.nom].j++; c[m.adv.nom].bp += m.be; c[m.adv.nom].bc += m.bn;
   c[m.adv.nom].pts += res === 'D' ? 3 : res === 'N' ? 1 : 0;
+  c[m.adv.nom][res === 'D' ? 'v' : res === 'N' ? 'n' : 'd']++;
+  notesEquipe(m);
   autresMatchs();
   m.res = res; S.dernier = m;
   // ce qui a bougé, en direction seulement : l'écran n'aura jamais le chiffre
@@ -636,6 +772,44 @@ function finirMatch(){
   decouverte(m);
   S.ecran = 'resultat'; sauver(); rendre();
 }
+/* « On ne connaît pas la note de ses coéquipiers, du coup on ne sait pas si on a
+   fait un bon match par rapport à l'ensemble de l'équipe. » Chaque coéquipier qui
+   a joué reçoit sa note, tirée autour du résultat et de son niveau, et l'écran les
+   affiche. C'est le seul repère qui dit si ta note est bonne ce soir-là. */
+function notesEquipe(m){
+  const socleNote = 6.1 + (m.res === 'V' ? .55 : m.res === 'D' ? -.45 : 0);
+  const joueurs = [];
+  S.equipe.forEach(j => {
+    j.note = null;
+    if (Math.random() < .12) return;                   // il n'a pas joué ce soir
+    const derriere = j.poste === 'G' || j.poste === 'D';
+    let n = socleNote + (j.niv - S.club.force) * .05 + rnd(-1.3, 1.3)
+      + (derriere ? (m.be === 0 ? .8 : m.be >= 4 ? -.7 : 0) : 0);
+    j.note = Math.round(clamp(n, 3, 10) * 10) / 10;
+    joueurs.push({ nom:j.nom, poste:j.poste, note:j.note });
+  });
+  // les rivaux à ton poste jouent aussi, et leur note te regarde
+  S.concurrents.forEach(c => {
+    c.note = null;
+    if (c.blesse > 0 || (m.minutes >= 80 && S.moi.poste === 'G')) return;
+    if (m.statut === 'titulaire' && S.moi.poste === 'G') return;   // un seul gardien joue
+    if (Math.random() < .25) return;
+    c.note = Math.round(clamp(socleNote + (c.niv + c.forme - S.club.force) * .05 + rnd(-1.2, 1.2), 3, 10) * 10) / 10;
+    joueurs.push({ nom:c.nom, poste:S.moi.poste, note:c.note, rival:true });
+  });
+  if (m.note != null) joueurs.push({ nom:S.moi.nom, poste:S.moi.poste, note:m.note, moi:true });
+  joueurs.sort((a, b) => b.note - a.note);
+  m.notes = joueurs;
+  if (m.note != null && joueurs.length > 1){
+    const moy = joueurs.reduce((a, x) => a + x.note, 0) / joueurs.length;
+    const rang = joueurs.findIndex(x => x.moi) + 1;
+    m.placeNote = rang;
+    m.jugement = rang === 1 ? "Le meilleur des tiens ce soir."
+      : m.note >= moy + .8 ? "Un des rares à surnager."
+      : m.note >= moy - .3 ? "Dans la moyenne du groupe."
+      : "Sous le niveau de tes coéquipiers.";
+  }
+}
 function autresMatchs(){
   const eq = S.ligue.equipes.filter(e => e.nom !== S.club.nom && e.nom !== S.match.adv.nom);
   const m = shuffle(eq);
@@ -646,6 +820,7 @@ function autresMatchs(){
     const c = S.ligue.classement;
     c[a.nom].j++; c[b.nom].j++; c[a.nom].bp += ga; c[a.nom].bc += gb; c[b.nom].bp += gb; c[b.nom].bc += ga;
     c[a.nom].pts += ga > gb ? 3 : ga === gb ? 1 : 0; c[b.nom].pts += gb > ga ? 3 : ga === gb ? 1 : 0;
+    c[a.nom][ga > gb ? 'v' : ga === gb ? 'n' : 'd']++; c[b.nom][gb > ga ? 'v' : ga === gb ? 'n' : 'd']++;
   }
 }
 /* La qualité et le défaut se révèlent sur un match qui leur ressemble,
@@ -670,6 +845,10 @@ function decouverte(m){
 function apresMatch(){
   const d = S.dernier;
   vivreConcurrents();
+  S.equipe.forEach(j => {
+    j.rel = clamp(j.rel + rnd(-2.2, 1.8));      // une relation qui ne bouge pas n'existe pas
+    if (j.monte) j.niv = Math.min(j.niv + .35, S.club.force + 12);
+  });
   if (S.etats.blessure > 0) S.etats.blessure--;
   if (S.etats.suspension > 0) S.etats.suspension--;
   if (d && d.blessure) S.etats.blessure = d.blessure;
