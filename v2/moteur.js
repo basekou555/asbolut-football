@@ -233,7 +233,7 @@ function nouvellePartie(c){
      star** : niveau médian 88 pour un championnat dont le meilleur club vaut 78,
      et 37 buts par saison pour un attaquant médian. Resserré : la première saison
      ne bouge pas, le sommet d'une carrière oui. */
-  const plafond = {}; AXES.forEach(a => plafond[a] = ri(62, 88));
+  const plafond = {}; AXES.forEach(a => plafond[a] = ri(POT_MIN, POT_MAX));
   /* Le socle : le plancher de chaque axe pour le reste de la carrière. C'est ce
      que l'origine t'a donné — une carrière peut t'abîmer, elle ne peut pas
      effacer d'où tu viens. Borné par le départ réel pour que la qualité et le
@@ -286,15 +286,78 @@ function nouvellePartie(c){
 }
 
 /* ---------- la ligue ---------- */
+/* ================== LE CHAMPIONNAT VIT ==================
+   Le propriétaire, 27/09/2026 : « par championnat, mettre un petit système
+   aléatoire pour les clubs adverses pour définir leur niveau… d'une année à
+   l'autre j'aurai des clubs plus ou moins forts : peut-être une année deux clubs
+   plus forts que moi, l'autre année cinq, une autre trois… dans certaines
+   carrières c'était tout le temps les mêmes équipes qui gagnaient, donc si tu
+   rejoignais cette équipe tu savais que tu allais remporter des trophées. »
+   Le championnat était **entièrement retiré chaque année** : les dix-huit clubs
+   changeaient d'identité d'une saison à l'autre et la force de chacun ne devait
+   rien à ce qu'il avait fait. Désormais ce sont **les mêmes clubs toute la
+   carrière**, chacun avec :
+   - une **ancre** : son poids historique à cette époque (`eras.js`), qui ne bouge pas ;
+   - un **potentiel** (`pot`) : ce qu'il peut être, tiré autour de son ancre et qui
+     dérive lentement — un petit club peut monter dans la hiérarchie, un grand
+     s'installer dans le ventre mou, mais jamais d'un coup ;
+   - une **force** qui se rejoue chaque été : ce que la saison passée a rapporté,
+     un vrai tirage, et un rappel vers son potentiel.
+   C'est le tirage qui fait qu'on ne sait jamais qui sera fort — exactement ce
+   qu'il demande : « avec un bon tirage au sort, avoir leur chance pour gagner le
+   trophée ». Les clubs adverses n'ont pas d'effectif nommé : leur force **est**
+   leur effectif, et elle suit la même logique potentiel + croissance que la tienne. */
+const PENTE_CLUB = 2.4;
+/* Ce qu'un bon classement rapporte l'année suivante. Mesuré palier par palier :
+   à 0,3 par place c'est une boucle qui s'auto-entretient (le champion reste
+   champion, 55 % de titres conservés quel que soit le reste du réglage) ; à 0
+   la saison passée ne compte plus du tout, ce que le propriétaire ne veut pas
+   (« elles ont fait un bon résultat, elles ont des bons joueurs, puis l'année
+   d'après ça leur permet d'avoir leur chance »). À 0,12, le champion prend un
+   point d'avance qui s'efface en deux ou trois ans : un vrai avantage, pas une
+   rente. */
+const ELAN_CLUB = .12;
+const TIRAGE_CLUB = 7.5;   // c'est lui qui fait qu'on ne sait jamais qui sera fort
+const RAPPEL_CLUB = .35;   // et lui qui empêche un club de s'échapper
 function creerLigue(annee){
   const dk = typeof decadeKey === 'function' ? decadeKey(annee) : '10';
   const gros = (typeof FR_CLUBS !== 'undefined' ? FR_CLUBS : []).filter(c => (c.s[dk] || 0) >= 2).map(c => ({ nom:c.n, s:c.s[dk] }));
   const petits = (typeof FR_LOWER !== 'undefined' ? FR_LOWER : []).map(n => ({ nom:n, s: rnd(-1.7, 1) }));
   const noms = [...shuffle(gros).slice(0, 6), ...shuffle(petits).slice(0, 12)];
-  const equipes = noms.map(x => ({ nom:x.nom, force: Math.round(clamp(52 + x.s * 4 + rnd(-3, 3), 44, 78)) }))
-    .sort((a, b) => b.force - a.force);
+  /* LA PENTE : l'écart historique entre un gros et un petit club. À 4 par point de
+     poids, le premier était **douze à quatorze points au-dessus du cinquième** et le
+     titre était joué avant août : mesuré, 3,9 champions différents sur vingt saisons
+     et le titre conservé 59 % du temps. À 2,4, l'écart tombe à neuf ou dix, et une
+     saison peut basculer. */
+  const equipes = noms.map(x => {
+    const ancre = clamp(52 + x.s * PENTE_CLUB, 44, 74);
+    const pot = clamp(ancre + rnd(-3, 3), 44, 78);
+    return { nom:x.nom, ancre: Math.round(ancre * 10) / 10, pot: Math.round(pot * 10) / 10,
+      force: Math.round(clamp(pot + rnd(-3, 3), 42, 80)) };
+  }).sort((a, b) => b.force - a.force);
   const N = equipes.length;
   return { equipes, N, classement: Object.fromEntries(equipes.map(e => [e.nom, { pts:0, j:0, v:0, n:0, d:0, bp:0, bc:0 }])) };
+}
+/* L'été du championnat : chaque club rejoue son niveau. Ton club passe par la
+   même porte que les autres — il n'a plus de règle à lui. */
+function faireVivreLigue(){
+  const cl = classementTrie(), N = S.ligue.equipes.length;
+  S.ligue.equipes.forEach(e => {
+    if (e.ancre == null){ e.ancre = e.force; e.pot = e.force; }   // ligue d'avant
+    const rang = cl.findIndex(x => x.nom === e.nom) + 1;
+    // ce que la saison passée a rapporté : une bonne place attire, une mauvaise vide
+    const elan = rang ? (N / 2 - rang) * ELAN_CLUB : 0;
+    // le potentiel dérive lentement, rappelé vers ce que le club pèse historiquement :
+    // un petit club peut monter dans la hiérarchie, jamais d'un coup
+    e.pot = Math.round(clamp(e.pot * .95 + e.ancre * .05 + rnd(-1.6, 1.6), 44, 78) * 10) / 10;
+    /* Et la force se rejoue : élan + tirage + rappel vers le potentiel. L'élan est
+       sur la **force** et non sur le potentiel : un bon résultat donne sa chance
+       l'année d'après, puis le rappel le ramène — sinon c'est une rente. */
+    e.force = Math.round(clamp(e.force + elan + rnd(-TIRAGE_CLUB, TIRAGE_CLUB)
+      + (e.pot - e.force) * RAPPEL_CLUB, 42, 80));
+  });
+  S.ligue.equipes.sort((a, b) => b.force - a.force);
+  S.ligue.classement = Object.fromEntries(S.ligue.equipes.map(e => [e.nom, { pts:0, j:0, v:0, n:0, d:0, bp:0, bc:0 }]));
 }
 function adversaire(j){
   const autres = S.ligue.equipes.filter(e => e.nom !== S.club.nom);
@@ -1061,7 +1124,14 @@ function lancerMatch(){
      entières, un **gardien marquait trois buts par saison** et finissait à 63 buts.
      Il est désormais multiplicatif : il amplifie ce que ton poste permet, il ne
      crée rien. À spec 50 (la première saison) il ne change rien du tout. */
-  const chance = { G:0, D:.07, M:.20, A:.38 }[S.moi.poste]
+  /* TA PART DES BUTS DE L'ÉQUIPE. À .38, un attaquant prenait plus d'un but sur
+     trois de son club — alors qu'ils sont deux devant et cinq dans le groupe. Ce
+     n'était pas visible sur une saison (11,6 buts pour une recrue de dix-huit ans
+     au bas du tableau) mais sur une carrière oui : **36 buts par saison au sommet
+     et 732 en tout**, le double de ce qu'un grand attaquant marque. Resserré à
+     .28 : le meilleur buteur d'une équipe en prend un peu plus du quart, ce qui
+     est ce qu'on voit dans un vrai championnat. */
+  const chance = { G:0, D:.055, M:.155, A:.28 }[S.moi.poste]
     * (S.moi.poste === 'A' ? 1 + ent * .012 : 1)
     * clamp(1 + (S.moi.base.spec - 50) * .006, .7, 1.3);
   const chancePasse = { G:0, D:.10, M:.24, A:.18 }[S.moi.poste]
@@ -1590,6 +1660,14 @@ function bilanSuite(pos, note){
    L'enchaînement : bilan → **l'été** (une décision) → **les offres** (une à la fois)
    → la saison suivante. Et au bout, le **bilan de carrière**. */
 const FIN_CARRIERE = 38;
+/* TON POTENTIEL ET CELUI DES CLUBS SONT SUR LA MÊME ÉCHELLE. Première version du
+   championnat vivant : j'avais resserré la hiérarchie des clubs (pour que le titre
+   change de mains) **sans** toucher à la tienne. Résultat mesuré : niveau 88 quand
+   le meilleur club vaut 66, donc `(niveauJour() − force) × .12` te faisait valoir
+   trois points à toi seul — tu faisais champion ton club, 4,8 titres par carrière
+   et un attaquant médian à 40 buts par saison. Le sommet d'un joueur doit rester
+   un peu au-dessus du meilleur club, pas vingt points au-dessus. */
+const POT_MIN = 56, POT_MAX = 80;
 
 /* Quatre façons de passer l'été. Chacune donne quelque chose tout de suite et
    quelque chose qui dure — et aucune ne donne les deux. */
@@ -1697,10 +1775,22 @@ function genererOffres(){
   // ta cote : ce que tu vaux, ce que tu as montré, et ce que ton agent a fait de l'été
   const cote = n + (joue ? 2 : -3) + (bonne ? 2.5 : 0) + (S.ete ? S.ete.offres : 0)
     + (S.liens.agent - 50) * .06 + (S.moi.age >= 33 ? -4 : 0);
-  const dehors = S.ligue.equipes.filter(e => e.nom !== S.club.nom
-    && Math.abs(e.force - cote) < 7 + rnd(0, 4));
-  const combien = Math.min(dehors.length, Math.max(0, ri(0, 2) + (S.ete && S.ete.offres ? 1 : 0) + (bonne && joue ? 1 : 0)));
-  S.offres = shuffle(dehors).slice(0, combien).map(e => ({ nom:e.nom, force:e.force }));
+  /* UN GRAND CLUB N'APPELLE PAS TOUS LES ÉTÉS. La fenêtre était symétrique
+     (`|force − cote| < 7`), donc une fois ta cote haute **toutes** les offres
+     venaient du haut du tableau et tu suivais le meilleur club d'année en année.
+     Désormais un club à ta portée appelle volontiers, un club au-dessus de toi
+     rarement : il a le choix. C'est ce qui rend une signature au sommet rare, et
+     donc intéressante. */
+  const cand = S.ligue.equipes.filter(e => e.nom !== S.club.nom && e.force > cote - 14);
+  const poids = cand.map(e => 1 / (1 + Math.max(0, e.force - (cote - 5)) * .55));
+  const combien = Math.min(cand.length, Math.max(0, ri(0, 2) + (S.ete && S.ete.offres ? 1 : 0) + (bonne && joue ? 1 : 0)));
+  const tires = [];
+  for (let k = 0; k < combien && cand.length; k++){
+    let t = poids.reduce((a, x) => a + x, 0) * Math.random(), i = 0;
+    while (i < cand.length - 1 && (t -= poids[i]) > 0) i++;
+    tires.push(cand[i]); cand.splice(i, 1); poids.splice(i, 1);
+  }
+  S.offres = tires.map(e => ({ nom:e.nom, force:e.force }));
   S.offreIdx = 0;
   /* Ton club peut ne plus vouloir de toi : trop vieux, ou une saison sans jouer.
      C'est la seule chose qui t'oblige à partir. */
@@ -1728,21 +1818,14 @@ function resterAuClub(){
 /* La saison suivante commence : nouveau championnat, effectif renouvelé, tout
    ce qui se compte remis à zéro — et rien de ce qui se construit. */
 function demarrerSaison(club, reste){
-  const ligue = creerLigue(S.annee);
-  /* Ton club dérive, mais il est **rappelé vers ce qu'il vaut dans le championnat
-     de cette année-là**. Sans ce rappel c'était une marche aléatoire sur vingt
-     saisons, qui s'échappe vers le haut : mesuré, une carrière sur quarante
-     gagnait **dix-sept titres sur vingt saisons** — exactement ce que le
-     propriétaire reprochait à la 1.0 (« j'ai tout gagné pendant 10 ans »). */
-  const i = ligue.equipes.findIndex(e => e.nom === club.nom);
-  const moyenne = ligue.equipes.reduce((a, e) => a + e.force, 0) / ligue.equipes.length;
-  const tire = i >= 0 ? ligue.equipes[i].force : moyenne;
-  const force = Math.round(clamp(club.force * .55 + tire * .45 + rnd(-2, 2), 44, 82));
-  if (i >= 0) ligue.equipes[i].force = force;
-  else ligue.equipes[ligue.equipes.length - 1] = { nom: club.nom, force };
-  ligue.equipes.sort((a, b) => b.force - a.force);
-  ligue.classement = Object.fromEntries(ligue.equipes.map(e => [e.nom, { pts:0, j:0, v:0, n:0, d:0, bp:0, bc:0 }]));
-  S.ligue = ligue; S.club = { nom: club.nom, force };
+  /* Le championnat rejoue ses niveaux, ton club compris : il n'a plus de règle à
+     lui. Avant, il dérivait seul en marche aléatoire pendant que la ligue était
+     retirée à neuf — mesuré, une carrière sur quarante gagnait **dix-sept titres
+     sur vingt saisons**, ce que le propriétaire reprochait déjà à la 1.0. */
+  faireVivreLigue();
+  const e = S.ligue.equipes.find(x => x.nom === club.nom);
+  const force = e ? e.force : Math.round(club.force);
+  S.club = { nom: club.nom, force };
   if (reste) renouvelerEffectif(); else {
     const n = creerEffectif(S.club, S.moi.poste);
     S.concurrents = n.concurrents; S.equipe = n.equipe;
