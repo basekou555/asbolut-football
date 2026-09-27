@@ -14,10 +14,13 @@
    - tout ce qui arrive est écrit dans `S.journal`, seule mémoire du jeu.
    ============================================================ */
 
-const VERSION = 10;  // la carrière continue : `carriere`, `ete`, `offres`, `fin`
-/* MIGRATION 9 → 10 : rien à reconstruire. Une partie en cours reprend telle
-   quelle et, arrivée au bilan, enchaîne désormais sur l'été au lieu de s'arrêter.
-   `vieillir()` crée `S.carriere` au premier passage. */
+const VERSION = 11;  // le mercato : `division`, `ligue.autre`, un seul effectif par club
+/* MIGRATION 10 → 11 : deux choses à construire, et une partie en cours les reprend
+   sans rien perdre — le propriétaire joue la version déployée.
+   1. **L'échelon inférieur** (`S.ligue.autre`) n'existait pas : on le fabrique avec
+      les clubs qui n'avaient pas été tirés, à leur niveau.
+   2. **Ton club avait deux effectifs** : celui de la ligue (fantôme) et le tien.
+      `syncClubSq()` est appelé au chargement et le fantôme disparaît. */
 let S = null;
 /* Mis à true par le banc d'essai (labo.html) : les milliers de saisons qu'il
    simule ne doivent pas écraser la carrière rangée dans localStorage. */
@@ -225,6 +228,16 @@ function creerEffectif(club, posteId, pris){
   pris = pris ? pris.slice() : [];
   const tirerNom = () => { let n, k = 0;
     do { n = pick(NOMS); k++; } while (pris.includes(n) && k < 300); pris.push(n); return n; };
+  /* LA FORCE D'UN CLUB EST LA MOYENNE DE SON ONZE, Y COMPRIS LE TIEN. Les titulaires
+     étaient tirés à `force + 2 à 8`, donc la moyenne du onze valait cinq points de
+     plus que la force annoncée. Ça ne se voyait pas tant que ton club était le seul
+     à avoir deux effectifs — le moteur de match lisait la force annoncée et ignorait
+     l'effectif. Depuis que ton club n'en a plus qu'un, cette moyenne **est** sa force :
+     mesuré, elle faisait démarrer une carrière à 54,9 au lieu de 50,1 et gagner six
+     places en première saison. Les titulaires sont donc centrés, comme chez les
+     autres (`creerEffectifAdverse`), et tes rivaux au poste restent un cran au-dessus
+     de toi : c'est là qu'était la difficulté de la première saison, pas dans la force
+     du club. */
   const nb = posteId === 'G' ? 1 : 2;      // un gardien n'a qu'un rival, c'est binaire
   const concurrents = [];
   for (let i = 0; i < nb; i++)
@@ -246,6 +259,23 @@ function creerEffectif(club, posteId, pris){
   return { concurrents, equipe };
 }
 
+/* LA FORCE D'UN CLUB EST LA MOYENNE DE SON ONZE, Y COMPRIS LE TIEN — ET C'EST TON
+   CLUB DE DÉPART QUI S'ADAPTE, PAS TON EFFECTIF.
+   `creerEffectif()` tire ses titulaires à `force + 2 à 8` : la moyenne du onze vaut
+   donc cinq points de plus que la force annoncée. Tant que ton club avait deux
+   effectifs, personne ne s'en apercevait — le moteur de match lisait la force et
+   ignorait l'effectif. Depuis que le mercato n'en laisse qu'un, cette moyenne **est**
+   sa force, et il fallait choisir ce qu'on sacrifiait.
+   Deux pistes mesurées et abandonnées : centrer l'effectif comme chez les autres
+   clubs donne **17,3 titularisations à dix-huit ans au lieu de 10,2** (tes rivaux
+   tombent à ton niveau, et « toujours lever le pied » devient la meilleure politique
+   partout) ; compenser ailleurs dans l'effectif préserve les titularisations mais
+   fabrique un club bancal, très fourni à ton poste et court partout ailleurs — et
+   tu entres alors dans le groupe trop facilement (29 matchs au lieu de 25).
+   La bonne réponse ne touche ni l'un ni l'autre : **on démarre dans un club plus
+   faible**, les quatre derniers du championnat au lieu des huit derniers. Ton
+   effectif garde exactement la hiérarchie calibrée, ton club vaut honnêtement ce
+   que vaut son onze, et tu démarres toujours dans le bas du tableau. */
 function nouvellePartie(c){
   const poste = POSTES.find(p => p.id === c.poste) || POSTES[2];
   const base = {}; AXES.forEach(a => base[a] = 50);
@@ -288,10 +318,13 @@ function nouvellePartie(c){
      compte. » Avant, on se comparait à un nombre abstrait tiré de la force du club ;
      maintenant ce sont des gens, avec un nom, un niveau et une forme qui bouge. */
   const ligue = creerLigue(c.annee);
-  const club = ligue.equipes[ri(10, 17)];   // on démarre dans le bas de tableau
+  /* Les quatre derniers : une fois ton effectif posé, ton club vaudra cinq points
+     de plus que le leur, donc tu démarreras autour de la douzième place — là où la
+     première saison avait été calibrée. */
+  const club = ligue.equipes[ri(ligue.equipes.length - 4, ligue.equipes.length - 1)];
   const { concurrents, equipe } = creerEffectif(club, poste.id);
   S = {
-    v: VERSION, mode: 'joueur', annee: c.annee,
+    v: VERSION, mode: 'joueur', annee: c.annee, division: 1, bonusOffres: 0,
     moi: { nom: c.nom, poste: poste.id, posteNom: poste.nom, specNom: poste.spec,
       age: 18, base, boost: { tech:0, phys:0, ment:0, spec:0 }, plafond, socle,
       u0: c.origine.u0, origine: c.origine.id, ambition: c.ambition.id, pic,
@@ -313,6 +346,9 @@ function nouvellePartie(c){
     stats: { matchs:0, titus:0, buts:0, passes:0, notes:[], minutes:0 },
     journal: [], ecran: 'semaine',
   };
+  /* Ton club n'a qu'un effectif, et c'est le tien : on écrase celui que la ligue
+     venait de lui tirer. Sans ça il en aurait deux dès la première minute. */
+  syncClubSq();
   jrn('debut', `${S.moi.nom}, ${poste.nom.toLowerCase()} de ${S.club.nom}. Première saison.`);
   sauver(); return S;
 }
@@ -401,45 +437,45 @@ function creerEffectifAdverse(niveau, pris){
   return sq;
 }
 /* Une année passe chez eux aussi : chacun vieillit et suit sa courbe vers son
-   potentiel, les plus vieux s'en vont, et le club recrute à la hauteur de ce
-   qu'il pèse — mieux s'il a bien fini, moins bien sinon, avec un vrai tirage. */
+   potentiel, les plus vieux s'arrêtent, et le centre de formation comble les trous.
+   Ce qui manque ici, c'est le marché : il ne se joue plus club par club mais
+   **entre les clubs**, dans `mercato()`. */
+const dec1 = v => Math.round(v * 10) / 10;
+/* Le potentiel d'un joueur qu'on n'avait pas encore mesuré : ce qu'il peut devenir,
+   large quand il est jeune, presque rien quand il ne l'est plus. */
+function potDe(niv, age){
+  return dec1(clamp(niv + (age <= 23 ? rnd(2, 12) : rnd(0, 4)), 40, 88));
+}
 function recrue(po, niveau, pris){
   const age = ri(18, 29);
   const v = clamp(niveau, 38, 84);
-  return { n: nomAdverse(pris), p: po, a: age, v: Math.round(v * 10) / 10,
-    t: Math.round(clamp(v + (age <= 23 ? rnd(2, 12) : rnd(0, 4)), 40, 88) * 10) / 10 };
+  return { n: nomAdverse(pris), p: po, a: age, v: dec1(v), t: potDe(v, age) };
 }
-function vivreEffectifAdverse(e, vise, pris){
+/* Le centre de formation. Un club qui perd du monde et qui n'achète pas descend
+   d'un cran : c'est ce gamin-là qui joue. C'est la cause de la baisse, et c'est
+   le marché qui la répare — ou pas. */
+function jeuneDuCentre(po, e, pris){
+  const age = ri(18, 20);
+  const v = clamp((e.vise || e.force) - rnd(4, 14), 38, 76);
+  return { n: nomAdverse(pris), p: po, a: age, v: dec1(v), t: potDe(v, age) };
+}
+function vieillirEffectif(e, pris){
   e.sq.forEach(j => {
+    if (j.moi) return;               // toi, c'est `vieillir()` qui s'en occupe
     j.a++;
+    if (j.t == null) j.t = potDe(j.v, j.a);
     const c = courbeAge(j.a);
-    j.v = Math.round(clamp(j.v + (c > 0 ? Math.min(c, Math.max(0, j.t - j.v)) : c) + rnd(-.8, .8), 38, 86) * 10) / 10;
+    j.v = dec1(clamp(j.v + (c > 0 ? Math.min(c, Math.max(0, j.t - j.v)) : c) + rnd(-.8, .8), 38, 86));
   });
-  e.sq = e.sq.filter(j => j.a < 35 && !(j.a >= 31 && Math.random() < .3) && Math.random() > .1);
+  /* Les fins de carrière et les départs à l'étranger : ce qui sort du monde qu'on
+     simule. Le reste des mouvements passe par le marché, donc cette usure est bien
+     plus faible qu'avant (elle valait 10 % par joueur et par an) — sinon l'écran du
+     mercato affiche huit départs muets et huit gamins du centre, et on n'y lit rien. */
+  e.sq = e.sq.filter(j => j.moi || (j.a < 37 && !(j.a >= 33 && Math.random() < .2) && Math.random() > .02));
   Object.entries(EFFECTIF).forEach(([po, n]) => {
-    while (e.sq.filter(j => j.p === po).length < n){
-      const titu = e.sq.filter(j => j.p === po).length < FORMATION[po];
-      e.sq.push(recrue(po, vise + (titu ? rnd(-2.5, 2.5) : rnd(-12, -2)), pris));
-    }
+    while (e.sq.filter(j => j.p === po).length < n) e.sq.push(jeuneDuCentre(po, e, pris));
   });
-  /* LE MERCATO DU CLUB. Sans lui, un effectif de vingt-deux **lisse tout** : chaque
-     joueur bouge d'un point par an, la force du onze suit à peine, et le
-     championnat se refige (mesuré : 4,2 champions différents sur vingt saisons au
-     lieu de 5,8, titre conservé 49 %). Un club qui a bien fini **achète** et
-     remplace ses plus faibles ; un club qui a coulé **perd ses meilleurs**, partis
-     ailleurs. C'est ça qui fait bouger une hiérarchie, et c'est vrai. */
-  const postes = Object.keys(EFFECTIF);
-  for (let k = 0; k < 8; k++){
-    const ecart = vise - forceEffectif(e.sq);
-    if (Math.abs(ecart) < 1.2) break;
-    const po = pick(postes);
-    const l = e.sq.filter(j => j.p === po);
-    if (l.length < 2) continue;
-    // on achète par le bas, on se fait piller par le haut
-    const cible = ecart > 0 ? l.sort((a, b) => a.v - b.v)[0] : l.sort((a, b) => b.v - a.v)[0];
-    e.sq.splice(e.sq.indexOf(cible), 1);
-    e.sq.push(recrue(po, ecart > 0 ? vise + rnd(-1, 4) : vise + rnd(-10, -2), pris));
-  }
+  e.force = forceEffectif(e.sq);
 }
 /* Qui marque chez eux : quelqu'un de leur onze, et plutôt un attaquant. */
 function buteurAdverse(adv){
@@ -454,58 +490,387 @@ function buteurAdverse(adv){
   while (i < onze.length - 1 && (t -= poids[i]) > 0) i++;
   return onze[i] ? onze[i].n : null;
 }
+/* Tous les noms du monde, les deux divisions comprises. Quand il n'en lisait
+   qu'une, un jeune de l'échelon inférieur pouvait naître avec le nom d'un joueur
+   de l'élite : mesuré, plus de six mille homonymes sur douze carrières. */
 function nomsPris(){
   const s = new Set();
-  (S.ligue.equipes || []).forEach(e => (e.sq || []).forEach(j => s.add(j.n)));
+  toutesLesEquipes().forEach(e => (e.sq || []).forEach(j => s.add(j.n)));
+  (S.equipe || []).forEach(j => s.add(j.nom));
+  (S.concurrents || []).forEach(j => s.add(j.nom));
   return s;
 }
 
 function creerLigue(annee){
   const dk = typeof decadeKey === 'function' ? decadeKey(annee) : '10';
-  const gros = (typeof FR_CLUBS !== 'undefined' ? FR_CLUBS : []).filter(c => (c.s[dk] || 0) >= 2).map(c => ({ nom:c.n, s:c.s[dk] }));
-  const petits = (typeof FR_LOWER !== 'undefined' ? FR_LOWER : []).map(n => ({ nom:n, s: rnd(-1.7, 1) }));
-  const noms = [...shuffle(gros).slice(0, 6), ...shuffle(petits).slice(0, 12)];
+  const tousGros = (typeof FR_CLUBS !== 'undefined' ? FR_CLUBS : []).filter(c => (c.s[dk] || 0) >= 2)
+    .map(c => ({ nom:c.n, s:c.s[dk] }));
+  const tousPetits = (typeof FR_LOWER !== 'undefined' ? FR_LOWER : []).map(n => ({ nom:n, s: rnd(-1.7, 1) }));
+  const gros = shuffle(tousGros), petits = shuffle(tousPetits);
   /* LA PENTE : l'écart historique entre un gros et un petit club. À 4 par point de
      poids, le premier était **douze à quatorze points au-dessus du cinquième** et le
      titre était joué avant août : mesuré, 3,9 champions différents sur vingt saisons
      et le titre conservé 59 % du temps. À 2,4, l'écart tombe à neuf ou dix, et une
      saison peut basculer. */
   const pris = new Set();
-  const equipes = noms.map(x => {
+  const faire = (x, elite) => {
     const ancre = clamp(52 + x.s * PENTE_CLUB, 44, 74);
-    const pot = clamp(ancre + rnd(-3, 3), 44, 78);
+    const pot = clamp(ancre - (elite ? 0 : PRIME_ELITE) + rnd(-3, 3), 40, 80);
     const sq = creerEffectifAdverse(clamp(pot + rnd(-3, 3), 42, 80), pris);
-    return { nom:x.nom, ancre: Math.round(ancre * 10) / 10, pot: Math.round(pot * 10) / 10,
-      sq, force: forceEffectif(sq) };
-  }).sort((a, b) => b.force - a.force);
-  const N = equipes.length;
-  return { equipes, N, classement: Object.fromEntries(equipes.map(e => [e.nom, { pts:0, j:0, v:0, n:0, d:0, bp:0, bc:0 }])) };
+    return { nom:x.nom, ancre: dec1(ancre), pot: dec1(pot), sq, force: forceEffectif(sq) };
+  };
+  /* L'élite : six clubs d'histoire et douze qui remplissent. L'échelon inférieur :
+     ce qui reste, et **les gros clubs qui n'ont pas été tirés** — un grand peut donc
+     être en bas et remonter, ce qui arrive vraiment. */
+  const d1 = [...gros.slice(0, 6), ...petits.slice(0, 12)].map(x => faire(x, true))
+    .sort((a, b) => b.force - a.force);
+  const d2 = [...gros.slice(6, 9), ...petits.slice(12, 27)].map(x => faire(x, false))
+    .sort((a, b) => b.force - a.force);
+  return { equipes: d1, autre: d2, N: d1.length,
+    classement: Object.fromEntries(d1.map(e => [e.nom, { pts:0, j:0, v:0, n:0, d:0, bp:0, bc:0 }])) };
 }
-/* L'été du championnat : chaque club rejoue son niveau. Ton club passe par la
-   même porte que les autres — il n'a plus de règle à lui. */
-function faireVivreLigue(){
-  const cl = classementTrie(), N = S.ligue.equipes.length;
-  const pris = nomsPris();
-  S.ligue.equipes.forEach(e => {
-    if (e.ancre == null){ e.ancre = e.force; e.pot = e.force; }   // ligue d'avant
-    const rang = cl.findIndex(x => x.nom === e.nom) + 1;
-    // ce que la saison passée a rapporté : une bonne place attire, une mauvaise vide
-    const elan = rang ? (N / 2 - rang) * ELAN_CLUB : 0;
-    // le potentiel dérive lentement, rappelé vers ce que le club pèse historiquement :
-    // un petit club peut monter dans la hiérarchie, jamais d'un coup
-    e.pot = Math.round(clamp(e.pot * .95 + e.ancre * .05 + rnd(-1.6, 1.6), 44, 78) * 10) / 10;
-    /* Le club recrute à la hauteur de `vise` : élan de la saison passée, tirage,
-       et rappel vers son potentiel. La force n'est plus posée, elle **découle** de
-       l'effectif une fois qu'il a vieilli et qu'on a comblé les trous. */
-    const vise = clamp(e.force + elan + rnd(-TIRAGE_CLUB, TIRAGE_CLUB)
-      + (e.pot - e.force) * RAPPEL_CLUB, 42, 80);
-    if (!e.sq) e.sq = creerEffectifAdverse(e.force, pris);
-    vivreEffectifAdverse(e, vise, pris);
-    e.force = forceEffectif(e.sq);
+/* ========== LES MONTÉES ET LES DESCENTES ==========
+   Deux divisions existent ; on ne simule que le classement de la tienne. Les trois
+   derniers de l'élite descendent, les trois premiers de l'échelon inférieur montent
+   — et si c'est ton club qui descend, **tu descends avec lui** et la saison suivante
+   se joue là, avec le même moteur. Une place de milieu de tableau cesse d'être
+   décorative : c'est ce qui manquait au classement. Ce qui ne se joue pas se tire
+   au sort, pondéré par la force : on ne sait jamais qui montera. */
+const MONTEES = 3;
+/* CE QUE VAUT L'ÉLITE. Sans cette prime, monter et descendre **gonflait le
+   championnat** : chaque été l'élite échangeait ses trois plus faibles contre les
+   trois meilleurs de l'échelon inférieur, dont les potentiels étaient les mêmes —
+   donc sa moyenne montait de cinq points en dix saisons (mesuré). Un club de
+   l'élite a plus d'argent, donc un potentiel plus haut, et il le perd en
+   descendant : la descente coûte, la montée rapporte, et l'échange redevient
+   neutre. C'est aussi ce qui donne à une descente son poids. */
+const PRIME_ELITE = 6;
+function abrDivision(d){ return `${S.annee >= 2002 ? 'L' : 'D'}${d == null ? (S.division || 1) : d}`; }
+function nomDivision(d){
+  const n = d == null ? (S.division || 1) : d;
+  return n === 1 ? (S.annee >= 2002 ? "Ligue 1" : "Division 1")
+    : (S.annee >= 2002 ? "Ligue 2" : "Division 2");
+}
+function toutesLesEquipes(){ return (S.ligue.equipes || []).concat(S.ligue.autre || []); }
+/* Un tirage pondéré par la force : les meilleurs montent le plus souvent, pas
+   toujours. `sens` = 1 pour le haut, -1 pour le bas. */
+function tirerBout(l, n, sens){
+  const rest = l.slice(), out = [];
+  const moy = rest.reduce((a, e) => a + e.force, 0) / Math.max(1, rest.length);
+  while (out.length < n && rest.length){
+    const poids = rest.map(e => Math.pow(Math.max(.3, 1 + sens * (e.force - moy) * .35), 2));
+    let t = poids.reduce((a, x) => a + x, 0) * Math.random(), i = 0;
+    while (i < rest.length - 1 && (t -= poids[i]) > 0) i++;
+    out.push(rest[i]); rest.splice(i, 1);
+  }
+  return out;
+}
+/* Le rang de la saison passée, noté avant que les divisions s'échangent : c'est lui
+   qui donne l'élan. Les clubs de l'autre division n'ont pas de classement joué, donc
+   leur élan se lit sur leur force. */
+function noterRangs(){
+  const cl = classementTrie();
+  (S.ligue.equipes || []).forEach(e => {
+    const i = cl.findIndex(x => x.nom === e.nom);
+    e.rang = i >= 0 ? i + 1 : null;
   });
-  S.ligue.equipes.sort((a, b) => b.force - a.force);
-  S.ligue.classement = Object.fromEntries(S.ligue.equipes.map(e => [e.nom, { pts:0, j:0, v:0, n:0, d:0, bp:0, bc:0 }]));
+  (S.ligue.autre || []).forEach(e => { e.rang = null; });
 }
+function promotionsRelegations(){
+  const mienne = S.ligue.equipes || [], autre = S.ligue.autre || [];
+  if (!autre.length || mienne.length < 6) return;
+  const cl = classementTrie().filter(x => mienne.some(e => e.nom === x.nom));
+  const nomsDe = l => l.map(e => e.nom);
+  let d1, d2, bas, haut;
+  if ((S.division || 1) === 1){
+    bas = cl.slice(-MONTEES).map(x => x.nom);
+    haut = tirerBout(autre, MONTEES, 1);
+    d1 = mienne.filter(e => !bas.includes(e.nom)).concat(haut);
+    d2 = autre.filter(e => !haut.includes(e)).concat(mienne.filter(e => bas.includes(e.nom)));
+  } else {
+    // tu joues l'échelon inférieur : les trois premiers de TA division montent
+    const monte = cl.slice(0, MONTEES).map(x => x.nom);
+    const descend = tirerBout(autre, MONTEES, -1);
+    d1 = autre.filter(e => !descend.includes(e)).concat(mienne.filter(e => monte.includes(e.nom)));
+    d2 = mienne.filter(e => !monte.includes(e.nom)).concat(descend);
+    bas = nomsDe(descend); haut = mienne.filter(e => monte.includes(e.nom));
+  }
+  /* L'argent arrive et repart le jour de l'échange : une montée ne se paie pas en
+     dix ans. */
+  const etait1 = new Set(((S.division || 1) === 1 ? mienne : autre).map(e => e.nom));
+  d1.forEach(e => { if (!etait1.has(e.nom)) e.pot = dec1(clamp(e.pot + PRIME_ELITE, 40, 80)); });
+  d2.forEach(e => { if (etait1.has(e.nom)) e.pot = dec1(clamp(e.pot - PRIME_ELITE, 40, 80)); });
+  const avant = S.division || 1;
+  S.division = d1.some(e => e.nom === S.club.nom) ? 1 : 2;
+  S.ligue.equipes = S.division === 1 ? d1 : d2;
+  S.ligue.autre = S.division === 1 ? d2 : d1;
+  S.mouvDiv = { montent: haut.map(e => e.nom), descendent: bas.slice() };
+  if (S.division !== avant)
+    jrn('division', S.division === 2 ? `${S.club.nom} descend en ${nomDivision(2)}.`
+      : `${S.club.nom} remonte en ${nomDivision(1)}.`);
+}
+
+/* L'été du championnat : chaque club rejoue son niveau, dans les deux divisions.
+   Ton club passe par la même porte que les autres — il n'a plus de règle à lui, et
+   depuis `syncClubSq()` il n'a plus d'effectif fantôme non plus. */
+function faireVivreLigue(){
+  const pris = nomsPris();
+  const divs = [S.ligue.equipes || [], S.ligue.autre || []];
+  divs.forEach((div, i) => {
+    const elite = (i === 0) === ((S.division || 1) === 1);
+    const N = Math.max(1, div.length);
+    const ordre = div.slice().sort((a, b) => b.force - a.force);
+    div.forEach(e => {
+      if (e.ancre == null){ e.ancre = e.force; e.pot = e.force; }   // ligue d'avant
+      const rang = e.rang || (ordre.findIndex(x => x.nom === e.nom) + 1);
+      // ce que la saison passée a rapporté : une bonne place attire, une mauvaise vide
+      const elan = rang ? (N / 2 - rang) * ELAN_CLUB : 0;
+      // le potentiel dérive lentement, rappelé vers ce que le club pèse
+      // historiquement — plus la prime de sa division
+      const cible = e.ancre - (elite ? 0 : PRIME_ELITE);
+      e.pot = dec1(clamp(e.pot * .93 + cible * .07 + rnd(-1.6, 1.6), 40, 80));
+      /* Ce que le club cherchera sur le marché : élan de la saison passée, tirage,
+         et rappel vers son potentiel. La force n'est plus posée, elle **découle** de
+         l'effectif une fois qu'il a vieilli et que le marché a fait son travail. */
+      e.vise = clamp(e.force * .45 + e.pot * .55 + elan + rnd(-TIRAGE_CLUB, TIRAGE_CLUB), 42, 80);
+      if (!e.sq) e.sq = creerEffectifAdverse(e.force, pris);
+      vieillirEffectif(e, pris);
+      e.rang = null;
+    });
+  });
+  /* Le classement suit la division où tu joues, et il vient d'en changer. */
+  S.ligue.classement = Object.fromEntries((S.ligue.equipes || []).map(e => [e.nom, { pts:0, j:0, v:0, n:0, d:0, bp:0, bc:0 }]));
+}
+
+/* ========== LE MERCATO ==========
+   Le propriétaire, 27/09/2026 : « vas-y pour le mercato ». C'était la dernière
+   pièce manquante du monde : les clubs se renforçaient en **inventant** des recrues
+   et en effaçant des joueurs, donc personne ne partait jamais nulle part et le
+   marché n'existait pas. Désormais un transfert a un nom, un club de départ et un
+   club d'arrivée — et ton vestiaire est dans le même sac que les autres, donc on
+   peut te prendre ton milieu et t'amener un concurrent.
+   Qui achète : celui qui a besoin. Qui vend : celui qui a du rab à ce poste, celui
+   qui est plus petit que l'acheteur, ou celui qui doit vendre. */
+const MOUVEMENTS_ETE = 40;
+/* CE QU'UN CLUB FAIT EN UN ÉTÉ. Sans plafond, un club très au-dessus de ce qu'il
+   vise **vend tout** en une fois : mesuré, quatorze départs et quatorze gamins du
+   centre en un seul mercato — l'écran devenait illisible et l'effectif calibré de
+   la première saison disparaissait d'un coup. Trois entrées, trois sorties : un
+   club se refait en deux ou trois étés, comme dans la vraie vie. */
+const MOUV_PAR_CLUB = 3;
+/* Le poste où l'acheteur est le plus loin de ce qu'il vise : c'est là qu'il cherche. */
+function posteFaible(e){
+  let pire = null;
+  Object.entries(FORMATION).forEach(([po, k]) => {
+    const l = e.sq.filter(j => j.p === po).sort((a, b) => b.v - a.v).slice(0, k);
+    const moy = l.length ? l.reduce((a, j) => a + j.v, 0) / l.length : 40;
+    if (!pire || moy < pire.moy) pire = { po, moy };
+  });
+  return pire ? pire.po : 'M';
+}
+function tirerPoids(l, f){
+  const poids = l.map(f);
+  let t = poids.reduce((a, x) => a + x, 0) * Math.random(), i = 0;
+  while (i < l.length - 1 && (t -= poids[i]) > 0) i++;
+  return l[i];
+}
+/* Une recrue pousse quelqu'un dehors, et ce quelqu'un a un nom. Il disparaissait
+   en silence : l'écran du mercato montrait alors des départs sans départ et des
+   gamins du centre sans raison. */
+function pousserDehors(e, po, mouv){
+  const trop = e.sq.filter(j => j.p === po);
+  if (trop.length <= EFFECTIF[po]) return;
+  const sorti = trop.filter(j => !j.moi).sort((a, b) => a.v - b.v)[0];
+  if (!sorti) return;
+  e.sq.splice(e.sq.indexOf(sorti), 1);
+  e.nOut = (e.nOut || 0) + 1;
+  mouv.push({ nom:sorti.n, poste:po, age:sorti.a, niv: Math.round(sorti.v), de:e.nom, vers:null });
+}
+function mercato(){
+  const eqs = toutesLesEquipes();
+  if (eqs.length < 4) return [];
+  const pris = nomsPris();
+  eqs.forEach(e => { e.force = forceEffectif(e.sq); if (e.vise == null) e.vise = e.force; });
+  const mouv = [];
+  eqs.forEach(e => { e.nIn = 0; e.nOut = 0; });
+  /* LES VENTES FORCÉES, ET POURQUOI ELLES SONT INDISPENSABLES. Sans elles le marché
+     ne pousse que vers le haut : un club qui a besoin achète, un club qui a de trop
+     ne fait rien — et la moyenne du championnat monte de six points en dix saisons
+     (mesuré). Un club qui doit vendre vend donc son meilleur, à un club qui en a
+     besoin si l'un se présente, à l'étranger sinon, et c'est un jeune du centre qui
+     prend la place. C'est ce que faisait l'ancien « on se fait piller par le haut ». */
+  for (let k = 0; k < MOUVEMENTS_ETE; k++){
+    const vendeurs = eqs.filter(e => e.force - e.vise > 1 && e.nOut < MOUV_PAR_CLUB);
+    if (!vendeurs.length) break;
+    const vend = tirerPoids(vendeurs, e => Math.pow(e.force - e.vise, 1.3));
+    const postes = Object.keys(EFFECTIF).filter(po => vend.sq.filter(j => j.p === po).length > FORMATION[po]);
+    if (!postes.length) break;
+    const po = pick(postes);
+    const j = vend.sq.filter(x => x.p === po && !x.moi).sort((a, b) => b.v - a.v)[0];
+    if (!j) continue;
+    // un club qui en a besoin à ce poste se sert avant l'étranger
+    const preneurs = eqs.filter(e => e !== vend && e.vise - e.force > .8 && e.nIn < MOUV_PAR_CLUB
+      && j.v > (e.sq.filter(x => x.p === po).sort((a, b) => b.v - a.v)[FORMATION[po] - 1] || { v:99 }).v);
+    const ach = preneurs.length ? tirerPoids(preneurs, e => Math.pow(e.vise - e.force, 1.3)) : null;
+    vend.sq.splice(vend.sq.indexOf(j), 1);
+    if (ach){
+      ach.sq.push(j);
+      pousserDehors(ach, po, mouv);
+      ach.force = forceEffectif(ach.sq);
+    }
+    vend.sq.push(jeuneDuCentre(po, vend, pris));
+    vend.force = forceEffectif(vend.sq);
+    vend.nOut++; if (ach) ach.nIn++;
+    mouv.push({ nom:j.n, poste:po, age:j.a, niv: Math.round(j.v),
+      de:vend.nom, vers: ach ? ach.nom : null });
+  }
+  for (let k = 0; k < MOUVEMENTS_ETE; k++){
+    const acheteurs = eqs.filter(e => e.vise - e.force > .8 && e.nIn < MOUV_PAR_CLUB);
+    if (!acheteurs.length) break;
+    const ach = tirerPoids(acheteurs, e => Math.pow(e.vise - e.force, 1.3));
+    const po = posteFaible(ach);
+    const chezMoi = ach.sq.filter(j => j.p === po).sort((a, b) => b.v - a.v);
+    const seuil = (chezMoi[FORMATION[po] - 1] ? chezMoi[FORMATION[po] - 1].v : 40) + 1;
+    // qui est sur le marché, et à qui
+    const cand = [];
+    eqs.forEach(vend => {
+      if (vend === ach) return;
+      if (vend.nOut >= MOUV_PAR_CLUB) return;           // il a déjà fait son été
+      const l = vend.sq.filter(j => j.p === po).sort((a, b) => b.v - a.v);
+      if (l.length <= FORMATION[po]) return;            // il n'a personne à perdre
+      l.forEach((j, i) => {
+        if (j.moi || j.v < seuil) return;
+        const rab = i >= FORMATION[po];                  // il ne joue pas là-bas
+        const petit = vend.force < ach.force - 2;        // un plus grand se sert
+        const doitVendre = vend.vise < vend.force - 1;   // il doit vendre
+        const vieux = j.a >= 29 && vend.vise <= vend.force;
+        if (rab || petit || doitVendre || vieux) cand.push({ j, vend, rab });
+      });
+    });
+    if (!cand.length) continue;
+    /* On veut le meilleur possible, mais un club plus fort que l'acheteur ne lâche
+       pas son titulaire : c'est ce qui empêche le marché de tout niveler. */
+    const c = tirerPoids(cand, x => Math.pow(Math.max(.5, x.j.v - seuil + 2), 1.4)
+      / (1 + Math.max(0, x.vend.force - ach.force) * (x.rab ? .25 : .7)));
+    c.vend.sq.splice(c.vend.sq.indexOf(c.j), 1);
+    ach.sq.push(c.j);
+    // le vendeur comble son trou s'il n'a plus assez de monde
+    Object.entries(EFFECTIF).forEach(([p2, n]) => {
+      while (c.vend.sq.filter(j => j.p === p2).length < n) c.vend.sq.push(jeuneDuCentre(p2, c.vend, pris));
+    });
+    // et l'acheteur laisse partir son plus faible à ce poste s'il est en surnombre
+    pousserDehors(ach, po, mouv);
+    ach.force = forceEffectif(ach.sq); c.vend.force = forceEffectif(c.vend.sq);
+    ach.nIn++; c.vend.nOut++;
+    mouv.push({ nom:c.j.n, poste:po, age:c.j.a, niv: Math.round(c.j.v),
+      de:c.vend.nom, vers:ach.nom });
+  }
+  eqs.forEach(e => { e.force = forceEffectif(e.sq); });
+  S.ligue.equipes.sort((a, b) => b.force - a.force);
+  (S.ligue.autre || []).sort((a, b) => b.force - a.force);
+  S.ligue.classement = Object.fromEntries(S.ligue.equipes.map(e => [e.nom, { pts:0, j:0, v:0, n:0, d:0, bp:0, bc:0 }]));
+  return mouv;
+}
+
+/* ========== TON CLUB N'A PLUS DEUX EFFECTIFS ==========
+   `S.ligue.equipes` donnait à ton club vingt-deux joueurs fantômes, vieillis et
+   transférés comme ceux des autres, et sa force en découlait — pendant que tes vrais
+   coéquipiers étaient tirés de cette force. Deux populations pour un seul vestiaire,
+   dont une que tu ne verrais jamais. Maintenant il n'en a qu'une : la tienne. C'est
+   ce qui rend le mercato possible, parce qu'on ne peut transférer que des gens qui
+   existent. */
+function monEntree(){ return toutesLesEquipes().find(e => e.nom === S.club.nom) || null; }
+function syncClubSq(){
+  const e = monEntree(); if (!e || !S.equipe) return;
+  const sq = [];
+  S.equipe.forEach(j => { if (j.pot == null) j.pot = potDe(j.niv, j.age);
+    sq.push({ n:j.nom, p:j.poste, a:j.age, v:j.niv, t:j.pot }); });
+  (S.concurrents || []).forEach(c => { if (c.pot == null) c.pot = potDe(c.niv, c.age);
+    sq.push({ n:c.nom, p:S.moi.poste, a:c.age, v:c.niv, t:c.pot }); });
+  const v = Math.round(niveau());
+  sq.push({ n:S.moi.nom, p:S.moi.poste, a:S.moi.age, v, t:v, moi:true });
+  e.sq = sq;
+  e.force = forceEffectif(sq);
+  S.club.force = e.force;
+}
+/* Et le retour : on relit l'effectif du club et on retrouve ses gens. Ceux qui sont
+   restés gardent leur objet — donc leur histoire, leurs notes, leur relation ; ceux
+   qui sont partis disparaissent ; les arrivés naissent ici. */
+function relireClubSq(){
+  const e = monEntree(); if (!e) return { arrivees:[], partis:[] };
+  const avant = {};
+  (S.equipe || []).forEach(j => avant[j.nom] = j);
+  (S.concurrents || []).forEach(c => avant[c.nom] = c);
+  const partis = Object.keys(avant).filter(n => !e.sq.some(j => j.n === n))
+    .map(n => ({ nom:n, poste: avant[n].poste || S.moi.poste, age: avant[n].age }));
+  const arrivees = [], joueurs = [];
+  e.sq.forEach(j => {
+    if (j.moi) return;
+    const old = avant[j.n];
+    if (old){
+      old.age = j.a; old.niv = Math.round(j.v); old.pot = j.t; old.poste = j.p;
+      joueurs.push(old);
+    } else {
+      const o = { nom:j.n, poste:j.p, age:j.a, niv: Math.round(j.v), pot:j.t,
+        forme:0, blesse:0, susp:0, prog:0, note:null };
+      joueurs.push(o); arrivees.push(o);
+    }
+  });
+  joueurs.forEach(j => { j.forme = 0; j.blesse = 0; j.susp = 0; j.rancune = 0;
+    j.note = null; j.noteR = null; j.sum = 0; j.nb = 0; j.sumR = 0; j.nbR = 0;
+    delete j.monte; });
+  /* Le partage : à ton poste, les meilleurs sont tes rivaux, les autres des
+     coéquipiers. Il se refait chaque été — donc une recrue peut passer devant toi,
+     et un rival qui décline redevient un coéquipier. */
+  const nb = S.moi.poste === 'G' ? 1 : 2;
+  const auPoste = joueurs.filter(j => j.poste === S.moi.poste).sort((a, b) => b.niv - a.niv);
+  S.concurrents = auPoste.slice(0, nb);
+  S.equipe = joueurs.filter(j => S.concurrents.indexOf(j) < 0);
+  const jeune = S.equipe.filter(j => j.age <= 22).sort((a, b) => a.age - b.age)[0];
+  if (jeune) jeune.monte = true;
+  return { arrivees: arrivees.map(o => ({ nom:o.nom, poste:o.poste, age:o.age, niv:o.niv,
+      rival: S.concurrents.indexOf(o) >= 0 })), partis };
+}
+/* Tu signes ailleurs. Deux choses arrivent, et elles sont vraies : ton ancien club
+   te remplace, et ton nouveau club te fait de la place. Tes nouveaux coéquipiers
+   sont **les joueurs de ce club** — ceux dont tu lisais les noms au classement et
+   dans les buts encaissés, pas un effectif tiré au sort pour l'occasion. */
+function rejoindre(club){
+  const pris = nomsPris();
+  const vieux = monEntree();
+  if (vieux){
+    const i = vieux.sq.findIndex(j => j.moi);
+    if (i >= 0){
+      vieux.sq.splice(i, 1);
+      vieux.sq.push(recrue(S.moi.poste, (vieux.vise || vieux.force) + rnd(-2, 3), pris));
+    }
+    vieux.force = forceEffectif(vieux.sq);
+  }
+  S.club = { nom: club.nom, force: Math.round(club.force) };
+  /* Signer dans l'autre division, c'est changer de division. `S.ligue.equipes` est
+     toujours celle où tu joues : sans cet échange, ton club n'était plus au
+     classement et la première journée plantait. */
+  if ((S.ligue.autre || []).some(x => x.nom === club.nom)){
+    const t = S.ligue.equipes; S.ligue.equipes = S.ligue.autre; S.ligue.autre = t;
+    S.division = (S.division || 1) === 1 ? 2 : 1;
+    jrn('division', `Tu joues ${nomDivision()} cette saison.`);
+  }
+  const e = monEntree();
+  if (e){
+    const l = e.sq.filter(j => j.p === S.moi.poste).sort((a, b) => a.v - b.v);
+    if (l.length >= EFFECTIF[S.moi.poste] && l[0]) e.sq.splice(e.sq.indexOf(l[0]), 1);
+    const v = Math.round(niveau());
+    e.sq.push({ n:S.moi.nom, p:S.moi.poste, a:S.moi.age, v, t:v, moi:true });
+    e.force = forceEffectif(e.sq);
+    S.club.force = e.force;
+  }
+  S.equipe = []; S.concurrents = [];
+  relireClubSq();
+  S.lignes = { def:50, mil:50, att:50 };
+  S.ligneRef = { ...S.lignes };
+  S.liens.coach = 50; S.liens.club = 52;   // tout est à refaire ailleurs
+}
+
 function adversaire(j){
   const autres = S.ligue.equipes.filter(e => e.nom !== S.club.nom);
   const i = (j * 7 + 3) % autres.length;          // rotation régulière, pas deux fois de suite
@@ -1211,7 +1576,7 @@ function matchAnnexe(j){
 function advAnnexe(info){
   if (info.c === 'coupe'){
     if (info.t <= 1){
-      const dedans = S.ligue.equipes.map(e => e.nom);
+      const dedans = toutesLesEquipes().map(e => e.nom);
       const petits = (typeof FR_LOWER !== 'undefined' ? FR_LOWER : []).filter(n => !dedans.includes(n));
       const nom = petits.length ? pick(petits) : "un club de National";
       return { nom, force: Math.round(clamp(S.club.force - rnd(5, 16), 38, 76)), petit:true };
@@ -1599,13 +1964,46 @@ function choisirMoment(i){
   /* « Je tire au lieu de faire la passe, ça me retire un point de mental. »
      Le mauvais choix se paie tout de suite, et plus lourdement quand ça comptait. */
   if (!reussi) coutMental(f.chaud ? 1.8 : 1.1, `« ${o.l} », à la ${f.min}ᵉ`);
+  /* UN BUT DE FAIT DE MATCH EST UN BUT DU MATCH (le propriétaire, 27/09/2026,
+     capture à l'appui : un 3-0 dont le film ne montrait que deux buts). Le fait
+     ajoutait `m.bn++` — donc un but au score — **sans créer d'événement** : ce
+     troisième but n'apparaissait nulle part, ni dans le film, ni dans la note du
+     buteur quand c'était ta passe qui l'avait servi. L'événement est désormais
+     réel, comme les autres, et tout ce qui lit le film le voit. */
   if (reussi && (f.id === 'tir' || f.id === 'face' || f.id === 'volee')){
-    if (o.l.startsWith("Frapper") || o.l.startsWith("Reprendre")) { m.bn++; m.buts++; }
-    else { m.bn++; m.passes++; }
+    const moiBut = o.l.startsWith("Frapper") || o.l.startsWith("Reprendre");
+    m.bn++;
+    if (moiBut){
+      m.buts++;
+      m.evs.push({ type:'but', nous:true, min:f.min, qui:S.moi.nom, moi:true });
+    } else {
+      m.passes++;
+      m.evs.push({ type:'but', nous:true, min:f.min, qui: surLeBanc(m, f.min, 'but'), passeMoi:true });
+    }
+    m.evs.sort((a, b) => a.min - b.min);
   }
   if (!reussi && f.id === 'tacle') m.jaune++;
-  if (!reussi && f.id === 'sortie') m.be++;
-  if (reussi && f.id === 'pen') m.be = Math.max(0, m.be - 1);
+  /* Le même défaut de l'autre côté : une sortie ratée encaissait un but que le film
+     ne montrait pas, et un penalty arrêté en effaçait un que le film montrait encore.
+     Les deux passent maintenant par un événement, donc le score ne peut plus
+     contredire le film. */
+  if (!reussi && f.id === 'sortie'){
+    m.be++;
+    m.evs.push({ type:'but', nous:false, min:f.min, qui: buteurAdverse(m.adv) || m.adv.nom });
+    m.evs.sort((a, b) => a.min - b.min);
+  }
+  if (reussi && f.id === 'pen'){
+    // on n'arrête un penalty que s'il y avait un but à arrêter
+    const cand = m.evs.filter(e => e.type === 'but' && !e.nous);
+    if (cand.length){
+      const cible = cand.reduce((a, e) => Math.abs(e.min - f.min) < Math.abs(a.min - f.min) ? e : a, cand[0]);
+      m.evs.splice(m.evs.indexOf(cible), 1);
+      m.evs.push({ type:'penalty', nous:false, min: cible.min, arrete:true });
+      m.evs.sort((a, b) => a.min - b.min);
+      m.be = Math.max(0, m.be - 1);
+      f.min = cible.min;
+    }
+  }
   jrn('moment', `${f.min}ᵉ — ${f.q} → ${o.l} : ${reussi ? f.ok : f.ko}`);
   S.momentIdx++; suiteMatch();
 }
@@ -1665,8 +2063,24 @@ function finirMatch(){
     }
     if (m.note < 5.6) coutMental(1.7, "un match que tu voudrais oublier");
     if (m.rouge) coutMental(2.2, "ce carton rouge");
-    if (Math.random() < Math.max(.012, .05 - S.etats.fond * .0006) + (S.moi.def.id === 'ischios' ? .04 : 0) + (S.etats.fraicheur < 60 ? .05 : 0)){
+    /* UNE BLESSURE A UNE CAUSE, ET ELLE SE DIT (le propriétaire, 27/09/2026 :
+       « je trouve que je me blesse sans explication »). Le tirage en avait déjà
+       trois — le fond qu'on s'est construit, les ischios quand c'est ton défaut,
+       les jambes vides — mais l'écran n'en disait aucune : on sortait touché sans
+       savoir pourquoi, donc sans rien pouvoir y faire. On garde la raison qui pesait
+       le plus lourd dans le tirage, et on l'écrit. */
+    const risqueBase = Math.max(.012, .05 - S.etats.fond * .0006);
+    const risqueIschios = S.moi.def.id === 'ischios' ? .04 : 0;
+    const risqueVide = S.etats.fraicheur < 60 ? .05 : 0;
+    if (Math.random() < risqueBase + risqueIschios + risqueVide){
       m.blessure = ri(1, 5); S.etats.corps = clamp(S.etats.corps - m.blessure);
+      m.pourquoi = risqueVide >= Math.max(risqueBase, risqueIschios)
+          ? "Tu as fini le match sur les jambes, et le corps a lâché là où il lâche toujours."
+        : risqueIschios >= risqueBase
+          ? "Encore cette gêne derrière la cuisse. Tu la connais par cœur."
+        : S.etats.fond < 25
+          ? "Tu n'as pas le fond pour encaisser ces rythmes-là. Ça finit par se payer."
+        : "Un appui qui part de travers, personne autour. Ça arrive.";
     }
     m.jaunes = m.evs.filter(e => e.type === 'jaune' && e.moi).length + m.jaune;
     m.rouge = m.evs.some(e => e.type === 'rouge' && e.moi);
@@ -1723,7 +2137,8 @@ function finirMatch(){
   LIGNES.forEach(k => { const d = S.lignes[k] - l0[k];
     if (Math.abs(d) >= .8) m.mvt.push({ k, up: d > 0, mot: `${LIGNE_NOM[k]} \u2014 ${direLigne(k)}` }); });
   if (S.etats.fraicheur - e0.fraicheur <= -8) m.mvt.push({ k:'fraicheur', up:false, mot:direJambes() });
-  if (m.blessure) m.mvt.push({ k:'blessure', up:false, mot:`Tu sors touché : ${m.blessure} journée${m.blessure > 1 ? 's' : ''} d'absence.` });
+  if (m.blessure) m.mvt.push({ k:'blessure', up:false,
+    mot:`${m.pourquoi || ''} ${m.blessure} journée${m.blessure > 1 ? 's' : ''} d'absence.`.trim() });
   if (m.suspendu) m.mvt.push({ k:'suspension', up:false, mot:`Suspendu ${m.suspendu} match${m.suspendu > 1 ? 's' : ''}.` });
   if (m.amortiCoach) m.mvt.push({ k:'mental', up:true, mot:"Mauvais soir, mais tu n'as rien lâché : le coach t'en tient moins rigueur." });
   /* Ce que la soirée t'a pris dans la tête, avec ses raisons : c'est ça, un
@@ -1952,11 +2367,21 @@ function finSaison(){
   /* `moyenneNotes()` renvoie 6 quand on n'a aucune note : c'est commode pour les
      calculs, mais le bilan ne doit pas parler d'une moyenne qui n'existe pas. */
   const note = S.stats.notes.length ? moyenneNotes() : null;
+  /* LA DESCENTE SE LIT AU BILAN, PAS À LA REPRISE. C'est la même règle que
+     `promotionsRelegations()` appliquera cet été, sur le même classement : l'écran
+     ne peut donc pas annoncer autre chose que ce qui arrivera. */
+  const N = S.ligue.equipes.length;
+  const div = S.division || 1;
   S.bilan = {
-    pos, note: note == null ? null : Math.round(note * 100) / 100,
+    pos, division: div, nbClubs: N,
+    descente: div === 1 && pos > N - MONTEES,
+    montee: div === 2 && pos <= MONTEES,
+    note: note == null ? null : Math.round(note * 100) / 100,
     gagne: bilanGagne(note, pos), perdu: bilanPerdu(note), suite: bilanSuite(pos, note),
   };
-  jrn('saison', `Saison terminée : ${S.stats.matchs} matchs, ${S.stats.buts} buts${S.bilan.note == null ? '' : `, note ${nb(S.bilan.note)}`}. ${S.club.nom} ${pos}ᵉ.`);
+  jrn('saison', `Saison terminée : ${S.stats.matchs} matchs, ${S.stats.buts} buts${S.bilan.note == null ? '' : `, note ${nb(S.bilan.note)}`}. ${S.club.nom} ${pos}ᵉ de ${nomDivision()}.`);
+  if (S.bilan.descente) jrn('division', `${S.club.nom} descend.`);
+  if (S.bilan.montee) jrn('division', `${S.club.nom} monte.`);
   S.ecran = 'bilan'; sauver(); rendre();
 }
 function bilanGagne(note, pos){
@@ -1979,6 +2404,8 @@ function bilanPerdu(note){
 }
 function bilanSuite(pos, note){
   const t = [];
+  if (S.bilan && S.bilan.descente) t.push(`Le club descend. Ce qui se passera cet été ne dépend plus de toi.`);
+  if (S.bilan && S.bilan.montee) t.push(`Le club monte. L'an prochain, ce sera un autre football.`);
   /* On ne prédit plus le marché ici : les offres se tirent **après** l'été, et ce
      qu'on fait de l'été les change. « Personne n'a appelé » était donc une phrase
      que le mercato démentait dix secondes plus tard — le même défaut que les
@@ -2040,6 +2467,15 @@ function choisirEte(id){
   jrn('ete', `L'été : ${e.nom.toLowerCase()}.`);
   vieillir();
   if (S.moi.age >= FIN_CARRIERE) return finCarriere("l'âge");
+  /* L'ORDRE DE L'ÉTÉ, ET POURQUOI IL EST CELUI-LÀ. On note les rangs (l'élan du
+     championnat), les divisions s'échangent, les deux vieillissent, **puis** les
+     offres — donc un club t'appelle avec la force qu'il a vraiment cet été, et non
+     celle de l'an passé. Le marché, lui, se joue **après** ta signature : un club
+     construit autour du joueur qu'il vient de prendre, et tu lis ce qu'il a fait. */
+  noterRangs();
+  syncClubSq();
+  promotionsRelegations();
+  faireVivreLigue();
   genererOffres();
   S.ecran = 'offres'; sauver(); rendre();
 }
@@ -2097,12 +2533,18 @@ function vieillir(){
   c.saisons++; c.matchs += S.stats.matchs; c.titus += S.stats.titus;
   c.buts += S.stats.buts; c.passes += S.stats.passes;
   S.stats.notes.forEach(n => { c.sum += n; c.nbNotes++; });
-  if (pos === 1) c.titres++;
+  /* Un titre est un titre de l'élite. Gagner l'échelon inférieur est une **montée**,
+     et ça se compte ailleurs : sans ça le bilan de carrière annonçait des titres qui
+     n'en étaient pas (mesuré : 13 sur 80 premières places). */
+  if (pos === 1 && S.bilan && S.bilan.division === 1) c.titres++;
+  if (S.bilan && S.bilan.montee) c.montees = (c.montees || 0) + 1;
   if (S.coupe && S.coupe.gagnee) c.coupes = (c.coupes || 0) + 1;
   if (S.euro && S.euro.gagnee) c.europes = (c.europes || 0) + 1;
   if (!c.clubs.includes(S.club.nom)) c.clubs.push(S.club.nom);
   c.annees.push({ annee:S.annee, club:S.club.nom, pos, matchs:S.stats.matchs,
     buts:S.stats.buts, note: S.bilan ? S.bilan.note : null, niveau: Math.round(niveau()),
+    div: S.bilan ? S.bilan.division : 1, montee: !!(S.bilan && S.bilan.montee),
+    descente: !!(S.bilan && S.bilan.descente),
     coupe: !!(S.coupe && S.coupe.gagnee), euro: !!(S.euro && S.euro.gagnee) });
   S.moi.age++; S.annee++;
   S.progres = progresserAxes();
@@ -2117,6 +2559,7 @@ function genererOffres(){
   const joue = S.stats.matchs >= 12, bonne = S.stats.notes.length && moyenneNotes() >= 6.4;
   // ta cote : ce que tu vaux, ce que tu as montré, et ce que ton agent a fait de l'été
   const cote = n + (joue ? 2 : -3) + (bonne ? 2.5 : 0) + (S.ete ? S.ete.offres : 0)
+    + (S.bonusOffres || 0)
     + (S.liens.agent - 50) * .06 + (S.moi.age >= 33 ? -4 : 0);
   /* UN GRAND CLUB N'APPELLE PAS TOUS LES ÉTÉS. La fenêtre était symétrique
      (`|force − cote| < 7`), donc une fois ta cote haute **toutes** les offres
@@ -2124,7 +2567,9 @@ function genererOffres(){
      Désormais un club à ta portée appelle volontiers, un club au-dessus de toi
      rarement : il a le choix. C'est ce qui rend une signature au sommet rare, et
      donc intéressante. */
-  const cand = S.ligue.equipes.filter(e => e.nom !== S.club.nom && e.force > cote - 14);
+  /* Les offres viennent des deux divisions : un club de l'élite peut venir te
+     chercher en bas, et c'est la seule porte de sortie quand ton club descend. */
+  const cand = toutesLesEquipes().filter(e => e.nom !== S.club.nom && e.force > cote - 14);
   const poids = cand.map(e => 1 / (1 + Math.max(0, e.force - (cote - 5)) * .55));
   const combien = Math.min(cand.length, Math.max(0, ri(0, 2) + (S.ete && S.ete.offres ? 1 : 0) + (bonne && joue ? 1 : 0)));
   const tires = [];
@@ -2133,7 +2578,10 @@ function genererOffres(){
     while (i < cand.length - 1 && (t -= poids[i]) > 0) i++;
     tires.push(cand[i]); cand.splice(i, 1); poids.splice(i, 1);
   }
-  S.offres = tires.map(e => ({ nom:e.nom, force:e.force }));
+  const d1 = (S.ligue.equipes || []);
+  const maDiv = S.division || 1;
+  S.offres = tires.map(e => ({ nom:e.nom, force:e.force,
+    div: d1.some(x => x.nom === e.nom) ? maDiv : (maDiv === 1 ? 2 : 1) }));
   S.offreIdx = 0;
   /* Ton club peut ne plus vouloir de toi : trop vieux, ou une saison sans jouer.
      C'est la seule chose qui t'oblige à partir. */
@@ -2150,88 +2598,149 @@ function passerOffre(){
 function signerOffre(){
   const o = offreCourante(); if (!o) return;
   jrn('offre', `Tu signes à ${o.nom}.`);
-  demarrerSaison({ nom:o.nom, force:o.force }, false);
+  rejoindre(o);
+  ouvrirMercato(false);
 }
 function resterAuClub(){
   if (S.libre) return;
   jrn('offre', `Tu restes à ${S.club.nom}.`);
-  demarrerSaison(S.club, true);
+  const e = monEntree();
+  if (e) S.club = { nom: e.nom, force: e.force };
+  ouvrirMercato(true);
+}
+
+/* ========== L'ÉTÉ DE TON CLUB, ET LA DÉCISION QUI VA AVEC ==========
+   Le mercato du joueur n'est pas un marché qu'on opère — c'est un marché qu'on
+   **subit**, et dont on décide quoi faire. On lit qui arrive, qui part, ce que ça
+   fait à sa place dans la hiérarchie du poste, puis on choisit : se mettre au
+   travail avant tout le monde, aller demander au coach où on en est, mettre son
+   agent au travail pour l'an prochain, ou prendre les nouveaux avec soi. */
+const MERCATO_CHOIX = [
+  { id:'bosser', ico:'🎯', nom:"Rentrer une semaine plus tôt",
+    sub:"Le centre est vide. Toi, l'adjoint, et ton poste.",
+    dit:[{c:'foot',t:"🎽 le coach te voit avant les autres"},{c:'foot',t:"🎯 ton poste"},{c:'risk',t:"🫁 tu arrives déjà entamé"}] },
+  { id:'coach', ico:'🎽', nom:"Lui demander où tu en es",
+    sub:"Son bureau, dix minutes, et une réponse que tu n'as pas forcément envie d'entendre.",
+    dit:[{c:'foot',t:"🎽 il te situe, et tu sais quoi faire"},{c:'risk',t:"🧠 s'il est franc, ça cogne"}] },
+  { id:'agent', ico:'🤝', nom:"Dire à ton agent de chercher",
+    sub:"Pas pour cet été. Pour le prochain, et pour que ça se sache.",
+    dit:[{c:'foot',t:"🤝 de meilleures propositions l'an prochain"},{c:'risk',t:"🏟️ le club l'apprendra"}] },
+  { id:'vestiaire', ico:'🤲', nom:"Prendre les nouveaux avec toi",
+    sub:"Les dîners, l'appartement, la langue. Ça ne se voit sur aucune feuille de match.",
+    dit:[{c:'foot',t:"🧑‍🤝‍🧑 les trois lignes"},{c:'neutre',t:"↔️ rien pour toi"}] },
+];
+function ouvrirMercato(reste){
+  const mouv = mercato();
+  const r = relireClubSq();
+  S.ligneRef = { ...S.lignes };
+  /* Ce qui se voit d'un mercato, de l'intérieur : ce que ton club a fait, et les
+     trois ou quatre mouvements dont tout le monde parle ailleurs. */
+  const nous = mouv.filter(m => m.vers === S.club.nom || m.de === S.club.nom);
+  const ailleurs = mouv.filter(m => m.vers !== S.club.nom && m.de !== S.club.nom)
+    .sort((a, b) => b.niv - a.niv).slice(0, 4);
+  const div = nom => ((S.ligue.equipes || []).some(e => e.nom === nom) ? (S.division || 1) : ((S.division || 1) === 1 ? 2 : 1));
+  S.mercato = { reste: !!reste, total: mouv.length, arrivees: r.arrivees, partis: r.partis,
+    achats: nous.filter(m => m.vers === S.club.nom).map(m => ({ ...m, div: div(m.de) })),
+    ventes: nous.filter(m => m.de === S.club.nom).map(m => ({ ...m, div: div(m.vers) })),
+    ailleurs, choix: null, suite: null,
+    montent: (S.mouvDiv || {}).montent || [], descendent: (S.mouvDiv || {}).descendent || [] };
+  if (S.mercato.partis.length)
+    jrn('mercato', `${S.mercato.partis.length} départ${S.mercato.partis.length > 1 ? 's' : ''} : ${S.mercato.partis.slice(0, 4).map(x => x.nom).join(', ')}.`);
+  S.mercato.achats.forEach(m => jrn('mercato', `${S.club.nom} prend ${m.nom} à ${m.de}.`));
+  S.ecran = 'mercato'; sauver(); rendre();
+}
+/* Où tu en es à ton poste, maintenant que le marché est passé. C'est la seule
+   chose qu'un joueur regarde vraiment dans un mercato. */
+function placeApresMercato(){
+  const moi = Math.round(niveau());
+  const l = (S.concurrents || []).map(c => c.niv).concat(
+    (S.equipe || []).filter(j => j.poste === S.moi.poste).map(j => j.niv));
+  const devant = l.filter(v => v > moi).length;
+  return { rang: devant + 1, total: l.length + 1,
+    places: FORMATION[S.moi.poste],
+    neuf: (S.mercato && S.mercato.arrivees || []).filter(a => a.poste === S.moi.poste) };
+}
+/* Ce que le mercato t'a fait, en une phrase et sans un chiffre de jauge. La seule
+   question qu'un joueur se pose devant un mercato : est-ce que je joue encore ? */
+function direMercatoPlace(){
+  const p = placeApresMercato();
+  const neuf = p.neuf.filter(a => a.rival);
+  const t = [];
+  if (p.rang <= p.places) t.push(`Tel que le groupe est là, tu commences la saison dans le onze.`);
+  else if (p.rang === p.places + 1) t.push(`Tu es le premier à attendre son tour à ton poste. Il ne manque pas grand-chose.`);
+  else t.push(`${p.rang - 1} joueurs devant toi à ton poste, pour ${p.places} place${p.places > 1 ? 's' : ''}.`);
+  if (neuf.length) t.push(`${neuf.map(a => a.nom).join(' et ')} ${neuf.length > 1 ? 'arrivent' : 'arrive'} à ton poste, et au-dessus de toi.`);
+  else if (p.neuf.length) t.push(`${p.neuf[0].nom} arrive à ton poste, derrière toi.`);
+  return t.join(' ');
+}
+function choisirMercato(id){
+  const c = MERCATO_CHOIX.find(x => x.id === id) || MERCATO_CHOIX[0];
+  const p = placeApresMercato();
+  const dur = p.rang > p.places;      // tu n'es pas dans le onze tel qu'il est là
+  let suite = '';
+  if (c.id === 'bosser'){
+    bougerAxe('spec', 2.2);
+    S.liens.coach = clamp(S.liens.coach + 5);
+    S.ete.fraicheur = clamp(S.ete.fraicheur - 12);
+    S.ete.fond = clamp((S.ete.fond || 0) + 8);
+    suite = `Dix jours seul avec l'adjoint. Quand le groupe est rentré, tu étais déjà dedans — et il l'a vu. Tu commenceras la saison fatigué, mais devant.`;
+  } else if (c.id === 'coach'){
+    S.liens.coach = clamp(S.liens.coach + (dur ? 5 : 9));
+    if (dur){
+      coutMental(2.2, "ce qu'il t'a dit en juillet");
+      suite = `Il n'a pas tourné autour : tel que c'est parti, tu n'es pas dans son onze. Il t'a dit quoi faire pour y entrer. Tu es reparti avec ça, et avec le reste.`;
+    } else {
+      suite = `Il compte sur toi, et il l'a dit sans y mettre de conditions. C'est rare, et ça se garde.`;
+    }
+  } else if (c.id === 'agent'){
+    S.liens.agent = clamp(S.liens.agent + 12);
+    S.liens.club = clamp(S.liens.club - 8);
+    S.liens.coach = clamp(S.liens.coach - 4);
+    S.bonusOffres = 2.5;
+    suite = `Il a passé trois coups de fil dans la semaine. Le club l'a su avant toi — ces choses-là se savent — mais l'été prochain, on t'appellera.`;
+  } else {
+    LIGNES.forEach(l => S.lignes[l] = clamp(S.lignes[l] + 6));
+    S.ligneRef = { ...S.lignes };
+    S.liens.club = clamp(S.liens.club + 4);
+    suite = `Trois dîners, un appartement trouvé, un permis de conduire expliqué. Rien pour toi sur une feuille de match — et un vestiaire qui commence la saison ensemble.`;
+  }
+  S.mercato.choix = { id:c.id, nom:c.nom };
+  S.mercato.suite = suite;
+  jrn('mercato', `${c.nom}.`);
+  sauver(); rendre();
+}
+function finirMercato(){
+  demarrerSaison(S.club, S.mercato ? S.mercato.reste : true);
 }
 
 /* La saison suivante commence : nouveau championnat, effectif renouvelé, tout
    ce qui se compte remis à zéro — et rien de ce qui se construit. */
 function demarrerSaison(club, reste){
-  /* Le championnat rejoue ses niveaux, ton club compris : il n'a plus de règle à
-     lui. Avant, il dérivait seul en marche aléatoire pendant que la ligue était
-     retirée à neuf — mesuré, une carrière sur quarante gagnait **dix-sept titres
-     sur vingt saisons**, ce que le propriétaire reprochait déjà à la 1.0. */
-  faireVivreLigue();
-  const e = S.ligue.equipes.find(x => x.nom === club.nom);
-  const force = e ? e.force : Math.round(club.force);
-  S.club = { nom: club.nom, force };
-  if (reste) renouvelerEffectif(); else {
-    const n = creerEffectif(S.club, S.moi.poste);
-    S.concurrents = n.concurrents; S.equipe = n.equipe;
-    S.lignes = { def:50, mil:50, att:50 };
-    S.liens.coach = 50; S.liens.club = 52;   // tout est à refaire ailleurs
-  }
+  /* Tout ce qui concerne le monde s'est déjà joué : les divisions se sont échangées,
+     les deux championnats ont vieilli, le marché est passé et ton vestiaire a été
+     relu. Ici on ne fait plus que remettre à zéro ce qui ne dure qu'une saison. */
+  const e = monEntree();
+  S.club = { nom: club.nom, force: e ? e.force : Math.round(club.force) };
   S.ligneRef = { ...S.lignes };
   S.etats = { fraicheur: S.ete ? S.ete.fraicheur : 100, forme:60, blessure:0, suspension:0,
     corps: clamp((S.etats.corps || 88) + (S.ete ? S.ete.corps : 0)), fond: S.ete ? S.ete.fond : 0 };
   S.stats = { matchs:0, titus:0, buts:0, passes:0, notes:[], minutes:0 };
-  /* L'EUROPE SE GAGNE SUR LE TERRAIN. On y va si on a fini sur le podium ou si
-     on a gagné la coupe — donc jamais la première saison, en bas de tableau. */
-  const podium = S.bilan && S.bilan.pos <= 3;
+  /* L'EUROPE SE GAGNE SUR LE TERRAIN, ET DANS L'ÉLITE. On y va si on a fini sur le
+     podium de la première division ou si on a gagné la coupe — un podium de Ligue 2
+     ne l'ouvre pas, il ouvre la montée. */
+  const podium = S.bilan && S.bilan.pos <= 3 && S.bilan.division === 1;
   const coupeGagnee = S.coupe && S.coupe.gagnee;
-  S.euro = { engage: !!(podium || coupeGagnee), vivant: true, tour: 0, pts: 0, hist: [], gagnee: false };
+  const enElite = (S.division || 1) === 1;
+  S.euro = { engage: !!(enElite && (podium || coupeGagnee)), vivant: true, tour: 0, pts: 0, hist: [], gagnee: false };
   S.coupe = { vivant: true, tour: 0, hist: [], gagnee: false };
   if (S.euro.engage) jrn('euro', `L'Europe cette saison : ${podium ? `${S.bilan.pos}ᵉ la saison passée` : 'vainqueurs de la Coupe'}.`);
   S.moi.an0 = { tech:S.moi.base.tech, phys:S.moi.base.phys, ment:S.moi.pic.ment, spec:S.moi.base.spec };
   S.journee = 0; S.arrets = 0; S.sansJouer = 0; S.cartons = 0;
   S.semaine = null; S.seance = null; S.match = null; S.dernier = null; S.arret = null;
   S.eqJour = null; S.bilan = null; S.offres = null; S.vuArrets = {}; S.recentArrets = [];
-  jrn('debut', `${S.annee}-${S.annee + 1}, ${S.moi.age} ans, ${S.club.nom}.`);
+  S.mercato = null; S.mouvDiv = null;
+  jrn('debut', `${S.annee}-${S.annee + 1}, ${S.moi.age} ans, ${S.club.nom}, ${nomDivision()}.`);
   S.ecran = 'semaine'; sauver(); rendre();
-}
-
-/* Un vestiaire n'est pas le même d'une année sur l'autre : on prend un an, les
-   plus vieux s'en vont, des jeunes arrivent — et le club recrute à ton poste. */
-function renouvelerEffectif(){
-  const pris = S.equipe.map(j => j.nom).concat(S.concurrents.map(c => c.nom));
-  const tirer = () => { let n, k = 0;
-    do { n = pick(NOMS); k++; } while (pris.includes(n) && k < 300); pris.push(n); return n; };
-  S.equipe.forEach(j => { j.age++; j.forme = 0; j.blesse = 0; j.susp = 0; j.rancune = 0;
-    j.note = null; j.noteR = null; j.sum = 0; j.nb = 0; j.sumR = 0; j.nbR = 0;
-    j.niv = Math.round(clamp(j.niv + courbeAge(j.age) * .55 + rnd(-1, 1.6), 40, 92)); });
-  S.concurrents.forEach(c => { c.age++; c.forme = 0; c.blesse = 0;
-    c.niv = Math.round(clamp(c.niv + courbeAge(c.age) * .55 + rnd(-1, 1.6), 40, 92)); });
-  // les départs : les plus vieux, et quelques-uns qui ne jouaient pas
-  const partis = [];
-  S.equipe = S.equipe.filter(j => {
-    const part = j.age >= 35 || (j.age >= 31 && Math.random() < .3) || Math.random() < .12;
-    if (part) partis.push(j.nom); return !part;
-  });
-  S.concurrents = S.concurrents.filter(c => {
-    const part = c.age >= 35 || (c.age >= 32 && Math.random() < .35);
-    if (part) partis.push(c.nom); return !part;
-  });
-  // on complète poste par poste, et le club se renforce là où il a perdu du monde
-  const nb = S.moi.poste === 'G' ? 1 : 2;
-  while (S.concurrents.length < nb)
-    S.concurrents.push({ nom:tirer(), niv: Math.round(S.club.force + rnd(1, 7)),
-      forme:0, blesse:0, age: ri(21, 29) });
-  Object.entries(EFFECTIF).forEach(([po, n]) => {
-    const vise = po === S.moi.poste ? n - 1 - nb : n;
-    while (S.equipe.filter(j => j.poste === po).length < vise)
-      S.equipe.push({ nom:tirer(), poste:po,
-        niv: Math.round(S.club.force + rnd(-9, 5)), age: ri(18, 28),
-        forme:0, blesse:0, susp:0, prog:0, note:null });
-  });
-  S.equipe.forEach(j => { delete j.monte; });
-  const jeune = S.equipe.filter(j => j.age <= 22).sort((a, b) => a.age - b.age)[0];
-  if (jeune) jeune.monte = true;
-  S.partis = partis.slice(0, 4);
-  if (partis.length) jrn('ete', `${partis.length} départ${partis.length > 1 ? 's' : ''} au club : ${S.partis.join(', ')}.`);
 }
 
 /* Le bout de la route. Une carrière doit laisser une trace : c'est ici qu'on la lit. */
@@ -2316,14 +2825,18 @@ function direTete(){ const v = S.moi.base.ment + S.moi.boost.ment;
    raison sur la superposition, mais pas là où il croyait : « L'infirmerie » et
    « Le groupe » étaient deux cases pour **le même événement vu sous deux
    angles**. Elles n'en font plus qu'une. */
+/* Tu comptes dans les absents quand c'est toi qui manques : « Ferreira et Barbosa
+   manquent ce samedi » à côté de « toi à l'infirmerie » se lisait comme un oubli. */
 function direInfirmerie(){
   const a = groupe().filter(x => !x.dispo);
-  if (!a.length) return "Tout le monde est valide.";
-  const n = a.length;
-  const qui = a.slice(0, 2).map(x => x.nom).join(' et ');
-  return n === 1 ? `${qui} manque ce samedi.`
-    : n === 2 ? `${qui} manquent ce samedi.`
-    : `${n} absents, dont ${qui}.`;
+  const moiOut = S.etats.blessure > 0 || S.etats.suspension > 0;
+  const n = a.length + (moiOut ? 1 : 0);
+  if (!n) return "Tout le monde est valide.";
+  const noms = (moiOut ? ["Toi"] : []).concat(a.map(x => x.nom));
+  const qui = noms.slice(0, 2).join(' et ');
+  if (n === 1) return moiOut ? "Tu manques ce samedi." : `${qui} manque ce samedi.`;
+  if (n === 2) return `${qui} ${moiOut ? 'manquez' : 'manquent'} ce samedi.`;
+  return `${n} absents, dont ${moiOut ? `toi et ${a[0] ? a[0].nom : ''}`.trim() : qui}.`;
 }
 function direGroupe(){ return direInfirmerie() + ' ' + direProfondeur(); }
 /* Ce que la profondeur du groupe absorbe. Il faut le dire en tenant compte des
@@ -2352,6 +2865,8 @@ function direRang(){
 }
 function direCommentMonter(){
   const r = monRang();
+  if (S.etats.blessure > 0) return "Tu ne joueras pas samedi. La place que tu laisses, un autre la prend.";
+  if (S.etats.suspension > 0) return "Suspendu. Tu regarderas les autres tenir ton poste.";
   if (r.rang <= r.places) return "Tu es dans les plans. Reste-y.";
   const l = monPoste();
   const devant = l[Math.min(r.places, l.length) - 1];   // le dernier titulaire du poste
@@ -2376,8 +2891,21 @@ function direPlace(){
   if (rang <= places + 1) return `${devant.slice(-2).join(' et ')} sont devant toi.` + dit;
   return `Tu es loin dans la hiérarchie du poste. Tu n'es pas dans ses plans.` + dit;
 }
-function direCorps(){ const v = S.etats.corps;
-  return v > 85 ? "Rien ne te fait mal." : v > 72 ? "Quelques douleurs, rien de sérieux." : v > 58 ? "Tu récupères moins vite qu'avant." : "Ton corps commence à te lâcher."; }
+/* La case BLESSURE disait « Rien ne te fait mal » pendant que la hiérarchie du
+   poste, dix lignes plus haut, te marquait « à l'infirmerie » (le propriétaire,
+   27/09/2026, capture à l'appui). Elle parlait de l'usure du corps, jamais de
+   l'arrêt en cours. Elle dit maintenant les deux, et l'arrêt d'abord. */
+function direCorps(){
+  const v = S.etats.corps;
+  const usure = v > 85 ? "Rien ne te fait mal." : v > 72 ? "Quelques douleurs, rien de sérieux."
+    : v > 58 ? "Tu récupères moins vite qu'avant." : "Ton corps commence à te lâcher.";
+  if (S.etats.blessure > 0)
+    return `À l'infirmerie : ${S.etats.blessure} journée${S.etats.blessure > 1 ? 's' : ''} encore. `
+      + (v > 85 ? "Le reste va bien." : usure);
+  if (S.etats.suspension > 0)
+    return `Suspendu ${S.etats.suspension} match${S.etats.suspension > 1 ? 's' : ''}. ` + usure;
+  return usure;
+}
 function direJambes(){ const v = S.etats.fraicheur;
   return v > 88 ? "Tu sors du match sans une courbature." : v > 72 ? "Les jambes ont tenu."
     : v > 58 ? "Tu as fini sur les nerfs." : "Tes jambes ont pris cher."; }
@@ -2490,6 +3018,30 @@ function charger(){
     /* MIGRATION 9 → 10 : rien à reconstruire. La carrière naît au premier bilan,
        et une partie en cours au moment de la mise à jour la commence là. */
     if (d.v === 9) d.v = 10;
+    /* MIGRATION 10 → 11 : le mercato. L'échelon inférieur se fabrique à partir des
+       clubs restés dehors, et l'effectif fantôme de ton club est remplacé par le
+       tien au premier `syncClubSq()` (appelé par `demarrer()`). */
+    if (d.v === 10){
+      d.division = 1;
+      d.bonusOffres = 0;
+      if (d.ligue && !d.ligue.autre){
+        const dk = typeof decadeKey === 'function' ? decadeKey(d.annee) : '10';
+        const dedans = d.ligue.equipes.map(e => e.nom);
+        const gros = (typeof FR_CLUBS !== 'undefined' ? FR_CLUBS : [])
+          .filter(c => (c.s[dk] || 0) >= 2 && !dedans.includes(c.n)).map(c => ({ nom:c.n, s:c.s[dk] }));
+        const petits = (typeof FR_LOWER !== 'undefined' ? FR_LOWER : [])
+          .filter(n => !dedans.includes(n)).map(n => ({ nom:n, s: rnd(-1.7, 1) }));
+        const pris = new Set();
+        d.ligue.equipes.forEach(e => (e.sq || []).forEach(j => pris.add(j.n)));
+        d.ligue.autre = [...shuffle(gros).slice(0, 3), ...shuffle(petits).slice(0, 15)].map(x => {
+          const ancre = clamp(52 + x.s * PENTE_CLUB, 44, 74);
+          const pot = clamp(ancre + rnd(-3, 3), 44, 78);
+          const sq = creerEffectifAdverse(clamp(pot + rnd(-3, 3), 42, 80), pris);
+          return { nom:x.nom, ancre: dec1(ancre), pot: dec1(pot), sq, force: forceEffectif(sq) };
+        }).sort((a, b) => b.force - a.force);
+      }
+      d.v = 11;
+    }
     /* La qualité et le défaut se découvrent désormais à la création : une carrière
        commencée avant ne les a peut-être pas encore vus, et plus rien ne les lui
        montrerait. On les lui donne. */

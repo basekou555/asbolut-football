@@ -1027,8 +1027,109 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     eux, sont justes (11,6 buts pour un attaquant, 5,3 pour un milieu, 1,3 pour un défenseur) : c'est
     donc le nombre de buts d'une **équipe dominante** qui gonfle, pas la part que tu en prends. Le
     levier serait `tameXG`, et il touche tous les scores : à mesurer avant d'y toucher.
-- **Ce qui n'est pas encore là** : la vie et ses chantiers, la boutique, le mercato (montantes,
-  descentes et transferts entre clubs), la sélection nationale, le mode entraîneur·euse. (La trêve, les offres, la progression
+- **LE MERCATO** (le propriétaire, 27/09/2026 : « vas-y pour le mercato »). C'était la dernière
+  pièce manquante du monde, et elle a commencé par en révéler une autre : **ton club avait deux
+  effectifs**. `S.ligue.equipes` lui donnait vingt-deux joueurs fantômes, vieillis et « transférés »
+  comme ceux des autres, et sa force en découlait — pendant que tes vrais coéquipiers étaient tirés
+  de cette force. Deux populations pour un seul vestiaire, dont une que tu ne verrais jamais.
+  On ne peut transférer que des gens qui existent : il fallait donc les fusionner d'abord.
+  - **Une seule population.** `syncClubSq()` écrit ton vestiaire dans l'effectif de ton club (toi
+    compris, marqué `moi`), `relireClubSq()` le relit après l'été : ceux qui restent **gardent leur
+    objet**, donc leur âge, leurs notes, leur histoire ; ceux qui partent disparaissent ; les
+    arrivants naissent là. Le partage rivaux / coéquipiers se refait chaque été, donc une recrue peut
+    passer devant toi et un rival qui décline redevient un coéquipier.
+  - **Un transfert a un nom, un club de départ et un club d'arrivée.** `mercato()` fait acheter ceux
+    qui ont besoin et vendre ceux qui sont au-dessus de ce qu'ils visent ; un club plus fort se sert
+    chez un plus petit, un club qui doit vendre perd son meilleur. Mesuré : **82 mouvements par été**
+    sur les deux divisions, dont **3,5 pour ton club**. Et quand tu signes ailleurs, **tes nouveaux
+    coéquipiers sont les joueurs de ce club** — ceux dont tu lisais les noms au classement et dans
+    les buts encaissés — et non un effectif tiré au sort pour l'occasion.
+  - **Les ventes forcées, indispensables.** Sans elles le marché ne pousse que vers le haut (un club
+    qui a besoin achète, un club qui a de trop ne fait rien) : mesuré, **la moyenne du championnat
+    montait de six points en dix saisons**. Un club qui doit vendre vend donc son meilleur, à un
+    preneur s'il s'en présente, à l'étranger sinon.
+  - **Trois entrées et trois sorties par club et par été** (`MOUV_PAR_CLUB`). Sans plafond, un club
+    très au-dessus de ce qu'il vise vend tout d'un coup : mesuré, **quatorze départs et quatorze
+    gamins du centre en un seul mercato**, l'écran illisible et l'effectif calibré de la première
+    saison effacé. Et le joueur **poussé dehors par une recrue a un nom** : il disparaissait en
+    silence, ce qui fabriquait des départs sans départ.
+  - **L'écran du mercato** (`ecranMercato`) : ce que le club a fait (arrivées et départs nommés, avec
+    le club d'en face et sa division), **ta place** après coup, les montées et descentes, le mercato
+    des autres en repli — puis **une décision** : rentrer une semaine plus tôt, aller demander au
+    coach où tu en es, mettre ton agent au travail pour l'an prochain, ou prendre les nouveaux avec
+    toi. Chacune a un effet tout de suite et un qui dure, aucune n'a les deux. Et après le clic,
+    l'écran dit ce que ça a produit avant de lancer la saison.
+- **LES MONTÉES ET LES DESCENTES.** Deux divisions existent (`S.ligue.equipes` est **toujours celle
+  où tu joues**, `S.ligue.autre` l'autre) ; on ne simule que ton classement, et ce qui ne se joue pas
+  se tire au sort pondéré par la force. Les trois derniers de l'élite descendent, les trois premiers
+  de l'échelon inférieur montent — et **si c'est ton club, tu descends avec lui** et la saison
+  suivante se joue là, avec le même moteur. Signer dans l'autre division change ta division aussi.
+  Mesuré, 393 saisons : **16 descentes, 12 montées, 30 saisons passées en bas**. Une place de milieu
+  de tableau cesse d'être décorative, et l'Europe ne s'ouvre qu'en première division.
+  - **La prime de l'élite** (`PRIME_ELITE`, 6 points de potentiel). Sans elle, l'échange annuel
+    gonflait le championnat : l'élite troquait chaque été ses trois plus faibles contre les trois
+    meilleurs d'en dessous, dont les potentiels étaient les mêmes — **+5 points de moyenne en dix
+    saisons** (mesuré). Un club de l'élite a plus d'argent, il le perd en descendant, et l'échange
+    redevient neutre. C'est aussi ce qui donne à une descente son poids.
+  - **Un titre est un titre de l'élite** : gagner l'échelon inférieur est une **montée**, comptée à
+    part (`carriere.montees`). Sans ça le bilan de carrière annonçait des titres qui n'en étaient
+    pas — mesuré, 13 sur 80 premières places.
+- **LA FORCE D'UN CLUB EST LA MOYENNE DE SON ONZE, Y COMPRIS LE TIEN — ET C'EST TON CLUB DE DÉPART
+  QUI S'ADAPTE.** `creerEffectif()` tirait ses titulaires à `force + 2 à 8` : la moyenne du onze
+  valait cinq points de plus que la force annoncée. Tant que ton club avait deux effectifs, personne
+  ne s'en apercevait — le moteur de match lisait la force et ignorait l'effectif. Depuis qu'il n'en a
+  plus qu'un, cette moyenne **est** sa force, et ta carrière démarrait six places plus haut. Deux
+  pistes mesurées et abandonnées : **centrer l'effectif** comme chez les autres clubs donne 17,3
+  titularisations à dix-huit ans au lieu de 10,2 (tes rivaux tombent à ton niveau) ; **compenser
+  ailleurs dans l'effectif** préserve les titularisations mais fabrique un club bancal et te fait
+  entrer dans le groupe trop facilement (29 matchs au lieu de 25). La bonne réponse ne touche ni l'un
+  ni l'autre : **on démarre dans un club plus faible**, les quatre derniers du championnat au lieu
+  des huit derniers. Mesuré après : première saison **10ᵉ place, club à 52,7** contre 13,9ᵉ et 50,1.
+- **CE QUE LE MARCHÉ A CHANGÉ À L'ÉQUILIBRE, MESURÉ.** 45 carrières de vingt saisons avant et après :
+  | | avant (`e7e5568`) | après |
+  |---|---|---|
+  | champions différents sur 20 saisons | 6,0 | **6,7** |
+  | titre conservé d'une année sur l'autre | 43 % | **40 %** |
+  | écart de ton club à la moyenne, 10ᵉ saison | +9,5 | **+6,5** |
+  | tes titres par saison jouée | 0,235 | **0,266** |
+  Le championnat change plus souvent de mains et ton club domine moins ; en revanche tu gagnes 13 %
+  de titres en plus, parce que les offres te parviennent désormais avec la force **réelle** des clubs
+  de cet été-là (le championnat vit avant le mercato, et non après ta signature) et parce qu'un club
+  construit autour de toi. Première version du `vise` ancrée sur le seul potentiel : le haut du
+  tableau se comprimait et le chiffre montait à **+36 %** ; une mémoire partielle
+  (`force × .45 + pot × .55`) le ramène à +13 % sans rendre au champion sa rente.
+  **L'arbitrage de la semaine tient** aux trois croisements : l'or des matchs et l'or de la trace
+  restent sur deux lignes différentes. « Deux séances puis un repos » garde les matchs et les
+  titularisations sur deux croisements ; sur le troisième « lever le pied » passe devant de 1,2 match
+  — la bande de bruit du banc à 40 saisons est de ±1,6.
+  **Migration 10 → 11**, vérifiée sur une vraie partie de la version déployée (17ᵉ journée) : l'échelon
+  inférieur se fabrique avec les clubs restés dehors, l'effectif fantôme est remplacé par le tien au
+  chargement, la saison se termine, la trêve passe, le joueur signe **dans l'autre division** et
+  rejoue une saison entière. 36 clubs, zéro doublon de nom, zéro effectif mal formé.
+- **LE SCORE NE PEUT PLUS CONTREDIRE LE FILM** (le propriétaire, 27/09/2026, capture à l'appui : un
+  3-0 dont le film ne montrait que deux buts). Trois endroits ajoutaient ou retiraient un but **sans
+  toucher aux événements** : un fait de match réussi (`m.bn++`, donc un but au score qui n'apparaissait
+  nulle part — et quand c'était ta passe qui l'avait servi, le buteur ne recevait rien non plus), une
+  sortie de gardien ratée (`m.be++`), et un penalty arrêté (`m.be--`, qui effaçait un but que le film
+  montrait encore). Les trois passent maintenant par un événement réel : le fait de match crée « Ton
+  but » ou « But de X, sur ta passe », la sortie ratée crée un but adverse nommé, et le penalty arrêté
+  **retire** le but qu'il arrête et le remplace par « Penalty pour X — tu l'arrêtes ». Septième
+  invariant ajouté au tableau : **le score vaut les buts du film, 0 écart sur 2 040 matchs** (25 avant
+  correction).
+- **UNE BLESSURE A UNE CAUSE, ET TU N'ES PLUS « VALIDE » À L'INFIRMERIE** (le propriétaire,
+  27/09/2026 : « je trouve que je me blesse sans explication », capture où la case BLESSURE dit
+  « Rien ne te fait mal » pendant que la hiérarchie du poste, dix lignes plus haut, te marque
+  *à l'infirmerie*). Trois corrections :
+  1. le tirage de blessure avait déjà trois causes — le fond qu'on s'est construit, les ischios quand
+     c'est ton défaut, les jambes vides — mais l'écran n'en disait aucune. On garde **celle qui pesait
+     le plus lourd** et on l'écrit : « Tu as fini le match sur les jambes », « Encore cette gêne
+     derrière la cuisse », « Un appui qui part de travers, personne autour » ;
+  2. la case **BLESSURE** parlait de l'usure du corps, jamais de l'arrêt en cours : elle dit
+     maintenant les deux, et l'arrêt d'abord (« À l'infirmerie : 3 journées encore ») ;
+  3. **tu comptes dans les absents** quand c'est toi qui manques (« Toi et Diallo manquez ce
+     samedi »), et « Ta place » ne te conseille plus de rester dans les plans quand tu ne joueras pas.
+- **Ce qui n'est pas encore là** : la vie et ses chantiers, la boutique, la sélection nationale,
+  le mode entraîneur·euse. (La trêve, les offres, la progression
   d'une saison sur l'autre et l'usure sont livrées — voir « La carrière continue ».) Les **contenus** sont volontairement repoussés après le moteur (décision du propriétaire) :
   un contenu n'est une donnée qu'une fois les quatre canaux d'impact et le `ctx` figés. Les quatre
   `ARRETS` et les huit `MOMENTS` en place sont des marqueurs de forme, pas le contenu final.
