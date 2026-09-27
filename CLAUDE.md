@@ -219,27 +219,48 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
   l'infirmerie ». **Effet secondaire mesuré, et important** : « toujours lever le pied » n'est plus
   la meilleure politique nulle part (11 à 14 matchs, contre 15 à 18 pour « deux séances puis un
   repos ») — quand il faut dépasser quelqu'un, ne rien travailler te laisse derrière lui.
-- **Le mental ne se voyait pas, donc il n'existait pas** (le propriétaire, même jour : « on a mis que
-  ça permet d'encaisser un mauvais soir, mais c'est pas palpable dans le jeu. Qu'est-ce qu'un mauvais
-  soir, et comment le mental vient limiter cet impact ? C'est pas clair, c'est pour ça que je n'étais
-  pas sûr du choix »). Il avait raison : le mental amortissait un aléa (`aleaNote()`) que le joueur ne
-  voit jamais. Un « mauvais soir » est maintenant **une situation nommée, datée et affichée** :
-  1. Chaque fait de match reçoit `f.chaud` — vous êtes menés **après la 55ᵉ**, ou c'est une fin de
-     match à un but près. (Sans le seuil de la 55ᵉ, sept faits sur dix étaient « chauds » et le mot
-     ne voulait plus rien dire ; mesuré à 5,2-5,8 par saison après.) Le contexte s'affiche **avant le
-     clic** (« Vous êtes menés et il ne reste presque plus rien »), suivi de `direTete()`, qui dit ce
-     que ta tête va en faire (« Le stade hurle et tu ne l'entends plus » / « Tu as déjà vécu ça »).
-  2. Un moment chaud coûte **12 points de réussite**, et le mental les rend ou les aggrave :
-     `pression = .12 × (1 − encaisse())`.
-  3. Rater un fait chaud peut te faire **perdre le fil** : `0,5 − encaisse() × .42`. C'est une ligne
-     dans le film du match (« 🌫️ Tu as perdu le fil — vingt minutes à côté de la partie »), −0,5 sur
-     la note, et une ligne dans « ce que ça change ». Tenir un moment chaud vaut +0,25.
-  4. Quand le mental amortit la chute de confiance du coach, **on le dit** (`m.amortiCoach`) :
-     « Mauvais soir, mais tu n'as rien lâché : le coach t'en tient moins rigueur. »
-  Mesuré à **niveau égal** (la première sonde comparait des joueurs de niveaux différents et ne
-  montrait rien — les autres axes ont été ajustés pour garder `niveau()` constant), 60 saisons par
-  ligne : l'écart de réussite entre un fait chaud et un fait froid passe de **−12 points à mental 35
-  à −2 à mental 80**, et le risque de perdre le fil après un raté chaud descend de **64 % à 24 %**.
+- **LE MENTAL EST UNE RÉSERVE QUI SE VIDE ET QU'ON RECHARGE** (le propriétaire, 27/09/2026, après
+  avoir jugé ma première version invisible : « le mental doit encaisser tous les mauvais choix. Il y
+  a un fait de match, je tire au lieu de faire la passe, ça me retire un point. Un fait extérieur au
+  foot, une mauvaise nouvelle, je perds un point. **Si je veux les regagner, il faut que je
+  m'entraîne.** Et plus le mental est fort, moins les événements ont d'effet »). Sa définition est
+  meilleure que la mienne, qui amortissait un aléa (`aleaNote()`) que le joueur ne voit jamais.
+  Trois règles, et une seule porte : `coutMental(pts, raison)`.
+  1. **Il se dépense.** Un fait de match raté coûte 1,1 (1,8 si le moment était chaud), perdre le fil
+     2, une note sous 5,6 coûte 1,7, un rouge 2,2, une blessure 2,2, et les arrêts qui portent un
+     `axes.ment` négatif passent par la même porte. Chaque perte garde **sa raison**, affichée après
+     le match : « Tu rumines : « Presser », à la 85ᵉ, un match que tu voudrais oublier. »
+  2. **Plus il est haut, moins il descend** : `perte × (1 − clamp(encaisse(), −.5, .8))`. Le mental
+     amortit sa propre usure, exactement comme il le demandait.
+  3. **Seule la séance mentale le répare vraiment.** `S.moi.pic` retient le plus haut atteint par
+     chaque axe ; tant que la réserve est sous son pic, la séance mentale rend `REPARE_TETE`=2,6 par
+     séance au lieu des 0,2 de la trace ordinaire — **retrouver la tête qu'on avait est rapide,
+     devenir plus solide qu'on ne l'a jamais été reste lent.** Une petite récupération naturelle
+     (+0,12 par journée, jamais au-delà du pic) empêche la spirale sans rendre la séance inutile.
+  **Deux pièges trouvés à la mesure, et comment ils ont été fermés** :
+  - *La spirale.* Le mental comptait dans `niveau()` (jusqu'à .30 du poids d'un gardien), donc chaque
+    coup dur faisait perdre la place, et ne plus jouer coûtait encore du mental : mesuré, **6 à 13
+    matchs par saison au lieu de 15 à 18**, et « toujours le mental » redevenait la seule politique
+    tenable. Le retirer complètement de `niveau()` était pire — il compensait l'axe faible de
+    certaines origines, et un défenseur du quartier tombait à **4,5 matchs et 3,4 de moyenne**. La
+    solution : **`niveau()` lit `pic.ment`** (ce que tu vaux quand tu vas bien) et la réserve du
+    moment ne pilote que la pression, l'amorti et la lucidité. Les quatre poids du poste restent
+    intacts, donc tout le calibrage antérieur aussi. Et **rester sur le banc ne coûte plus de
+    mental** : c'était le bout qui refermait la boucle sur elle-même.
+  - *Le calibrage croisé.* Récupération naturelle posée à +0,35 alors que les coûts venaient d'être
+    divisés par deux : la réserve ne descendait plus du tout, aucune séance de réparation ne se
+    déclenchait en une saison entière. Mesuré après correction (30 saisons par ligne) : sans
+    entretien le mental perd **8 à 13 points** sur une saison ; « toujours le mental » le remonte
+    au-dessus du départ avec **11,2 séances de réparation**, et ne domine pas pour autant (15,5
+    matchs contre 17,3 pour « toujours ton poste »).
+  Le **banc d'essai** sépare désormais les deux natures : la colonne **trace** ne compte que ce qui
+  se construit (technique + physique + poste) et la colonne **tête** montre la réserve restante.
+  Trois colonnes, trois gagnants différents — la tête à « toujours le mental » (67 contre 57-60), la
+  trace à « toujours la technique » (+7,7), les matchs à « toujours ton poste » (15,8).
+  Ce que la première version avait apporté et qui **reste** : un fait de match est `chaud` quand vous
+  êtes menés après la 55ᵉ ou dans une fin à un but près, le contexte s'affiche avant le clic suivi de
+  `direTete()`, la pression coûte 12 points de réussite amortis par le mental, et perdre le fil
+  s'écrit dans le film du match.
 - **Le banc d'essai (`v2/labo.html`)**, demandé par le propriétaire : « le tableau que tu m'as
   partagé, je sais pas ce que ça représente… j'aimerais bien aussi que je puisse faire [les
   simulations] sur le nombre de matchs en fonction des choix qu'on a fait. » La page rejoue des

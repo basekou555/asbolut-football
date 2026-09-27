@@ -14,7 +14,7 @@
    - tout ce qui arrive est écrit dans `S.journal`, seule mémoire du jeu.
    ============================================================ */
 
-const VERSION = 3;   // les concurrents au poste n'existaient pas en v2
+const VERSION = 4;   // le mental devient une réserve : `pic` et `coupsTete` sont neufs
 let S = null;
 /* Mis à true par le banc d'essai (labo.html) : les milliers de saisons qu'il
    simule ne doivent pas écraser la carrière rangée dans localStorage. */
@@ -93,6 +93,9 @@ const AXES = ['tech', 'phys', 'ment', 'spec'];
    de la semaine n'en était pas un. */
 const BOOST_SEANCE = 3.5;
 const TRACE_SEANCE = .55;
+/* Ce qu'une séance mentale répare quand la saison t'a entamé : beaucoup plus que
+   ce qu'elle construit, parce que réparer n'est pas progresser. */
+const REPARE_TETE = 2.6;
 const AXE_NOM = { tech:"Technique", phys:"Physique", ment:"Mental", spec:"Au poste" };
 /* « Au poste » est un nom de code : à l'écran, c'est Vision, Finition, Réflexes
    ou Placement, selon le poste. */
@@ -113,6 +116,12 @@ function nouvellePartie(c){
      effacer d'où tu viens. Borné par le départ réel pour que la qualité et le
      défaut tirés restent sous lui sans le contredire. */
   const socle = {}; AXES.forEach(a => socle[a] = Math.min(50 + (c.origine.axes[a] || 0), base[a]));
+  /* Le mental est le seul axe qui **se dépense** : chaque coup dur en retire, et
+     seule la séance mentale le répare. Il lui faut donc de la place pour
+     descendre — douze points sous le socle des autres. Le preset tient quand
+     même : un joueur parti de 60 ne tombera jamais où tombe un joueur parti de 40. */
+  socle.ment -= 12;
+  const pic = { ...base };   // le plus haut atteint par chaque axe ; on y revient vite
   const liens = { coach:50, vestiaire:50, club:50, supporters:45, agent:50, selection:0 };
   Object.entries(c.origine.liens || {}).forEach(([k, v]) => liens[k] = clamp(liens[k] + v));
 
@@ -137,7 +146,7 @@ function nouvellePartie(c){
     v: VERSION, mode: 'joueur', annee: c.annee,
     moi: { nom: c.nom, poste: poste.id, posteNom: poste.nom, specNom: poste.spec,
       age: 18, base, boost: { tech:0, phys:0, ment:0, spec:0 }, plafond, socle,
-      u0: c.origine.u0, origine: c.origine.id, ambition: c.ambition.id,
+      u0: c.origine.u0, origine: c.origine.id, ambition: c.ambition.id, pic,
       qual: { id:q.id, vu:false }, def: { id:f.id, vu:false },
       histo: {} },
     club: { nom: club.nom, force: club.force }, concurrents,
@@ -187,6 +196,7 @@ function plafondReel(a){
 function bougerAxe(a, d){
   const v = clamp(S.moi.base[a] + d);
   S.moi.base[a] = d < 0 ? Math.max(v, S.moi.socle[a] == null ? 0 : S.moi.socle[a]) : v;
+  if (S.moi.pic) S.moi.pic[a] = Math.max(S.moi.pic[a], S.moi.base[a]);
 }
 /* Ce que le mental porte : encaisser. Renvoie −1 (on prend tout de plein fouet)
    à +1 (rien ne t'atteint vraiment). Amortit les mauvaises notes, les liens qui
@@ -194,9 +204,34 @@ function bougerAxe(a, d){
 function encaisse(){
   return clamp(((S.moi.base.ment + S.moi.boost.ment) - 50) / 45, -1, 1);
 }
+/* LE MENTAL SE DÉPENSE. Chaque mauvais choix, chaque mauvaise nouvelle en retire,
+   et **plus il est haut, moins il en retire** : c'est lui qui amortit sa propre
+   usure. Seule la séance mentale le répare. C'est la définition donnée par le
+   propriétaire le 27/09/2026 : « le mental doit encaisser tous les mauvais choix.
+   Je tire au lieu de faire la passe, ça me retire un point. Une mauvaise nouvelle
+   hors foot, je perds un point. Si je veux les regagner, il faut que je
+   m'entraîne. Plus le mental est fort, moins les événements ont d'effet. » */
+function coutMental(pts, raison){
+  const amorti = clamp(encaisse(), -.5, .8);
+  const avant = S.moi.base.ment;
+  bougerAxe('ment', -pts * (1 - amorti));
+  const reel = avant - S.moi.base.ment;
+  if (reel > .2 && raison){ S.coupsTete = S.coupsTete || []; S.coupsTete.push(raison); }
+  return reel;
+}
+/* Le niveau lit le mental par son **pic** — ce que tu vaux quand tu vas bien —
+   et non par la réserve du moment. Sinon chaque coup dur te ferait perdre ta
+   place, et une spirale s'installait : mesuré, 6 à 13 matchs par saison au lieu
+   de 15 à 18, et « toujours le mental » redevenait la seule politique tenable.
+   Le retirer complètement du niveau était pire encore : il compensait l'axe
+   faible de certaines origines, et un défenseur du quartier tombait à 4 matchs
+   et 3,4 de moyenne. Le pic garde les quatre poids du poste intacts, donc tout
+   le calibrage antérieur aussi. La réserve du moment, elle, agit là où le
+   mental doit agir : la pression, l'amorti des coups, la lucidité. */
 function niveau(){
   const p = POSTES.find(x => x.id === S.moi.poste);
-  let n = 0; AXES.forEach(a => n += p.w[a] * (S.moi.base[a] + S.moi.boost[a]));
+  let n = 0;
+  AXES.forEach(a => n += p.w[a] * ((a === 'ment' ? S.moi.pic.ment : S.moi.base[a]) + S.moi.boost[a]));
   return n;
 }
 function niveauJour(){
@@ -241,7 +276,13 @@ function choisirSemaine(id){
     const tirage = pick([.4, .4, 1, 1, 1, 1.6]) * rende;
     const r = tirage * marge;
     S.moi.boost[a] += BOOST_SEANCE * tirage * acquis;
-    bougerAxe(a, TRACE_SEANCE * r);
+    /* Retrouver la tête qu'on avait est rapide ; devenir plus solide qu'on ne
+       l'a jamais été reste lent. `pic` retient le plus haut atteint. */
+    const manque = S.moi.pic[a] - S.moi.base[a];
+    if (a === 'ment' && manque > .5){
+      bougerAxe(a, Math.min(REPARE_TETE * tirage, manque));
+      S.seanceRepare = true;
+    } else bougerAxe(a, TRACE_SEANCE * r);
     S.seance = {
       axe: a,
       mot: tirage >= 1.3 * rende ? "excellente" : tirage >= .7 * rende ? "correcte" : "pour rien",
@@ -252,7 +293,9 @@ function choisirSemaine(id){
       terrain: acquis >= .6,
     };
     /* Le compte rendu doit apprendre la règle en la faisant sentir, sans chiffre. */
-    if (S.seance.plafond) S.seance.texte += ` À ce niveau-là tu ne progresses plus vraiment, mais c'est prêt pour samedi.`;
+    if (S.seanceRepare){ S.seance.repare = true; S.seanceRepare = false;
+      S.seance.texte = `Tu as remis de l'ordre dans ta tête. Ce que la saison t'avait pris, tu en reprends une partie.`; }
+    else if (S.seance.plafond) S.seance.texte += ` À ce niveau-là tu ne progresses plus vraiment, mais c'est prêt pour samedi.`;
     else if (S.seance.terrain) S.seance.texte += ` C'est un terrain que tu connais : ça répondra vite, ça ne montera plus beaucoup.`;
     else S.seance.texte += ` Tu pars de loin sur ce point-là : ça ne se verra pas samedi, mais ça reste.`;
   } else if (s.id === 'repos'){
@@ -311,7 +354,10 @@ function appliquer(o){
   const enc = encaisse();
   Object.entries(o.liens || {}).forEach(([k, v]) =>
     S.liens[k] = clamp(S.liens[k] + (v < 0 ? v * (1 - enc * .4) : v)));
-  Object.entries(o.axes || {}).forEach(([k, v]) => bougerAxe(k, v));
+  Object.entries(o.axes || {}).forEach(([k, v]) => {
+    if (k === 'ment' && v < 0) coutMental(-v, o.coup || "cette histoire t'est restée");
+    else bougerAxe(k, v);
+  });
   if (o.fit) S.etats.fraicheur = clamp(S.etats.fraicheur + o.fit);
   if (o.corps) S.etats.corps = clamp(S.etats.corps + o.corps);
 }
@@ -481,7 +527,7 @@ function choisirMoment(i){
   /* PRESSION : un moment chaud coûte douze points de réussite, et le mental les
      rend — ou les aggrave quand il est bas. C'est le seul endroit où il agit sur
      le terrain, et l'écran le dit avant le clic. */
-  const pression = f.chaud ? .12 * (1 - encaisse()) : 0;
+  const pression = f.chaud ? .12 * (1 - clamp(encaisse(), -.6, 1)) : 0;
   const bonus = (f.axe === 'tech' ? (techV - 50) * .009
       : (axeV - 50) * .006 + (techV - 50) * .005)
     + (S.etats.fraicheur - 80) * .001 - pression;
@@ -492,8 +538,12 @@ function choisirMoment(i){
   if (!reussi && f.chaud && !m.perduLeFil && Math.random() < .5 - encaisse() * .42){
     m.perduLeFil = f.min;
     jrn('moment', `${f.min}ᵉ — Tu as perdu le fil. Vingt minutes à côté de la partie.`);
+    coutMental(2, "tu es sorti du match après cette action");
   }
   if (reussi && f.chaud) f.tenu = true;
+  /* « Je tire au lieu de faire la passe, ça me retire un point de mental. »
+     Le mauvais choix se paie tout de suite, et plus lourdement quand ça comptait. */
+  if (!reussi) coutMental(f.chaud ? 1.8 : 1.1, `« ${o.l} », à la ${f.min}ᵉ`);
   if (reussi && (f.id === 'tir' || f.id === 'face' || f.id === 'volee')){
     if (o.l.startsWith("Frapper") || o.l.startsWith("Reprendre")) { m.bn++; m.buts++; }
     else { m.bn++; m.passes++; }
@@ -537,6 +587,8 @@ function finirMatch(){
     S.liens.vestiaire = clamp(S.liens.vestiaire + (m.note >= 7 ? 1.2 : m.note < 5.5 ? -1 : 0));
     S.liens.supporters = clamp(S.liens.supporters + (m.buts ? 2 : 0) + (m.note >= 7.5 ? 1 : 0) - (m.note < 5.4 ? 1 : 0));
     S.etats.forme = clamp(S.etats.forme + (m.note >= 7 ? 5 : m.note >= 6 ? 1 : -4));
+    if (m.note < 5.6) coutMental(1.7, "un match que tu voudrais oublier");
+    if (m.rouge) coutMental(2.2, "ce carton rouge");
     if (Math.random() < Math.max(.012, .05 - S.etats.fond * .0006) + (S.moi.def.id === 'ischios' ? .04 : 0) + (S.etats.fraicheur < 60 ? .05 : 0)){
       m.blessure = ri(1, 5); S.etats.corps = clamp(S.etats.corps - m.blessure);
     }
@@ -548,6 +600,9 @@ function finirMatch(){
   } else {
     S.liens.coach = clamp(S.liens.coach - (m.statut === 'banc' ? .5 : .2));
   }
+  /* Rester sur le banc ne retire PAS de mental : ça fermait la spirale sur
+     elle-même. Le banc coûte déjà la confiance du coach, ça suffit. */
+  if (m.blessure) coutMental(2.2, "cette blessure");
   AXES.forEach(a => S.moi.boost[a] *= .5);
   // classement
   const c = S.ligue.classement;
@@ -565,7 +620,15 @@ function finirMatch(){
   if (m.blessure) m.mvt.push({ k:'blessure', up:false, mot:`Tu sors touché : ${m.blessure} journée${m.blessure > 1 ? 's' : ''} d'absence.` });
   if (m.suspendu) m.mvt.push({ k:'suspension', up:false, mot:`Suspendu ${m.suspendu} match${m.suspendu > 1 ? 's' : ''}.` });
   if (m.amortiCoach) m.mvt.push({ k:'mental', up:true, mot:"Mauvais soir, mais tu n'as rien lâché : le coach t'en tient moins rigueur." });
-  if (m.perduLeFil) m.mvt.push({ k:'mental', up:false, mot:"Tu es sorti du match après cette action. Ça s'est vu de la touche." });
+  /* Ce que la soirée t'a pris dans la tête, avec ses raisons : c'est ça, un
+     mauvais soir, et c'est la seule façon de le rendre visible. */
+  if (S.coupsTete && S.coupsTete.length){
+    const l = S.coupsTete.slice(0, 3);
+    m.mvt.push({ k:'mental', up:false,
+      mot:`Tu rumines : ${l.join(', ')}${S.coupsTete.length > 3 ? ', et le reste' : ''}.` });
+    m.coupsTete = S.coupsTete.slice();
+  }
+  S.coupsTete = [];
   jrn('match', `J${S.journee + 1} · ${m.adv.dom ? S.club.nom + ' – ' + m.adv.nom : m.adv.nom + ' – ' + S.club.nom} ${m.adv.dom ? m.bn + '-' + m.be : m.be + '-' + m.bn}`
     + (m.minutes ? ` · toi : ${m.minutes} min, note ${nb(m.note)}${m.buts ? `, ${m.buts} but${m.buts > 1 ? 's' : ''}` : ''}${m.passes ? `, ${m.passes} passe${m.passes > 1 ? 's' : ''}` : ''}` : ` · ${m.statut === 'banc' ? 'resté sur le banc' : m.statut === 'blesse' ? "à l'infirmerie" : m.statut === 'suspendu' ? 'suspendu' : 'hors du groupe'}`)
     + (m.blessure ? ` · sorti touché, ${m.blessure} journée${m.blessure > 1 ? 's' : ''} d'absence` : '')
@@ -611,6 +674,11 @@ function apresMatch(){
   if (S.etats.suspension > 0) S.etats.suspension--;
   if (d && d.blessure) S.etats.blessure = d.blessure;
   if (d && d.suspendu) S.etats.suspension = d.suspendu;
+  /* Une semaine passe, on digère : le temps répare une part de ce qu'on a pris,
+     jamais au-delà de ce qu'on avait. Sans ça, seule la séance mentale répare et
+     elle devient obligatoire — mesuré, elle écrasait toutes les autres. */
+  if (S.moi.base.ment < S.moi.pic.ment - .2)
+    bougerAxe('ment', Math.min(.12, S.moi.pic.ment - S.moi.base.ment));
   S.etats.fond = clamp(S.etats.fond - 1.5);                 // le fond s'use si on ne l'entretient pas
   S.etats.fraicheur = clamp(S.etats.fraicheur + (S.etats.blessure ? 14 : 9) + S.etats.fond * .05);
   S.journee++;
