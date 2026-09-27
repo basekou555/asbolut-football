@@ -14,7 +14,7 @@
    - tout ce qui arrive est écrit dans `S.journal`, seule mémoire du jeu.
    ============================================================ */
 
-const VERSION = 6;   // un effectif nommé et stable : `S.equipe` est neuf
+const VERSION = 7;   // un effectif nommé et stable : `S.equipe` est neuf
 let S = null;
 /* Mis à true par le banc d'essai (labo.html) : les milliers de saisons qu'il
    simule ne doivent pas écraser la carrière rangée dans localStorage. */
@@ -110,6 +110,10 @@ function axeNom(a){ return a === 'spec' && S && S.moi ? S.moi.specNom : AXE_NOM[
    déclencher un arrêt. La ligne est le bon grain — à une condition, qu'elle
    change **le football** et pas seulement une jauge. C'est `LIGNE_CLE` qui s'en
    charge, et le vestiaire n'est plus une jauge : c'est leur moyenne. */
+/* Le groupe et le onze. Vingt-deux joueurs : quand deux défenseurs manquent, ce
+   sont le cinquième et le sixième qui jouent — pas un trou dans l'équipe. */
+const EFFECTIF = { G:3, D:7, M:7, A:5 };
+const FORMATION = { G:1, D:4, M:4, A:2 };
 const LIGNES = ['def', 'mil', 'att'];
 const LIGNE_NOM = { def:"La défense", mil:"Le milieu", att:"L'attaque" };
 const LIGNE_LA = { def:"la défense", mil:"le milieu", att:"l'attaque" };
@@ -199,13 +203,17 @@ function nouvellePartie(c){
      n'ont personne de qui parler. Chacun garde son poste, son niveau, son âge et
      une progression sur la saison — mais **plus de relation individuelle** :
      l'entente se joue par ligne, et son visage est un nom. */
-  const PLAN = { G:1, D:4, M:4, A:2 };
+  /* VINGT-DEUX JOUEURS, pas onze (le propriétaire, 27/09/2026 : « il me faut au
+     moins 18 joueurs voire 22, parce que là s'il y a des blessures, des
+     suspensions, il y a des trous dans l'équipe »). `EFFECTIF` est le groupe,
+     `FORMATION` est le onze. Ta place et celles de tes rivaux sont déjà comptées
+     dans `EFFECTIF` : elles sortent du nombre de coéquipiers à tirer. */
   const equipe = [];
-  Object.entries(PLAN).forEach(([po, n]) => {
-    const combien = po === poste.id ? n - 1 : n;          // ta place et tes rivaux sont à part
+  Object.entries(EFFECTIF).forEach(([po, n]) => {
+    const combien = po === poste.id ? n - 1 - nb : n;
     for (let i = 0; i < combien; i++)
-      equipe.push({ nom:tirerNom(), poste:po, niv: Math.round(club.force + rnd(-6, 6)),
-        age: ri(19, 33), prog: 0, note: null });
+      equipe.push({ nom:tirerNom(), poste:po, niv: Math.round(club.force + rnd(-7, 6)),
+        age: ri(18, 34), forme: 0, blesse: 0, susp: 0, prog: 0, note: null });
   });
   // un jeune qui monte : c'est de lui que parleront les arrêts « il progresse »
   const jeune = equipe.filter(j => j.age <= 23).sort((a, b) => a.age - b.age)[0];
@@ -583,10 +591,67 @@ function vivreConcurrents(){
     if (Math.random() < .035) c.blesse = ri(1, 4);
   });
 }
+/* Et tes coéquipiers aussi : sans ça, un effectif de vingt-deux serait vingt-deux
+   noms et onze titulaires immuables. Une blessure ou une suspension fait entrer
+   le suivant, et c'est là que la profondeur se paie ou rapporte. */
+function vivreEquipe(){
+  S.equipe.forEach(j => {
+    if (j.blesse > 0) j.blesse--;
+    if (j.susp > 0) j.susp--;
+    j.forme = clamp((j.forme || 0) * .75 + rnd(-2, 2), -5, 5);
+    if (j.blesse <= 0 && Math.random() < .028) j.blesse = ri(1, 5);
+    else if (j.susp <= 0 && Math.random() < .013) j.susp = ri(1, 2);
+  });
+}
+function dispoDe(j){ return !(j.blesse > 0 || j.susp > 0); }
+/* Tous ceux qui peuvent jouer, toi excepté : coéquipiers et rivaux à ton poste. */
+function groupe(){
+  const l = S.equipe.map(j => ({ ref:j, nom:j.nom, poste:j.poste,
+    niv: j.niv + (j.forme || 0), dispo: dispoDe(j) }));
+  S.concurrents.forEach(c => l.push({ ref:c, nom:c.nom, poste:S.moi.poste,
+    niv: c.niv + c.forme, dispo: c.blesse <= 0, rival:true }));
+  return l;
+}
+/* Le coach tourne. Sans ce tirage, le onze se choisissait strictement au niveau
+   et un tiers du groupe finissait la saison à zéro match — un effectif de
+   vingt-deux dont onze décoratifs, c'est-à-dire le problème d'avant déguisé.
+   Le même tirage sert au onze réel et au onze idéal, pour que l'écart ne mesure
+   que l'infirmerie et jamais la rotation. */
+const ROTATION = 3.5;
+/* LE ONZE DU JOUR, et ce que l'infirmerie coûte. On compare le onze réellement
+   alignable au meilleur onze possible si tout le monde était valide : l'écart,
+   étalé sur onze joueurs, est ce que le match perd. Un groupe profond l'absorbe,
+   un groupe court le prend en pleine figure. */
+function onzeDuJour(statut){
+  const g = groupe();
+  const onze = [], absents = g.filter(x => !x.dispo);
+  let perte = 0;
+  g.forEach(x => x.choix = x.niv + rnd(-ROTATION, ROTATION));
+  const tri = l => l.slice().sort((a, b) => b.choix - a.choix);
+  Object.entries(FORMATION).forEach(([po, n]) => {
+    let besoin = n;
+    if (po === S.moi.poste && statut === 'titulaire') besoin--;   // ta place est prise
+    if (besoin <= 0) return;
+    const cands = g.filter(x => x.poste === po);
+    const pris = tri(cands.filter(x => x.dispo)).slice(0, besoin);
+    const ideal = tri(cands).slice(0, besoin);
+    onze.push(...pris);
+    /* Chacun contre celui qu'il remplace, rang par rang : le cinquième défenseur
+       se compare au quatrième, pas à zéro. Comparer les sommes brutes faisait
+       compter un absent pour tout son niveau — mesuré, le onze perdait jusqu'à
+       onze points de force pour trois blessés. */
+    for (let i = 0; i < pris.length; i++) perte += pris[i].niv - ideal[i].niv;
+    // pas assez d'hommes à ce poste : on dépanne à dix, et ça se voit
+    if (pris.length < besoin) perte -= (besoin - pris.length) * 7;
+  });
+  return { onze, absents, ecart: perte / 11 };
+}
 function lancerMatch(){
   const adv = adversaire(S.journee);
   const statut = monStatut(adv);
-  const nous = S.club.force + (vestiaire() - 50) * .04 + (statut === 'titulaire' ? (niveauJour() - S.club.force) * .12 : 0);
+  const equipeDuJour = onzeDuJour(statut);
+  const nous = S.club.force + equipeDuJour.ecart + (vestiaire() - 50) * .04
+    + (statut === 'titulaire' ? (niveauJour() - S.club.force) * .12 : 0);
   const eux = adv.force;
   const diff = nous - eux + (adv.dom ? 2.4 : -2.4);
   /* L'ENTENTE DE TA LIGNE CHANGE TON FOOTBALL, pas seulement une jauge — c'est la
@@ -600,7 +665,9 @@ function lancerMatch(){
   const bn = poisson(tameXG(1.35 * Math.exp(diff / 19)));
   const be = poisson(tameXG(1.35 * Math.exp(-(diff + aide) / 19)));
 
-  const m = { adv, statut, bn, be, faits: [], minutes: 0, buts:0, passes:0, note:null, moments:[], jaune:0, blessure:0 };
+  const m = { adv, statut, bn, be, faits: [], minutes: 0, buts:0, passes:0, note:null, moments:[], jaune:0, blessure:0,
+    onze: equipeDuJour.onze, absents: equipeDuJour.absents.map(x => ({ nom:x.nom, poste:x.poste,
+      raison: (x.ref.susp > 0 ? 'susp' : 'blesse') })), ecartOnze: equipeDuJour.ecart };
   // entrée en jeu
   if (statut === 'titulaire') m.minutes = 90;
   else if (statut === 'banc'){
@@ -670,8 +737,13 @@ function lancerMatch(){
   S.match = m; S.momentIdx = 0;
   suiteMatch();
 }
+/* Il en faut au moins vingt-deux distincts : un effectif complet en tire vingt et un
+   (toi excepté), et deux joueurs du même nom dans le même vestiaire se voient. */
 const NOMS = ["Diallo", "Lefort", "Perrin", "Traoré", "Semis", "Bakayoko", "Mendy", "Delecroix",
-  "Riou", "Garnier", "Kouassi", "Vasseur", "Bamba", "Lemoine", "Ferreira", "Dos Santos"];
+  "Riou", "Garnier", "Kouassi", "Vasseur", "Bamba", "Lemoine", "Ferreira", "Dos Santos",
+  "Hernandez", "Bouaziz", "Le Guen", "Konaté", "Marchand", "Silva", "Tavares", "Nguyen",
+  "Sarr", "Boucher", "Lavigne", "Cissé", "Roussel", "Aubert", "Pereira", "Keita",
+  "Fontaine", "Moreau", "Barbosa", "Zidani", "Chevalier", "Ndiaye", "Rossi", "Guillon"];
 function coequipier(){ return pick(NOMS); }
 /* Les faits de match, par poste. Aucune probabilité n'est affichée :
    la résolution croise tes axes et le hasard. */
@@ -859,25 +931,17 @@ function finirMatch(){
 function notesEquipe(m){
   const socleNote = 6.1 + (m.res === 'V' ? .55 : m.res === 'D' ? -.45 : 0);
   const joueurs = [];
-  S.equipe.forEach(j => {
-    j.note = null;
-    if (Math.random() < .12) return;                   // il n'a pas joué ce soir
-    const derriere = j.poste === 'G' || j.poste === 'D';
-    let n = socleNote + (j.niv - S.club.force) * .05 + rnd(-1.3, 1.3)
+  S.equipe.forEach(j => j.note = null);
+  S.concurrents.forEach(c => c.note = null);
+  /* Seuls les onze qui ont commencé sont notés. Avec un groupe de vingt-deux,
+     noter tout le monde donnait dix-sept notes pour un match à onze. */
+  (m.onze || []).forEach(x => {
+    const derriere = x.poste === 'G' || x.poste === 'D';
+    const n = socleNote + (x.niv - S.club.force) * .05 + rnd(-1.3, 1.3)
       + (derriere ? (m.be === 0 ? .8 : m.be >= 4 ? -.7 : 0) : 0);
-    j.note = Math.round(clamp(n, 3, 10) * 10) / 10;
-    j.sum = (j.sum || 0) + j.note; j.nb = (j.nb || 0) + 1;
-    joueurs.push({ nom:j.nom, poste:j.poste, note:j.note });
-  });
-  // les rivaux à ton poste jouent aussi, et leur note te regarde
-  S.concurrents.forEach(c => {
-    c.note = null;
-    if (c.blesse > 0 || (m.minutes >= 80 && S.moi.poste === 'G')) return;
-    if (m.statut === 'titulaire' && S.moi.poste === 'G') return;   // un seul gardien joue
-    if (Math.random() < .25) return;
-    c.note = Math.round(clamp(socleNote + (c.niv + c.forme - S.club.force) * .05 + rnd(-1.2, 1.2), 3, 10) * 10) / 10;
-    c.sum = (c.sum || 0) + c.note; c.nb = (c.nb || 0) + 1;
-    joueurs.push({ nom:c.nom, poste:S.moi.poste, note:c.note, rival:true });
+    x.ref.note = Math.round(clamp(n, 3, 10) * 10) / 10;
+    x.ref.sum = (x.ref.sum || 0) + x.ref.note; x.ref.nb = (x.ref.nb || 0) + 1;
+    joueurs.push({ nom:x.nom, poste:x.poste, note:x.ref.note, rival: !!x.rival });
   });
   if (m.note != null) joueurs.push({ nom:S.moi.nom, poste:S.moi.poste, note:m.note, moi:true });
   joueurs.sort((a, b) => b.note - a.note);
@@ -900,7 +964,8 @@ function moyDe(j){ return j.nb ? j.sum / j.nb : null; }
 function effectifTrie(){
   const l = [];
   S.equipe.forEach(j => l.push({ nom:j.nom, poste:j.poste, age:j.age, nb:j.nb || 0,
-    moy: moyDe(j), cle: LIGNE_DU_POSTE[j.poste], monte: !!j.monte }));
+    moy: moyDe(j), cle: LIGNE_DU_POSTE[j.poste], monte: !!j.monte,
+    blesse: j.blesse > 0, susp: j.susp > 0 }));
   S.concurrents.forEach(c => l.push({ nom:c.nom, poste:S.moi.poste, age:c.age, nb:c.nb || 0,
     moy: moyDe(c), cle: LIGNE_DU_POSTE[S.moi.poste], rival:true, blesse: c.blesse > 0 }));
   l.push({ nom:S.moi.nom, poste:S.moi.poste, age:S.moi.age, nb:S.stats.notes.length,
@@ -942,7 +1007,7 @@ function decouverte(m){
 /* ---------- la suite ---------- */
 function apresMatch(){
   const d = S.dernier;
-  vivreConcurrents();
+  vivreConcurrents(); vivreEquipe();
   S.equipe.forEach(j => { if (j.monte) j.niv = Math.min(j.niv + .35, S.club.force + 12); });
   /* Une entente qui ne bouge pas n'existe pas — mais elle ne doit pas s'échapper
      non plus : un rappel de 1 % vers 50 tient l'écart-type autour de sept points,
@@ -1052,6 +1117,31 @@ function direGeste(){ const v = S.moi.base.tech + S.moi.boost.tech;
 function direTete(){ const v = S.moi.base.ment + S.moi.boost.ment;
   return v > 68 ? "Tu as déjà vécu ça." : v > 54 ? "Tu respires, et tu joues."
     : v > 42 ? "Tes jambes se font lourdes d'un coup." : "Le stade hurle et tu ne l'entends plus."; }
+/* L'infirmerie, en mots : c'est ce qui justifie un groupe de vingt-deux. */
+function direInfirmerie(){
+  const a = groupe().filter(x => !x.dispo);
+  if (!a.length) return "Tout le monde est valide.";
+  const n = a.length;
+  const qui = a.slice(0, 2).map(x => x.nom).join(' et ');
+  return n === 1 ? `${qui} manque ce samedi.`
+    : n === 2 ? `${qui} manquent ce samedi.`
+    : `${n} absents, dont ${qui}.`;
+}
+/* Ce que la profondeur du groupe absorbe. Il faut le dire en tenant compte des
+   absents : « quatre absents » à côté de « le onze est au complet » se lisait
+   comme une contradiction, alors que c'est justement ce qu'un groupe de
+   vingt-deux est censé faire. */
+function direProfondeur(){
+  const abs = groupe().filter(x => !x.dispo).length;
+  const e = onzeDuJour(monStatutSec()).ecart;
+  if (!abs) return "Tout le monde est là : le coach a le choix.";
+  return e > -.25 ? "Le groupe absorbe : le onze ne s'en ressent pas."
+    : e > -.8 ? "Le coach bricole un peu, sans plus."
+    : e > -1.8 ? "Deux ou trois remplaçants entrent : ça se sentira."
+    : "Le groupe est à l'os. Ce match part de plus loin.";
+}
+// une lecture sans tirage au sort, pour l'affichage : on suppose que tu joues
+function monStatutSec(){ return S.etats.blessure > 0 || S.etats.suspension > 0 ? 'banc' : 'titulaire'; }
 function direPlace(){
   const d = devantToi();
   if (!d) return "Personne ne te passe devant en ce moment.";
@@ -1096,6 +1186,26 @@ function charger(){
       delete d.liens.vestiaire;
       d.equipe.forEach(j => { delete j.rel; });
       d.v = 6;
+    }
+    /* MIGRATION 6 → 7 : le groupe passe de onze à vingt-deux. On garde les
+       coéquipiers existants et on complète poste par poste, plutôt que de jeter
+       une carrière en cours. */
+    if (d.v === 6 && d.equipe && d.club){
+      const pris = d.equipe.map(j => j.nom).concat((d.concurrents || []).map(c => c.nom));
+      const tirer = () => { let n, k = 0;
+        do { n = pick(NOMS); k++; } while (pris.includes(n) && k < 200); pris.push(n); return n; };
+      d.equipe.forEach(j => { j.forme = j.forme || 0; j.blesse = j.blesse || 0; j.susp = j.susp || 0; });
+      const nb = d.moi.poste === 'G' ? 1 : 2;
+      Object.entries(EFFECTIF).forEach(([po, n]) => {
+        const vise = po === d.moi.poste ? n - 1 - nb : n;
+        let ont = d.equipe.filter(j => j.poste === po).length;
+        while (ont < vise){
+          d.equipe.push({ nom:tirer(), poste:po, niv: Math.round(d.club.force + rnd(-7, 6)),
+            age: ri(18, 34), forme: 0, blesse: 0, susp: 0, prog: 0, note: null });
+          ont++;
+        }
+      });
+      d.v = 7;
     }
     if (d.v !== VERSION) return null;
     return d;
