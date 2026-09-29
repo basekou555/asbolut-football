@@ -1325,11 +1325,76 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     familles nouvelles (§ 3) ne sont pas encore codés, et **le sous-système de la sélection** — la
     convocation, les deux matchs en pleine semaine, les jambes que ça coûte — est celui qu'il a
     lui-même remis au lot suivant (« oui, mais au prochain lot »). Seule la jauge est vivante.
+- **LES SOIRS QU'ON VEUT OUBLIER** (le propriétaire, 29/09/2026 : « les matchs en dessous de 5,0,
+  c'est très peu, trop peu »). Il lisait le **3,0 %** du lot précédent, qui était la mesure *avant*
+  correction — la version livrée était à 5,2 %. Ça ne changeait rien à son point, et la mesure lui
+  a donné raison plus fort qu'il ne le disait : ce n'est pas le bas qui manquait, c'est **le haut
+  qui débordait**.
+  - **Mesuré d'abord, terme par terme, sur 8 700 de tes notes.** Tu **gagnes 61 % de tes matchs**
+    (un joueur de carrière finit dans un bon club), et tous les termes du barème tiraient vers le
+    haut : résultat +0,22, tes buts +0,21, clean sheet +0,25, ton niveau au-dessus du club +0,13 —
+    contre un seul terme négatif, un forfait de −0,4 sur une défaite **quel que soit le score**.
+  - **Une défaite lourde est un soir qu'on veut oublier, à tous les postes.** Une défaite 4-0 te
+    laissait une médiane de **6,1** et 18 % de notes sous 5,0, et pour un milieu ou un attaquant les
+    buts encaissés ne comptaient **pas du tout**. L'écart au score pèse maintenant (−0,38 par but
+    au-delà du premier, borné à −1,1) et quatre buts encaissés se paient partout (−0,45 pour les
+    postes de devant, le clean sheet d'un défenseur passant de −0,5 à −0,7). Mesuré après : médiane
+    **5,3** sur une défaite lourde, et **33 à 42 % de notes sous 5,0** selon le poste.
+  - **Un résultat vaut ce qu'il a coûté** (`duelResultat()`). Gagner et garder sa cage inviolée
+    payaient le même prix contre n'importe qui : au sommet d'une carrière, **42 % de tes matchs
+    passaient au-dessus de 7,5** pour 4 % sous 5,0 — les grands soirs étaient devenus ordinaires,
+    exactement l'argument qu'il faisait lui-même sur le 10. La récompense suit désormais la
+    difficulté (×0,55 quand on écrase, ×1,3 quand on va chez plus fort) — et **seulement la
+    récompense** : une défaite lourde coûte son prix plein quel que soit l'adversaire.
+    *Un couplage trouvé à la mesure* : la difficulté incluait d'abord **ton propre apport**
+    (`(niveauJour − force) × .12`), donc mieux tu t'entraînais, moins tes victoires payaient. C'est
+    la difficulté de **l'équipe** qu'on lit, pas la tienne.
+  - **L'aléa de la note n'est plus amorti par le mental.** Il l'était d'un côté seulement — la
+    malchance, jamais la chance — ce qui donnait à un joueur au mental entraîné un biais vers le
+    haut que rien à l'écran ne nommait. Le propriétaire avait déjà tranché le principe le 27/09 en
+    redéfinissant le mental (« ma définition amortissait un aléa que le joueur ne voit jamais ») ;
+    le mental se paie depuis par `coutMental()`, sur des événements qui ont un nom. Le tirage est
+    symétrique (±0,85, contre ±0,95 chez tes coéquipiers).
+  - **Mesuré après, et c'est le tableau qui compte** — la lecture par tranche de carrière, que je
+    n'avais jamais faite :
+    | saisons | 10ᵉ | médiane | 90ᵉ | sous 5,0 | au-dessus de 7,5 | victoires |
+    |---|---|---|---|---|---|---|
+    | 1 à 3 | 4,6 | 6,5 | 8,1 | **14,0 %** | 21,6 % | 39 % |
+    | 4 à 8 | 5,4 | 7,1 | 8,5 | 5,4 % | 32,8 % | 59 % |
+    | 9 à 14 | 5,6 | 7,2 | 8,6 | **3,9 %** | 38,3 % | **70 %** |
+    | 15 et + | 4,9 | 6,7 | 8,2 | 10,8 % | 23,7 % | 54 % |
+    Sur la carrière entière : **sous 5,0 de 5,2 % à 7,4 %**, au-dessus de 7,5 de 33,7 % à 32,1 %.
+    Les mauvais soirs ne manquent pas — ils manquent **au milieu d'une carrière**, quand on gagne
+    sept matchs sur dix dans un club qui domine, et c'est du football juste. Ce qui reste à décider,
+    et qui est le sien : s'il en veut aussi au sommet, le levier n'est pas la note, c'est **le monde**
+    (ton club qui domine son championnat).
+  - **Une correction à une affirmation que j'ai faite** : j'avais écrit que « toujours lever le
+    pied » n'était la meilleure politique nulle part. **C'est faux, et ça l'était déjà dans la
+    version en ligne.** Mesuré à 100 saisons par ligne (ma mesure précédente était à 40, c'est-à-dire
+    dans le bruit), sur le code déployé : « lever le pied » prend les matchs **et** les
+    titularisations à deux croisements sur trois (académie milieu : 24,4 matchs et 12,7
+    titularisations contre 22,1 et 9,8 pour « deux séances puis un repos »). La cause est dans
+    `niveauJour()` : 50 points de fraîcheur d'écart valent **+2,5**, quand une saison entière
+    d'entraînement en rend 1 à 1,5 en moyenne. Le lot présent **resserre** l'écart sans le fermer
+    (+0,1 match et +1,0 titularisation au lieu de +2,3 et +2,9), et l'invariant faible tient
+    toujours — aucune ligne ne prend à la fois les matchs et la trace. Fermer vraiment l'écart
+    demande de toucher au poids de la fraîcheur dans `niveauJour()`, qui alimente aussi le moteur de
+    match et la note : c'est un arbitrage de conception (se reposer *doit-il* faire jouer plus ?),
+    donc c'est au propriétaire de trancher, pas un réglage à faire dans son dos.
+  - **Vérifié** : les sept invariants du tableau des notes à zéro écart ; 31 faits sur 31, score =
+    film 0 écart ; les invariants du monde à zéro ; `tests/simulate.js` → `ERRORS: none` ; **aucune
+    migration nécessaire** (`m.ecartForce` manque à une sauvegarde v13 prise en plein match et vaut
+    alors zéro, soit un duel neutre) — vérifié en reprenant une vraie partie de la version déployée,
+    saison finie, trêve passée, saison entière rejouée.
 - **Ce qui n'est pas encore là** : le **sous-système** de la sélection (la jauge vit et se lit, la
   convocation reste à faire), le mode entraîneur·euse en 2.0, et les **arrêts** — dix-sept familles
   réécrites sur la page de décisions, pas encore codées. (Les trente et un faits de match, la trêve,
   les offres, la progression d'une saison sur l'autre et l'usure sont livrés.) Les `ARRETS` en place
   restent des marqueurs de forme, pas le contenu final.
+- **Une question ouverte, posée par la mesure** : le poids de la fraîcheur dans `niveauJour()`
+  (`.05` le point, soit 2,5 entre 100 % et 50 %) fait que **se reposer bat s'entraîner sur le temps
+  de jeu**. C'est peut-être juste — un joueur frais joue —, mais ça contredit ce que le banc d'essai
+  est censé montrer. À trancher avant de le régler.
 
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).
