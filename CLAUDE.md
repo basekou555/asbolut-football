@@ -1391,10 +1391,50 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
   réécrites sur la page de décisions, pas encore codées. (Les trente et un faits de match, la trêve,
   les offres, la progression d'une saison sur l'autre et l'usure sont livrés.) Les `ARRETS` en place
   restent des marqueurs de forme, pas le contenu final.
+- **ON PEUT ÊTRE MAUVAIS UN SOIR OÙ L'ÉQUIPE GAGNE** (le propriétaire, 29/09/2026, en répondant
+  au tableau par la seule ligne du milieu de carrière : « 3 % »). J'avais écrit que le levier des
+  mauvais soirs au sommet était « le monde » et que c'était son arbitrage ; il a tranché en pointant
+  le chiffre. **Et mon diagnostic était incomplet.**
+  - **Mesuré au sommet d'une carrière** : les notes sous 5,0 venaient presque uniquement des
+    **défaites** (18,8 % d'entre elles) — et comme on gagne alors 65 % de ses matchs, une victoire
+    n'en donnait que **2,0 %**. Quand l'équipe gagnait, tu ne pouvais pas passer à côté de ton match.
+  - **La cause n'était pas le monde, c'était que ton état n'entrait pas dans ta note.** Ta forme se
+    promène entre 59 et 100 et ta réserve mentale entre 24 et 76, et les deux ne passaient que par
+    `(niveauJour − force) × .035` : **moins d'un dixième de note d'un extrême à l'autre**. Contre la
+    règle du projet — un chiffre affiché doit avoir une conséquence visible.
+  - **`poidsEtat()`, deux termes personnels** : la forme (un creux se paie le samedi suivant, ±0,75)
+    et la tête (« quand ça se tend, tu joues petit » n'était qu'une phrase : l'écart à ton pic coûte
+    jusqu'à 0,35, une réserve pleine rend 0,1). Aucun des deux ne récompense le repos — c'était la
+    condition, pour ne pas renforcer « lever le pied ».
+  - **Première version fausse, et la spirale qu'elle rouvrait.** Centrée sur une valeur fixe (78),
+    elle punissait deux fois ceux qui n'y peuvent rien : un débutant a une forme basse **en
+    permanence** et une tête chroniquement entamée. Mesuré : il tombait à **5,0 de moyenne et perdait
+    cinq matchs par saison** (16,2 contre 21,4), exactement l'impasse que le propriétaire avait déjà
+    fait fermer. `S.formeRef` est désormais une moyenne lissée de ta propre forme — comme `S.ligneRef`
+    l'est pour ton entente : un jeune régulièrement moyen vaut zéro, et **c'est le creux qui se paie,
+    à tout âge**.
+  - **Mesuré après, 40 carrières entières** :
+    | saisons | 10ᵉ | médiane | 90ᵉ | sous 5,0 | au-dessus de 7,5 | victoires |
+    |---|---|---|---|---|---|---|
+    | 1 à 3 | 4,4 | 6,5 | 8,2 | 16,9 % | 21,4 % | 41 % |
+    | 4 à 8 | 5,1 | 7,0 | 8,6 | 8,8 % | 32,6 % | 57 % |
+    | 9 à 14 | 5,2 | 7,0 | 8,6 | **7,5 %** | 33,5 % | 66 % |
+    | 15 et + | 4,5 | 6,5 | 8,3 | 15,5 % | 22,8 % | 53 % |
+    Sa ligne passe de **3,9 % à 7,5 %**. Sur la carrière entière : **sous 5,0 de 5,2 % ce matin à
+    11,0 %**, au-dessus de 7,5 de 33,7 % à 30,1 %, moyenne 6,77 (elle reste au-dessus du pivot de
+    6,2 que lit la confiance du coach, ce qui est la contrainte à ne pas franchir).
+  - **Le banc d'essai s'améliore au passage** : « lever le pied » ne prend le temps de jeu qu'à **un
+    croisement sur trois** (contre deux sur trois dans la version déployée), et l'invariant tient
+    partout — aucune ligne ne prend à la fois les matchs et la trace.
+  - **Vérifié** : les sept invariants du tableau des notes à zéro écart ; les invariants du monde à
+    zéro ; `tests/simulate.js` → `ERRORS: none` ; **aucune migration** (`S.formeRef` se pose tout
+    seul au premier passage) — vérifié en reprenant une vraie partie de la version déployée, saison
+    finie, trêve passée, saison entière rejouée. Ton rang moyen dans la liste des notes reste au
+    **47ᵉ centile** : tu restes meilleur que la moyenne de tes coéquipiers, tu es juste plus exposé.
 - **Une question ouverte, posée par la mesure** : le poids de la fraîcheur dans `niveauJour()`
   (`.05` le point, soit 2,5 entre 100 % et 50 %) fait que **se reposer bat s'entraîner sur le temps
-  de jeu**. C'est peut-être juste — un joueur frais joue —, mais ça contredit ce que le banc d'essai
-  est censé montrer. À trancher avant de le régler.
+  de jeu** à un croisement sur trois. C'est peut-être juste — un joueur frais joue —, mais ça
+  contredit ce que le banc d'essai est censé montrer. À trancher avant de le régler.
 
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).

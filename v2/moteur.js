@@ -1687,7 +1687,7 @@ function finirAnnexe(info, m){
     m.note = Math.round(clamp(6.1 + poidsResultat(m.res, m.bn, m.be, derriere, m.ecartForce)
       + cumul(m.buts, POIDS_BUT) + m.passes * .4
       + (derriere ? (be === 0 ? .8 * duel : be >= 4 ? -.7 : 0) : 0)
-      + (niveauJour() - S.club.force) * .05 + poidsFaits(m) + poidsCartons(m) + aleaNote(), 3, 10) * 10) / 10;
+      + (niveauJour() - S.club.force) * .05 + poidsEtat() + poidsFaits(m) + poidsCartons(m) + aleaNote(), 3, 10) * 10) / 10;
     S.stats.matchs++; S.stats.buts += m.buts; S.stats.passes += m.passes;
     S.stats.minutes += m.minutes; S.stats.notes.push(m.note);
     if (m.statut === 'titulaire') S.stats.titus++;
@@ -2497,6 +2497,38 @@ const ECHELLE_FAIT = 1.8;
    fait donc suivre la récompense à la difficulté (0,55 quand on écrase, 1,3 quand on
    va chez plus fort), et **seulement la récompense** : une défaite lourde coûte son
    prix plein quel que soit l'adversaire. */
+/* ON PEUT ÊTRE MAUVAIS UN SOIR OÙ L'ÉQUIPE GAGNE (le propriétaire, 29/09/2026,
+   en montrant la ligne du milieu de carrière : « 3 % »). Mesuré au sommet d'une
+   carrière : tes notes sous 5,0 venaient **presque uniquement des défaites**
+   (18,8 % d'entre elles) — et comme on gagne alors 65 % de ses matchs, une victoire
+   n'en donnait que **2,0 %**. Autrement dit, quand l'équipe gagnait, tu ne pouvais
+   pas passer à côté de ton match.
+   La cause : **ton état n'entrait quasiment pas dans ta note**. Ta forme se promène
+   entre 59 et 100 et ta réserve mentale entre 24 et 76, et les deux ne passaient que
+   par `(niveauJour − force) × .035`, soit **moins d'un dixième de note d'un extrême
+   à l'autre**. Contre la règle du projet : un chiffre affiché doit avoir une
+   conséquence visible.
+   Deux termes, tous deux personnels, tous deux liés à une décision — et aucun des
+   deux ne récompense le repos, pour ne pas renforcer « lever le pied » :
+   - **la forme** : une mauvaise série se paie le samedi suivant (±0,5) ;
+   - **la tête** : « quand ça se tend, tu joues petit » n'était qu'une phrase.
+     L'écart à ton pic coûte jusqu'à 0,8, et une réserve pleine rend 0,15. C'est ce
+     qui donne enfin à la séance mentale un effet qu'on lit dans la note. */
+function poidsEtat(){
+  /* L'ÉCART À TA PROPRE NORMALE, PAS UNE BARRE ABSOLUE. Première version centrée sur
+     une valeur fixe (78) : elle punissait deux fois ceux qui n'y peuvent rien — un
+     débutant a une forme basse **en permanence** et une tête chroniquement entamée.
+     Mesuré, il tombait à **5,0 de moyenne et perdait cinq matchs** par saison, la
+     spirale exacte que le propriétaire avait déjà fait fermer (« ne pas jouer était
+     une impasse »). `S.formeRef` est une moyenne lissée de ta propre forme, comme
+     `S.ligneRef` l'est pour ton entente : un jeune régulièrement moyen vaut zéro,
+     et c'est **le creux** qui se paie, à tout âge. */
+  const ref = S.formeRef == null ? S.etats.forme : S.formeRef;
+  const forme = clamp((S.etats.forme - ref) * .048, -.75, .75);
+  const manque = Math.max(0, S.moi.pic.ment - S.moi.base.ment);
+  const tete = manque <= 3 ? .1 : -Math.min(.35, (manque - 3) * .025);
+  return forme + tete;
+}
 function duelResultat(ecart){ return clamp(1 - (ecart || 0) * .045, .55, 1.3); }
 function poidsResultat(res, bn, be, derriere, ecart){
   const d = duelResultat(ecart);
@@ -2547,7 +2579,7 @@ function finirMatch(){
          plus sur l'impact des faits de match sur la note, avec un point en plus ou
          en moins »). C'est ce qui fait qu'une saison a des soirs de gala et des
          soirs qu'on veut oublier. */
-      + (niveauJour() - S.club.force) * .035
+      + (niveauJour() - S.club.force) * .035 + poidsEtat()
       + poidsFaits(m) + poidsCartons(m)
       - (m.perduLeFil ? .7 : 0) + (m.moments.some(f => f.tenu) ? .35 : 0) + aleaNote(), 3, 10);
     m.note = Math.round(m.note * 10) / 10;
@@ -2878,6 +2910,8 @@ function apresMatch(){
   LIGNES.forEach(k => S.lignes[k] = clamp(S.lignes[k] * .99 + .5 + rnd(-1.8, 1.8)));
   S.ligneRef = S.ligneRef || { ...S.lignes };
   LIGNES.forEach(k => S.ligneRef[k] = S.ligneRef[k] * .82 + S.lignes[k] * .18);
+  // ta forme de référence : ce que tu vaux d'habitude, pour que la note lise le creux
+  S.formeRef = S.formeRef == null ? S.etats.forme : S.formeRef * .85 + S.etats.forme * .15;
   if (S.etats.blessure > 0) S.etats.blessure--;
   if (S.etats.suspension > 0) S.etats.suspension--;
   if (d && d.blessure) S.etats.blessure = d.blessure;
