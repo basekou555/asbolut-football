@@ -14,7 +14,7 @@
    - tout ce qui arrive est écrit dans `S.journal`, seule mémoire du jeu.
    ============================================================ */
 
-const VERSION = 12;  // la vie et l'argent : `argent`, `salaire`, `vie`
+const VERSION = 13;  // les faits de match et les quatre jauges rebranchées
 /* MIGRATION 10 → 11 : deux choses à construire, et une partie en cours les reprend
    sans rien perdre — le propriétaire joue la version déployée.
    1. **L'échelon inférieur** (`S.ligue.autre`) n'existait pas : on le fabrique avec
@@ -125,6 +125,9 @@ const TRACE_SEANCE = .55;
 /* Ce qu'une séance mentale répare quand la saison t'a entamé : beaucoup plus que
    ce qu'elle construit, parce que réparer n'est pas progresser. */
 const REPARE_TETE = 2.6;
+/* Le dernier cran de la tête ne se répare qu'à l'entraînement : la récupération
+   naturelle, celle que les tiens accélèrent, plafonne deux points sous ton pic. */
+const BORNE_TETE = 2;
 const AXE_NOM = { tech:"Technique", phys:"Physique", ment:"Mental", spec:"Au poste" };
 /* Le nom que le joueur lit dans une phrase : au poste, c'est « Ton poste » et
    non « Finition ». Une phrase qui dit « La finition, c'est ce qui te fait jouer »
@@ -1014,9 +1017,12 @@ function choisirSemaine(id){
      pose le groupe du week-end : ses minutes et sa fatigue entrent donc dans le
      choix du onze de samedi, ce qui est exactement le coût qu'on veut. */
   S.annexe = matchAnnexe(S.journee) ? jouerAnnexe(matchAnnexe(S.journee)) : null;
-  poserEquipeDuJour();
-  ouvrirArrets();
+  /* Un fait de mercredi prend la main : l'écran du moment s'ouvre, et la semaine
+     reprend où elle en était une fois le choix fait. */
+  if (S.faitAnnexe) return;
+  apresSemaine();
 }
+function apresSemaine(){ poserEquipeDuJour(); ouvrirArrets(); }
 /* Le groupe du jour, gelé en noms pour tenir dans la sauvegarde : les objets du
    groupe portent une référence vers l'effectif, et les sérialiser en ferait des
    copies. `equipeDuJourLue()` les retrouve par leur nom. */
@@ -1089,12 +1095,13 @@ const ARRETS = [
     titre:"Un week-end à toi",
     texte:"Tu n'es même pas dans le groupe. Pour la première fois depuis longtemps, samedi t'appartient.",
     options:[
-      { l:"Rentrer chez tes parents", axes:{ ment:1.4 }, corps:3, fit:4,
-        dit:[{c:'vie',t:"🏡 deux jours qui font du bien"},{c:'foot',t:"🧠 tu respires"}] },
+      { l:"Rentrer chez tes parents", axes:{ ment:1.4 }, corps:3, fit:4, liens:{ proches:4 },
+        dit:[{c:'vie',t:"🏡 les tiens comptent les week-ends"},{c:'foot',t:"🧠 tu respires"}] },
       { l:"Aller voir le match depuis la tribune", liens:{ coach:4, vestiaire:3 },
         dit:[{c:'foot',t:"🎽 il t'a vu dans les tribunes"},{c:'foot',t:"✊ le groupe aussi"}] },
-      { l:"Travailler seul au centre", fit:-6, axes:{ spec:1.4 }, ment:-.6, coup:"ce samedi à t'entraîner seul",
-        dit:[{c:'foot',t:"🎯 personne ne te le demandait"},{c:'risk',t:"🫁 tu y laisses ta semaine"},{c:'risk',t:"🧠 le stade te manque"}] },
+      { l:"Travailler seul au centre", fit:-6, axes:{ spec:1.4 }, ment:-.6, liens:{ proches:-5 },
+        coup:"ce samedi à t'entraîner seul",
+        dit:[{c:'foot',t:"🎯 personne ne te le demandait"},{c:'risk',t:"🫁 tu y laisses ta semaine"},{c:'risk',t:"🏡 le seul week-end libre de l'année"}] },
     ] },
   /* LA VRAIE SITUATION QUAND ON NE JOUE PAS, MESURÉE. Dans la queue des
      carrières (dix matchs ou moins sur la saison), on est **hors du groupe 2,9 %
@@ -1106,10 +1113,10 @@ const ARRETS = [
     titre:"Encore un survêtement",
     texte:"Tu voyages, tu t'échauffes, tu t'assois. Il ne se retourne pas. Dimanche, en revanche, t'appartient.",
     options:[
-      { l:"Le passer avec les tiens", axes:{ ment:1.5 }, corps:3, fit:3,
+      { l:"Le passer avec les tiens", axes:{ ment:1.5 }, corps:3, fit:3, liens:{ proches:4 },
         dit:[{c:'vie',t:"🏡 on ne te parle pas de foot"},{c:'foot',t:"🧠 tu reviens entier"}] },
-      { l:"Rester seul sur le terrain après le match", fit:-7, axes:{ spec:1.3 }, liens:{ coach:3 },
-        dit:[{c:'foot',t:"🎯 personne ne te le demandait"},{c:'foot',t:"🎽 l'adjoint l'a noté"},{c:'risk',t:"🫁 tu y laisses ta semaine"}] },
+      { l:"Rester seul sur le terrain après le match", fit:-7, axes:{ spec:1.3 }, liens:{ coach:3, proches:-5 },
+        dit:[{c:'foot',t:"🎯 personne ne te le demandait"},{c:'foot',t:"🎽 l'adjoint l'a noté"},{c:'risk',t:"🏡 dimanche y passe aussi"}] },
       { l:"Demander à l'adjoint ce qu'il regarde chez toi", liens:{ coach:6, vestiaire:2 }, axes:{ ment:.8 },
         dit:[{c:'foot',t:"🎽 il te répond franchement"},{c:'foot',t:"✊ ça circule dans le vestiaire"}] },
     ] },
@@ -1205,9 +1212,12 @@ const ARRETS = [
     titre:"Un coup de fil de chez toi",
     texte:"« Ton père a fait un malaise. Rien de grave, il est rentré. Mais il a demandé si tu venais dimanche. »",
     options:[
-      { l:"Y aller dimanche, quoi qu'il arrive", fit:-3, ment:-.4, dit:[{c:'vie',t:"🏡 tu seras là"},{c:'risk',t:"🫁 la route fatigue"}] },
-      { l:"Appeler tous les soirs de la semaine", ment:-.8, coup:"ce coup de fil", dit:[{c:'vie',t:"🏡 tu gardes le lien"},{c:'risk',t:"🧠 tu n'es pas à l'entraînement"}] },
-      { l:"Attendre la trêve", ment:-2, coup:"ce dimanche où tu n'es pas allé", dit:[{c:'risk',t:"🧠 ça te pèse"},{c:'foot',t:"🫁 ta semaine est intacte"}] },
+      { l:"Y aller dimanche, quoi qu'il arrive", fit:-3, ment:-.4, liens:{ proches:6 },
+        dit:[{c:'vie',t:"🏡 tu seras là, et ils s'en souviendront"},{c:'risk',t:"🫁 la route fatigue"}] },
+      { l:"Appeler tous les soirs de la semaine", ment:-.8, liens:{ proches:2 }, coup:"ce coup de fil",
+        dit:[{c:'vie',t:"🏡 tu gardes le lien"},{c:'risk',t:"🧠 tu n'es pas à l'entraînement"}] },
+      { l:"Attendre la trêve", ment:-2, liens:{ proches:-9 }, coup:"ce dimanche où tu n'es pas allé",
+        dit:[{c:'risk',t:"🏡 il avait demandé si tu venais"},{c:'foot',t:"🫁 ta semaine est intacte"}] },
     ] },
   { id:'supporters', quand: () => S.journee >= 6 && S.liens.supporters < 45,
     titre:"Quelqu'un t'attend à la sortie du parking",
@@ -1269,6 +1279,10 @@ function appliquer(o){
   if (o.ligne && S.arret && S.arret.ligne) bougerLigne(S.arret.ligne, amorti(o.ligne));
   Object.entries(o.liens || {}).forEach(([k, v]) => {
     if (k === 'vestiaire') bougerVestiaire(amorti(v));
+    /* LES ARRÊTS OUVRENT LES TIENS (29/09/2026). Jusqu'ici `S.vie.proches` ne
+       bougeait qu'à l'intersaison : la jauge qui amortit chaque coup dur était la
+       seule sur laquelle aucune décision de la saison n'avait prise. */
+    else if (k === 'proches') bougerProches(amorti(v));
     else S.liens[k] = clamp(S.liens[k] + amorti(v));
   });
   Object.entries(o.axes || {}).forEach(([k, v]) => {
@@ -1576,10 +1590,14 @@ const ROTATION_COUPE = 7;
 const PENTE_EURO = 4.2;   // un grand d'Europe est au-dessus d'un grand de France
 
 function matchAnnexe(j){
+  /* `dom` est déterministe sur la journée : `matchAnnexe()` est appelé deux fois
+     de suite dans `choisirSemaine()`, un tirage rendrait deux matchs différents. */
   let i = J_COUPE.indexOf(j);
-  if (i >= 0 && S.coupe && S.coupe.vivant) return { c:'coupe', t:i };
+  if (i >= 0 && S.coupe && S.coupe.vivant)
+    return { c:'coupe', t:i, dom: j % 2 === 0, finale: i === TOURS_COUPE.length - 1 };
   i = J_EURO.indexOf(j);
-  if (i >= 0 && S.euro && S.euro.engage && S.euro.vivant) return { c:'euro', t:i };
+  if (i >= 0 && S.euro && S.euro.engage && S.euro.vivant)
+    return { c:'euro', t:i, dom: j % 2 === 1, finale: i === J_EURO.length - 1 };
   return null;
 }
 /* Qui on affronte. En coupe, les premiers tours sont contre un petit club de
@@ -1622,14 +1640,40 @@ function jouerAnnexe(info){
   // un match à élimination directe se décide, même mal
   const groupe = info.c === 'euro' && info.t <= 5;
   if (!groupe && bn === be){
-    m.prolong = true;
-    if (Math.random() < .5 + diff * .012) bn += 1; else be += 1;
-    m.bn = bn; m.be = be;
+    /* ET PARFOIS ÇA VA AUX TIRS AU BUT. Un nul était **toujours** tranché en
+       prolongation, donc la séance de tirs au but n'existait pas — et les deux faits
+       de match qui en parlent (le tireur, le gardien) pouvaient tomber sur un 3-0,
+       ce qui se lit tout de suite comme un défaut. Une fois sur deux, le match va
+       au bout : le score reste nul, et c'est la séance qui départage. */
+    if (Math.random() < .5){
+      m.tab = true;
+      m.tabNous = Math.random() < .5 + diff * .006;
+    } else {
+      m.prolong = true;
+      if (Math.random() < .5 + diff * .012) bn += 1; else be += 1;
+      m.bn = bn; m.be = be;
+    }
   }
-  m.res = bn > be ? 'V' : bn < be ? 'D' : 'N';
+  m.res = m.tab ? (m.tabNous ? 'V' : 'D') : bn > be ? 'V' : bn < be ? 'D' : 'N';
   // ton match : le même calcul de temps de jeu, en plus simple
   if (eq.statut === 'titulaire') m.minutes = Math.random() < .25 ? ri(55, 80) : 90;
   else if (eq.statut === 'banc' && Math.random() < (info.c === 'coupe' ? .6 : .45)) m.minutes = ri(12, 45);
+  m.evs = []; m.moments = []; m.noteFaits = [];
+  /* UN SEUL FAIT LE MERCREDI (le propriétaire, 29/09/2026 : « ajouter des faits
+     pour les matchs de coupe et Europe »). Il se joue avant que la note tombe, pour
+     qu'il compte dedans — et il ne rallonge la semaine que les semaines où il y a
+     vraiment un match en plus. */
+  const fa = m.minutes ? momentSemaine(info, m) : null;
+  if (fa){
+    m.moments = [fa]; S.match = m; S.momentIdx = 0;
+    S.faitAnnexe = { info, m };
+    S.ecran = 'moment'; sauver(); rendre();
+    return m;
+  }
+  return finirAnnexe(info, m);
+}
+function finirAnnexe(info, m){
+  const { bn, be } = m;
   if (m.minutes){
     const derriere = S.moi.poste === 'G' || S.moi.poste === 'D';
     const chance = { G:0, D:.055, M:.155, A:.28 }[S.moi.poste]
@@ -1641,12 +1685,12 @@ function jouerAnnexe(info){
     m.note = Math.round(clamp(6.1 + (m.res === 'V' ? .5 : m.res === 'D' ? -.4 : 0)
       + cumul(m.buts, POIDS_BUT) + m.passes * .4
       + (derriere ? (be === 0 ? .8 : be >= 4 ? -.7 : 0) : 0)
-      + (niveauJour() - S.club.force) * .05 + aleaNote(), 3, 10) * 10) / 10;
+      + (niveauJour() - S.club.force) * .05 + poidsFaits(m) + poidsCartons(m) + aleaNote(), 3, 10) * 10) / 10;
     S.stats.matchs++; S.stats.buts += m.buts; S.stats.passes += m.passes;
     S.stats.minutes += m.minutes; S.stats.notes.push(m.note);
-    if (eq.statut === 'titulaire') S.stats.titus++;
+    if (m.statut === 'titulaire') S.stats.titus++;
     bougerLigne(LIGNE_CLE[S.moi.poste], (m.note - 6.1) * .9);
-    if (m.note < 5.6) coutMental(1.2, `ce mercredi à ${adv.nom}`);
+    if (m.note < 5.6) coutMental(1.2, `ce mercredi à ${m.adv}`);
   }
   // mercredi coûte samedi : c'est tout l'intérêt
   S.etats.fraicheur = clamp(S.etats.fraicheur - (m.minutes ? 7 + m.minutes * .14 : 4));
@@ -1658,7 +1702,7 @@ function jouerAnnexe(info){
 function suiteAnnexe(info, m){
   const nom = info.c === 'coupe' ? 'Coupe' : 'Europe';
   if (info.c === 'coupe'){
-    S.coupe.hist.push({ t:info.t, adv:m.adv, bn:m.bn, be:m.be });
+    S.coupe.hist.push({ t:info.t, adv:m.adv, bn:m.bn, be:m.be, prolong:!!m.prolong, tab:!!m.tab, tabNous:!!m.tabNous });
     if (m.res === 'V'){
       S.coupe.tour = info.t + 1;
       if (info.t === TOURS_COUPE.length - 1){
@@ -1671,7 +1715,7 @@ function suiteAnnexe(info, m){
     }
     return;
   }
-  S.euro.hist.push({ t:info.t, adv:m.adv, bn:m.bn, be:m.be });
+  S.euro.hist.push({ t:info.t, adv:m.adv, bn:m.bn, be:m.be, prolong:!!m.prolong, tab:!!m.tab, tabNous:!!m.tabNous });
   if (info.t <= 5){
     S.euro.pts += m.res === 'V' ? 3 : m.res === 'N' ? 1 : 0;
     if (info.t === 5){
@@ -1710,7 +1754,13 @@ function lancerMatch(){
   const nous = S.club.force + eq.ecart + (vestiaire() - 50) * .04
     + (statut === 'titulaire' ? (niveauJour() - S.club.force) * .12 : 0);
   const eux = adv.force;
-  const diff = nous - eux + (adv.dom ? 2.4 : -2.4);
+  /* LE STADE TE PORTE, ET ÇA SE JOUE (jauge rebranchée le 29/09/2026 : elle ne
+     servait qu'à déclencher sa propre famille et à écrire une phrase). À domicile,
+     ta popularité s'ajoute à l'avantage du terrain — jusqu'à ±1,2 quand le terrain
+     lui-même vaut 2,4. À l'extérieur le stade n'est pas le tien : elle ne fait
+     rien. C'est un demi-avantage du terrain qu'on gagne ou qu'on perd. */
+  const porte = adv.dom ? clamp((S.liens.supporters - 50) * .034, -1.2, 1.2) : 0;
+  const diff = nous - eux + (adv.dom ? 2.4 : -2.4) + porte;
   /* L'ENTENTE DE TA LIGNE CHANGE TON FOOTBALL, pas seulement une jauge — c'est la
      condition que posait le propriétaire, et sans elle la ligne ne serait qu'un
      nombre de plus. Derrière (gardien, défenseur) : on encaisse moins quand on se
@@ -1725,7 +1775,7 @@ function lancerMatch(){
   const m = { adv, statut, bn, be, faits: [], minutes: 0, buts:0, passes:0, note:null, moments:[], jaune:0, blessure:0,
     onze: eq.onze, banc: eq.banc, reserve: eq.reserve,
     absents: eq.absents.map(x => ({ nom:x.nom, poste:x.poste,
-      raison: (x.ref.susp > 0 ? 'susp' : 'blesse') })), ecartOnze: eq.ecart };
+      raison: (x.ref.susp > 0 ? 'susp' : 'blesse') })), ecartOnze: eq.ecart, porte };
 
   // les buts, répartis dans le temps
   const mins = shuffle([...Array(90).keys()].map(i => i + 1));
@@ -1831,16 +1881,9 @@ function lancerMatch(){
   /* Le buteur d'en face a un nom : c'est le premier bénéfice visible de leur
      donner un effectif. Un attaquant marque plus souvent qu'un défenseur. */
   evs.filter(e => e.type === 'but' && !e.nous).forEach(e => e.qui = buteurAdverse(adv) || adv.nom);
-  // faits de match  // faits de match : zéro à deux, seulement si je suis sur le terrain
+  // faits de match : zéro à deux, seulement si je suis sur le terrain
   if (m.minutes){
-    const n = Math.random() < .45 ? 0 : Math.random() < .8 ? 1 : 2;
-    for (let i = 0; i < n; i++){
-      const f = pick(MOMENTS[S.moi.poste]);
-      const bas = Math.max(entree + 2, 10), haut = Math.min(sortie - 2, 88);
-      if (haut > bas && !m.moments.some(x => x.id === f.id))
-        m.moments.push({ ...f, min: ri(bas, haut) });
-    }
-    m.moments.sort((a, b) => a.min - b.min);
+    tirerMoments(m, entree, sortie);
     /* Un « mauvais soir » doit être une situation nommée, pas un aléa invisible.
        Un fait de match qui tombe quand vous êtes menés, ou dans une fin serrée,
        est plus dur — et c'est là, et seulement là, que le mental se voit. */
@@ -1909,62 +1952,469 @@ const INITIALES = "ABCDEFGHJKLMNOPRSTVY".split("");
 
 /* Les faits de match, par poste. Aucune probabilité n'est affichée :
    la résolution croise tes axes et le hasard. */
+/* ---------- les faits de match ----------
+   TRENTE ET UN FAITS, et chaque issue dit trois choses (le propriétaire, 28/09/2026 :
+   « chaque fait de match doit avoir un impact sur la note, que ce soit à travers la
+   conséquence — un but, un carton jaune, une suspension — ou directement. Et il doit
+   y avoir une deuxième conséquence : un impact sur un des axes ou sur la situation
+   du joueur »). D'où la forme : `t` ce qui se passe, `n` ce que ça vaut sur ta note,
+   `ev` l'événement que ça écrit dans le match, `e` le deuxième effet.
+   `n:0` veut dire que la note est déjà payée par l'événement (le but marqué passe par
+   POIDS_BUT, le but encaissé par le clean sheet) : jamais deux fois pour la même chose. */
 const MOMENTS = {
-  G: [
-    { id:'pen', q:"Penalty contre toi. Tu choisis ton côté.", axe:'spec',
-      opts:[{ l:"Plonger à droite", p:.34 }, { l:"Plonger à gauche", p:.34 }, { l:"Rester au milieu", p:.22 }],
-      ok:"Tu l'as arrêté. Le stade explose.", ko:"Il l'a mis de l'autre côté." },
-    { id:'sortie', q:"Ballon dans le dos de ta défense, l'attaquant part seul.", axe:'ment',
-      opts:[{ l:"Sortir dans les pieds", p:.55 }, { l:"Rester et fermer l'angle", p:.5 }],
-      ok:"Tu as tout pris. Sortie parfaite.", ko:"Il t'a éliminé. But." },
-  ],
-  D: [
-    { id:'tacle', q:"Il te prend de vitesse dans le couloir, à l'entrée de la surface.", axe:'spec',
-      opts:[{ l:"Tacler", p:.5 }, { l:"Contenir et attendre l'aide", p:.62 }],
-      ok:"Bien joué. Ballon récupéré.", ko:"Faute. Et l'arbitre sort le carton." },
-    { id:'tete', q:"Corner pour vous. Tu montes ou tu restes derrière ?", axe:'phys',
-      opts:[{ l:"Monter", p:.22 }, { l:"Rester en couverture", p:.85 }],
-      ok:"Tu as touché le ballon au bon endroit.", ko:"Rien, et le contre est parti." },
-  ],
-  M: [
-    { id:'tir', q:"Vingt mètres, l'angle est fermé, un partenaire appelle dans le dos.", axe:'tech',
-      opts:[{ l:"Frapper", p:.24 }, { l:"Le servir", p:.42 }],
-      ok:"Au fond.", ko:"Détourné. L'action meurt là." },
-    { id:'presse', q:"Tu peux remonter presser leur défense, ou garder ta position.", axe:'phys',
-      opts:[{ l:"Presser", p:.4 }, { l:"Tenir la ligne", p:.66 }],
-      ok:"Ballon récupéré haut. Tout le monde t'a vu.", ko:"Tu as laissé un trou derrière toi." },
-  ],
-  A: [
-    { id:'face', q:"Seul face au gardien, un coéquipier arrive à ta hauteur.", axe:'spec',
-      opts:[{ l:"Frapper", p:.44 }, { l:"Le décaler", p:.56 }],
-      ok:"But.", ko:"Le gardien a dit non." },
-    { id:'volee', q:"Le ballon tombe sur ton pied gauche, dans la surface.", axe:'tech',
-      opts:[{ l:"Reprendre de volée", p:.2 }, { l:"Contrôler d'abord", p:.38 }],
-      ok:"Lucarne.", ko:"À côté." },
-  ],
+G: [
+  { id:'pen', q:"Penalty contre toi. Il pose le ballon et te regarde.", axe:'spec',
+    opts:[
+      { l:"Plonger du côté qu'il préfère", p:.34, aide:'spec',
+        ok:{ t:"Le but est retiré du score.", n:1.2, ev:['arret'], e:{ spec:.8 } },
+        ko:{ t:"Tu pars du mauvais côté, le but reste.", n:0, ev:['encaisse'], e:{ ment:-.8 } } },
+      { l:"Rester debout le plus longtemps possible", p:.24, aide:'ment',
+        ok:{ t:"Tu bloques : aucun renvoi, l'action est morte.", n:1.2, ev:['arret'], e:{ ment:1.2 } },
+        ko:{ t:"Elle part dans l'angle, le but reste.", n:0, ev:['encaisse'], e:{ ligne:-1 } } } ] },
+  { id:'sortie', q:"Ballon dans le dos de ta défense, leur attaquant part seul.", axe:'ment',
+    opts:[
+      { l:"Sortir dans les pieds", p:.55,
+        ok:{ t:"But certain évité, sortie parfaite.", n:.9, ev:['sauve'], e:{ spec:.6 } },
+        ko:{ t:"Il t'élimine.", n:0, ev:['encaisse'], e:{ ligne:-2 } } },
+      { l:"Rester et fermer l'angle", p:.5,
+        ok:{ t:"Il frappe sur toi : but certain évité.", n:.9, ev:['sauve'], e:{ ment:.8 } },
+        ko:{ t:"Tu as reculé, il te passe dessus.", n:0, ev:['encaisse'], e:{ ligne:-1 } } } ] },
+  { id:'relance', q:"Leur attaquant est sur toi. Ton défenseur appelle court, le stade crie de dégager.", axe:'tech',
+    opts:[
+      { l:"Jouer court", p:.6,
+        ok:{ t:"Sortie de balle propre, le bloc remonte.", n:.4, e:{ ligne:3 } },
+        ko:{ t:"Perte de balle dans ta surface.", n:-.3, ev:['encaisse'], e:{ ment:-1.5 } } },
+      { l:"Dégager loin", p:.9,
+        ok:{ t:"Leur temps fort est cassé.", n:.2, e:{ fit:1 } },
+        ko:{ t:"Touche pour eux, ils repartent de là.", n:-.2, e:{ ligne:-1 } } } ] },
+  { id:'corner', q:"Le ballon flotte au-dessus du paquet. Tu peux y aller.", axe:'phys',
+    opts:[
+      { l:"Sortir au poing", p:.55,
+        ok:{ t:"Occasion nette cassée, ballon loin.", n:.6, ev:['sauve'], e:{ ligne:2 } },
+        ko:{ t:"Battu dans les airs.", n:0, ev:['encaisse'], e:{ ligne:-2 } } },
+      { l:"Rester sur ta ligne", p:.8,
+        ok:{ t:"Un défenseur dégage, tu es prêt sur la frappe qui suit.", n:.3, e:{ ment:.4 } },
+        ko:{ t:"Il fallait sortir.", n:0, ev:['encaisse'], e:{ ligne:-1 } } } ] },
+  { id:'mur', q:"Ton mur est mal placé et l'arbitre siffle dans trois secondes.", axe:'spec',
+    opts:[
+      { l:"Replacer le mur", p:.62,
+        ok:{ t:"Le mur tient : but évité.", n:.9, ev:['sauve'], e:{ ligne:2 } },
+        ko:{ t:"Il ouvre le pied à côté du mur, et c'est ton mur.", n:0, ev:['encaisse'], e:{ spec:-.5 } } },
+      { l:"Rester dans ton angle", p:.5,
+        ok:{ t:"Tu la sors, sur tes appuis.", n:.9, ev:['sauve'], e:{ ment:.8 } },
+        ko:{ t:"Le mur s'ouvre, tu ne l'as pas replacé.", n:0, ev:['encaisse'], e:{ ligne:-1 } } } ] },
+],
+D: [
+  { id:'tacle', q:"Il te prend de vitesse dans le couloir, à l'entrée de la surface.", axe:'spec',
+    opts:[
+      { l:"Tacler", p:.5,
+        ok:{ t:"Occasion nette cassée, ballon récupéré.", n:.6, ev:['sauve'], e:{ spec:.6 } },
+        ko:{ t:"Tacle manqué : coup franc pour eux à l'entrée de la surface.", n:-.3, ev:['jaune'], e:{ ment:-.8 } } },
+      { l:"Contenir et attendre l'aide", p:.62,
+        ok:{ t:"L'attaque est contenue, le bloc se replace.", n:.3, e:{ ligne:2 } },
+        ko:{ t:"Il centre, et ils marquent.", n:0, ev:['encaisse'], e:{ ment:-.6 } } } ] },
+  { id:'horsjeu', q:"Leur attaquant part dans ton dos. Tu peux monter la ligne, ou décrocher avec lui.", axe:'spec',
+    opts:[
+      { l:"Jouer le hors-jeu", p:.46,
+        ok:{ t:"Il est hors-jeu : tu récupères un bon ballon.", n:.6, ev:['sauve'], e:{ ligne:4 } },
+        ko:{ t:"Tu es resté un pas derrière : il est en jeu et part seul au but.", n:0, ev:['encaisse'], e:{ ligne:-3 } } },
+      { l:"Décrocher avec lui", p:.7,
+        ok:{ t:"Tu le contiens jusqu'à la sortie de but.", n:.3, e:{ spec:.5 } },
+        ko:{ t:"Il te prend de vitesse : tu es obligé de le faucher.", n:-.3, ev:['jaune'], e:{ spec:-.3 } } } ] },
+  { id:'retour', q:"Il te déborde, tu reviens de trois mètres derrière lui. Dans la surface.", axe:'phys',
+    opts:[
+      { l:"Tenter le tacle glissé", p:.42,
+        ok:{ t:"But certain évité, le stade se lève.", n:.9, ev:['sauve'], e:{ ligne:3 } },
+        ko:{ t:"Penalty, et le carton avec.", n:-.3, ev:['jaune','encaisse'], e:{ coach:-2, ment:-1.5 } } },
+      { l:"Le pousser vers l'extérieur", p:.74,
+        ok:{ t:"Il centre mal, le danger meurt.", n:.3, e:{ spec:.5 } },
+        ko:{ t:"Il centre bien.", n:-.4, e:{ ligne:-1 } } } ] },
+  { id:'longue', q:"Tu as le ballon, leur ligne est haute, ton attaquant part. Quarante mètres.", axe:'tech',
+    opts:[
+      { l:"La tenter", p:.26,
+        ok:{ t:"Ballon parfait, il n'a plus qu'à la mettre.", n:0, ev:['passe'], e:{ tech:.8 } },
+        ko:{ t:"Perte de balle et contre-attaque.", n:-.4, e:{ ligne:-2 } } },
+      { l:"Ressortir court", p:.86,
+        ok:{ t:"Le ballon reste à l'équipe.", n:.2, e:{ ligne:2 } },
+        ko:{ t:"Tu subis le pressing et dégages en touche.", n:-.2, e:{ ment:-.4 } } } ] },
+  { id:'montee', q:"Corner pour vous. Vous êtes menés et il ne reste plus rien. Le coach ne dit rien — mais il ne te rappelle pas non plus.", axe:'phys', chaudSeul:true,
+    opts:[
+      { l:"Monter", p:.2,
+        ok:{ t:"Tu la mets au fond.", n:0, ev:['but'], e:{ supporters:3 } },
+        ko:{ t:"Rien devant, et tu es loin de ton poste.", n:-.5, e:{ ligne:-2 } } },
+      { l:"Rester en couverture", p:.92,
+        ok:{ t:"Tu coupes le contre.", n:.3, e:{ ligne:1 } },
+        ko:{ t:"L'équipe attaque à un de moins et ne marque pas.", n:-.2, e:{ coach:-1 } } } ] },
+],
+M: [
+  { id:'tir', q:"Vingt mètres, l'angle est fermé, un partenaire appelle dans le dos.", axe:'tech',
+    opts:[
+      { l:"Frapper", p:.24,
+        ok:{ t:"Au fond.", n:0, ev:['but'], e:{ tech:.8 } },
+        ko:{ t:"Détourné, l'action meurt là.", n:-.95, e:{ ligne:-1 } } },
+      { l:"Le servir", p:.42,
+        ok:{ t:"Il n'a plus qu'à la pousser.", n:0, ev:['passe'], e:{ ligne:4 } },
+        ko:{ t:"Interception, l'action meurt aussi.", n:-.95, e:{ ment:-.5 } } } ] },
+  { id:'coupfranc', q:"Coup franc à vingt-deux mètres, légèrement excentré. Le ballon est pour toi.", axe:'tech',
+    opts:[
+      { l:"La tenter", p:.18,
+        ok:{ t:"Par-dessus le mur, dans le petit filet.", n:0, ev:['but'], e:{ tech:1 } },
+        ko:{ t:"Le mur, rien.", n:-.95, e:{ ligne:-1 } } },
+      { l:"Centrer", p:.34,
+        ok:{ t:"Ballon posé sur la tête.", n:0, ev:['passe'], e:{ ligne:3 } },
+        ko:{ t:"Dégagé de la tête.", n:-.95, e:{ ment:-.4 } } } ] },
+  { id:'faute', q:"Ils partent en contre à quatre contre trois. Tu peux l'accrocher maintenant.", axe:'ment',
+    opts:[
+      { l:"L'accrocher", p:.82,
+        ok:{ t:"Le contre est mort — mais le carton est pour toi.", n:-.3, ev:['jaune','sauve'], e:{ ligne:3 } },
+        ko:{ t:"Il se dégage, le contre part quand même, et le carton tombe.", n:-.3, ev:['jaune'], e:{ ment:-.8 } } },
+      { l:"Le laisser filer", p:.42,
+        ok:{ t:"La défense s'en sort, aucun carton.", n:.2, e:{ ment:.4 } },
+        ko:{ t:"Ils marquent au bout du contre.", n:0, ev:['encaisse'], e:{ ligne:-2 } } } ] },
+  { id:'presse', q:"Tu peux remonter presser leur défense, ou tenir ta position.", axe:'phys',
+    opts:[
+      { l:"Presser", p:.35,
+        ok:{ t:"Ballon récupéré à vingt-cinq mètres : une occasion nette.", n:0, ev:['occas'], e:{ phys:.8 } },
+        ko:{ t:"Un trou derrière toi.", n:-.4, e:{ fit:-3 } } },
+      { l:"Tenir la ligne", p:.7,
+        ok:{ t:"Le bloc a tenu, ils repassent en arrière.", n:.2, e:{ ligne:2 } },
+        ko:{ t:"Ils ressortent proprement.", n:-.4, e:{ coach:-1 } } } ] },
+],
+A: [
+  { id:'face', q:"Seul face au gardien, un coéquipier arrive à ta hauteur.", axe:'spec',
+    opts:[
+      { l:"Frapper", p:.44,
+        ok:{ t:"Sous la barre.", n:0, ev:['but'], e:{ ment:1 } },
+        ko:{ t:"Le gardien dit non.", n:-.95, e:{ ment:-1.2 } } },
+      { l:"Le décaler", p:.56,
+        ok:{ t:"Il pousse dans le but vide.", n:0, ev:['passe'], e:{ ligne:4 } },
+        ko:{ t:"Il est repris.", n:-.95, e:{ ligne:-1 } } } ] },
+  { id:'volee', q:"Le ballon tombe sur ton pied, dans la surface.", axe:'tech',
+    opts:[
+      { l:"Reprendre de volée", p:.2,
+        ok:{ t:"Lucarne.", n:0, ev:['but'], e:{ tech:1 } },
+        ko:{ t:"À côté.", n:-.95, e:{ ment:-.5 } } },
+      { l:"Contrôler d'abord", p:.38,
+        ok:{ t:"Tu la glisses au premier poteau.", n:0, ev:['but'], e:{ spec:.6 } },
+        ko:{ t:"Le défenseur revient.", n:-.95, e:{ ligne:-1 } } } ] },
+  { id:'penA', q:"Penalty pour vous. Le tireur habituel te regarde et attend.", axe:'ment',
+    opts:[
+      { l:"Le tirer", p:.76,
+        ok:{ t:"Tu l'envoies à l'opposé.", n:0, ev:['but'], e:{ ment:1.5, supporters:3 } },
+        ko:{ t:"Manqué, et le stade s'en souvient.", n:-1.2, ev:['manque'], e:{ ment:-2.2, vestiaire:-4 } } },
+      { l:"Le laisser au tireur habituel", p:.78,
+        ok:{ t:"Un but pour l'équipe, rien pour toi.", n:-.2, ev:['equipe'], e:{ ligne:2 } },
+        ko:{ t:"Il le manque.", n:-.2, ev:['manque'], e:{ ment:-.5 } } } ] },
+  { id:'hjA', q:"Le ballon part derrière la défense. Tu es sur la limite.", axe:'spec',
+    opts:[
+      { l:"Partir", p:.45,
+        ok:{ t:"Tu es lancé, et tu la mets.", n:0, ev:['but'], e:{ phys:.6 } },
+        ko:{ t:"Hors-jeu signalé, rien.", n:-.95, e:{ spec:-.3 } } },
+      { l:"Attendre une demi-seconde", p:.62,
+        ok:{ t:"Tu reçois dos au but et tu remises.", n:0, ev:['passe'], e:{ spec:.6 } },
+        ko:{ t:"L'action est déjà morte.", n:-.95, e:{ ment:-.4 } } } ] },
+],
 };
+
+/* LES FAITS QUI NE DÉPENDENT PAS DU POSTE (le propriétaire, 28/09/2026 : « on peut
+   ajouter des faits de match en lien avec les coéquipiers qui n'ont rien à voir
+   avec le poste »). Ils sont les seuls à faire bouger le vestiaire en plein match.
+   `gk` : ce qui change quand c'est un gardien — « pour le gardien c'est un peu
+   différent, il y a de plus gros risques donc de plus grosses récompenses ». */
+const MOMENTS_TOUS = [
+  { id:'craque', q:"Un coéquipier vient de commettre l'erreur du match. Il est resté à genoux, les mains sur le visage.", axe:'ment',
+    gk:{ 0:{ ok:{ ligne:6 } }, 1:{ ko:{ ligne:-5, coach:-3 } } },
+    opts:[
+      { l:"Aller le relever", p:.6,
+        ok:{ t:"Il se remet dedans et finit le match debout.", n:.3, e:{ ligne:4 } },
+        ko:{ t:"Il te repousse : tu as perdu vingt secondes et le fil.", n:-.3, e:{ ment:-.5 } } },
+      { l:"Le laisser, tu as un match à jouer", p:.75,
+        ok:{ t:"Tu restes dans ton match, personne ne t'en veut.", n:.4, e:{ spec:.3 } },
+        ko:{ t:"Il replonge, et le banc a vu que tu n'as pas bougé.", n:-.2, e:{ ligne:-3, coach:-2 } } } ] },
+  { id:'ballon', q:"Tu étais seul, il a frappé, il a raté. Tu lèves les bras. Il ne te regarde même pas.", axe:'ment', pasG:true,
+    opts:[
+      { l:"Lui dire, tout de suite, sur le terrain", p:.5,
+        ok:{ t:"Il te cherche la fois d'après.", n:.3, e:{ ligne:3 } },
+        ko:{ t:"Il se braque, et tu ne le vois plus de la mi-temps.", n:-.3, e:{ ligne:-3 } } },
+      { l:"Ne rien dire, repartir", p:.7,
+        ok:{ t:"Il s'excuse tout seul à la pause.", n:.2, e:{ ligne:2 } },
+        ko:{ t:"Il recommence deux fois, tu finis le match sans un ballon propre.", n:-.4, e:{ ment:-.8 } } } ] },
+  { id:'adix', q:"Rouge pour un des tiens. Il reste vingt-cinq minutes et vous êtes un de moins. Personne ne dit rien, et tout le monde te regarde.", axe:'ment',
+    gk:{ 0:{ ok:{ ligne:6 }, ko:{ ligne:-4 } } },
+    opts:[
+      { l:"Reculer tout le monde et tenir", p:.65,
+        ok:{ t:"Le bloc tient, vous sortez le point.", n:.5, e:{ vestiaire:4 } },
+        ko:{ t:"Vous reculez trop et vous encaissez.", n:0, ev:['encaisse'], e:{ ment:-.8 } } },
+      { l:"Continuer à jouer haut", p:.4,
+        ok:{ t:"Vous marquez à dix, le stade se lève.", n:0, ev:['equipe'], e:{ vestiaire:6, supporters:4 } },
+        ko:{ t:"Ils vous prennent dans le dos.", n:0, ev:['encaisse'], e:{ ligne:-3 } } } ] },
+  { id:'jeune', q:"Il entre à la 72ᵉ pour son premier match. Il a les jambes qui tremblent, et il se place à côté de toi.", axe:'ment',
+    gk:{ 0:{ ok:{ vestiaire:7 } }, 1:{ ko:{ coach:-3, vestiaire:-4 } } },
+    opts:[
+      { l:"Jouer facile avec lui, le mettre dedans", p:.7,
+        ok:{ t:"Il touche dix ballons et il en réussit neuf.", n:.2, e:{ vestiaire:5 } },
+        ko:{ t:"Tu le sers mal, il perd deux ballons, on croit que c'est lui.", n:-.3, e:{ vestiaire:-2 } } },
+      { l:"Jouer ton match", p:.8,
+        ok:{ t:"Tu finis ton match comme tu l'avais commencé.", n:.4, e:{ spec:.3 } },
+        ko:{ t:"Il n'existe pas, et le coach t'a regardé faire.", n:-.2, e:{ coach:-2, vestiaire:-3 } } } ] },
+  { id:'bagarre', q:"Il l'a fauché, il reste au-dessus de lui, et il lui parle. Tout le monde monte.", axe:'ment',
+    gk:{ 0:{ p:-.05, ok:{ vestiaire:9 }, ko:{ coach:-4 } }, 1:{ ko:{ vestiaire:-2 } } },
+    opts:[
+      { l:"Y aller", p:.55,
+        ok:{ t:"Tu le relèves et tu écartes l'autre, l'arbitre te laisse.", n:.2, e:{ vestiaire:6 } },
+        ko:{ t:"Tu en prends un aussi.", n:-.3, ev:['jaune'], e:{ coach:-2 } } },
+      { l:"Rester à l'écart", p:.85,
+        ok:{ t:"Tu gardes la tête froide, l'arbitre le note.", n:.3, e:{ coach:2 } },
+        ko:{ t:"Ils ont compté qui est venu, et tu n'y étais pas.", n:-.2, e:{ vestiaire:-5 } } } ] },
+  { id:'cuisse', q:"Ça tire derrière la cuisse. Le banc t'a vu la toucher.", axe:'phys', tard:true,
+    opts:[
+      { l:"Demander le changement", p:.7,
+        ok:{ t:"Le kiné confirme : tu as bien fait de sortir, aucune blessure.", n:0, ev:['sortie'], e:{ corps:3, coach:1 } },
+        ko:{ t:"Il ne trouve rien : une crampe, tu es sorti pour rien.", n:0, ev:['sortie'], e:{ coach:-5, vestiaire:-2 } } },
+      { l:"Serrer les dents", p:.65,
+        ok:{ t:"Tu finis le match, la cuisse tient.", n:0, e:{ coach:4 } },
+        ko:{ t:"Ça lâche.", n:-.5, ev:['bless'], e:{ corps:-5, ment:-2.2 } } } ] },
+];
+/* LES SOIRS DE SEMAINE (le propriétaire, 29/09/2026 : « ajouter des faits pour les
+   matchs de coupe et Europe »). Un seul par match de mercredi, jamais deux : la
+   semaine ne gonfle que les semaines où il y a vraiment un match en plus. */
+const MOMENTS_CE = [
+  { id:'petit', q:"Terrain gras, trois mille personnes collées au bord, et une équipe qui n'a rien à perdre.", axe:'ment', ou:'coupe', tour:2,
+    opts:[
+      { l:"Jouer sérieux dès la première minute", p:.8,
+        ok:{ t:"Vous pliez le match avant la mi-temps, tu sors à l'heure de jeu.", n:.5, e:{ fit:-4 } },
+        ko:{ t:"Ils s'accrochent, tu joues les quatre-vingt-dix.", n:.2, e:{ fit:-12 } } },
+      { l:"Économiser tes jambes pour samedi", p:.55,
+        ok:{ t:"Vous passez sans forcer.", n:.2, e:{ fit:-5 } },
+        ko:{ t:"Éliminés par un club de division inférieure.", n:-.6, e:{ vestiaire:-6, supporters:-8 } } } ] },
+  { id:'pelouse', q:"Un champ de patates. Le ballon ne roule pas, il saute.", axe:'tech', ou:'coupe',
+    opts:[
+      { l:"Jouer court quand même", p:.4,
+        ok:{ t:"Vous gardez le ballon, ils n'y touchent pas.", n:.6, e:{ tech:.6 } },
+        ko:{ t:"Deux contrôles ratés, deux contres.", n:-.5, e:{ ligne:-2 } } },
+      { l:"Tout balancer devant", p:.75,
+        ok:{ t:"C'est laid, mais vous passez.", n:.2, e:{ ligne:1 } },
+        ko:{ t:"Vous rendez le ballon trente fois, ils y croient.", n:-.3, e:{ fit:-6 } } } ] },
+  { id:'tab', q:"Zéro partout. Le capitaine fait le tour et demande qui veut tirer.", axe:'ment', ou:'coupe', pasG:true, tab:true,
+    opts:[
+      { l:"Prendre le premier", p:.8,
+        ok:{ t:"Tu lances la série, tout le monde suit.", n:.6, e:{ ment:1.2, vestiaire:4 } },
+        ko:{ t:"Tu le manques d'entrée, la série part de travers.", n:-.8, e:{ ment:-2.5 } } },
+      { l:"Prendre le cinquième", p:.72,
+        ok:{ t:"Celui qui qualifie. Tu es porté jusqu'au vestiaire.", n:1, e:{ ment:2, supporters:8 } },
+        ko:{ t:"Celui qui élimine. Tu connais le silence du vestiaire.", n:-1.2, e:{ ment:-3, vestiaire:-5 } } } ] },
+  { id:'tabG', q:"Cinq tireurs, et tu es seul au milieu. Le premier pose déjà le ballon. Pour la première fois du match, plus personne ne peut rien faire à ta place.", axe:'spec', ou:'coupe', gOnly:true, tab:true,
+    opts:[
+      { l:"Suivre ce que tu as préparé", p:.3, aide:'spec',
+        ok:{ t:"Tu pars du bon côté deux fois, tu en sors un : vous êtes qualifiés.", n:1.5, ev:['arretTab'], e:{ spec:1.2, supporters:8 } },
+        ko:{ t:"Ils les mettent tous les cinq. Tu n'as rien à te reprocher, et ça ne console pas.", n:-.3, e:{ ment:-1.5 } } },
+      { l:"Partir au feeling, et les regarder dans les yeux", p:.25, aide:'ment',
+        ok:{ t:"Tu en sors deux. Personne ne t'avait rien dit : c'est toi, tout seul.", n:1.8, ev:['arretTab'], e:{ ment:3, vestiaire:8 } },
+        ko:{ t:"Tu plonges trois fois avant la frappe : ils t'ont lu.", n:-.6, e:{ ment:-2, ligne:-2 } } } ] },
+  { id:'depl', q:"Trois mille kilomètres, un stade plein et hostile, et samedi dans trois jours.", axe:'phys', ou:'euro', dehors:true,
+    opts:[
+      { l:"Tout donner", p:.6,
+        ok:{ t:"Tu tiens les quatre-vingt-dix et vous ramenez un résultat.", n:.7, e:{ agent:6 } },
+        ko:{ t:"Tu es cuit à l'heure de jeu, tu sors.", n:-.3, e:{ fit:-14 } } },
+      { l:"Gérer", p:.8,
+        ok:{ t:"Tu fais le match qu'il fallait, sans éclat.", n:.2, e:{ fit:-6 } },
+        ko:{ t:"Le coach voit que tu as gardé tes jambes.", n:-.2, e:{ coach:-4 } } } ] },
+  { id:'grand', q:"En face, quelqu'un que tu regardais à la télé il y a trois ans.", axe:'spec', ou:'euro',
+    opts:[
+      { l:"Le prendre de front", p:.35,
+        ok:{ t:"Tu le tiens toute la soirée, et tout le monde l'a vu.", n:1, e:{ agent:10, supporters:6 } },
+        ko:{ t:"Il te passe dessus, et c'est diffusé dans quarante pays.", n:-.9, e:{ ment:-2 } } },
+      { l:"Jouer ton match", p:.7,
+        ok:{ t:"Tu fais ce que tu sais faire, il fait le reste.", n:.3, e:{ spec:.5 } },
+        ko:{ t:"Tu t'effaces, on ne t'a pas vu.", n:-.4, e:{ coach:-3 } } } ] },
+  { id:'finale', q:"Le bus a mis quarante minutes à traverser la ville, personne n'a parlé. Le coach demande si quelqu'un veut dire quelque chose.", axe:'ment', finale:true,
+    opts:[
+      { l:"Parler", p:.6,
+        ok:{ t:"Tu trouves les mots, ils sortent du vestiaire différents.", n:.4, e:{ vestiaire:8 } },
+        ko:{ t:"Tu bafouilles, et le silence retombe plus lourd.", n:-.3, e:{ ment:-1.5 } } },
+      { l:"Laisser le capitaine le faire", p:.85,
+        ok:{ t:"Il dit ce qu'il faut, et toi tu te concentres sur toi.", n:.4, e:{ ment:1 } },
+        ko:{ t:"Personne ne dit rien, vous entrez froids.", n:-.4, e:{ vestiaire:-3 } } } ] },
+];
 function suiteMatch(){
   const m = S.match;
   if (S.momentIdx < m.moments.length){ S.ecran = 'moment'; sauver(); return rendre(); }
   finirMatch();
 }
+/* ---------- ce qu'un fait écrit dans le match ---------- */
+/* LES ÉVÉNEMENTS NE PEUVENT PLUS RESTER DES PHRASES (le propriétaire, 29/09/2026 :
+   « les événements liés aux faits de match doivent apparaître et être comptabilisés
+   dans le résultat du match, la note du jour et les faits du joueur »). Chaque issue
+   déclare ce qu'elle écrit ; `ecrireFait()` est la seule porte, donc le score, le film
+   et les pastilles ne peuvent plus se contredire. */
+function ecrireFait(m, f, quoi){
+  const min = f.min;
+  const tri = () => m.evs.sort((a, b) => a.min - b.min);
+  quoi.forEach(k => {
+    if (k === 'but'){
+      m.bn++; m.buts++;
+      m.evs.push({ type:'but', nous:true, min, qui:S.moi.nom, moi:true }); tri();
+    } else if (k === 'passe'){
+      m.bn++; m.passes++;
+      m.evs.push({ type:'but', nous:true, min, qui: surLeBanc(m, min, 'but'), passeMoi:true }); tri();
+    } else if (k === 'equipe'){
+      m.bn++;
+      m.evs.push({ type:'but', nous:true, min, qui: surLeBanc(m, min, 'but') }); tri();
+    } else if (k === 'encaisse'){
+      m.be++;
+      m.evs.push({ type:'but', nous:false, min, qui: buteurAdverse(m.adv) || m.adv.nom }); tri();
+    } else if (k === 'occas'){
+      /* « Retire le but, c'est trop, mais une chance de mettre un but c'est bien —
+         ou une passe décisive. » Un pressing réussi ne fait pas un but : il fait une
+         occasion, qui finit dedans une fois sur deux. */
+      if (Math.random() < .5) ecrireFait(m, f, [Math.random() < .5 ? 'but' : 'passe']);
+      else f.occasSeche = true;
+    } else if (k === 'arret'){
+      // le penalty arrêté retire le but qu'il arrête : le film montrait les deux
+      const cand = m.evs.filter(e => e.type === 'but' && !e.nous && Math.abs(e.min - min) <= 12);
+      if (cand.length){
+        const cible = cand.reduce((a, e) => Math.abs(e.min - min) < Math.abs(a.min - min) ? e : a, cand[0]);
+        m.evs.splice(m.evs.indexOf(cible), 1); m.be = Math.max(0, m.be - 1); f.min = cible.min;
+      }
+      m.arrets = (m.arrets || 0) + 1;
+      m.evs.push({ type:'penalty', nous:false, min:f.min, arrete:true, moi:true }); tri();
+    } else if (k === 'arretTab'){
+      m.arrets = (m.arrets || 0) + 1;
+      m.evs.push({ type:'tab', min:90, moi:true }); tri();
+    } else if (k === 'sauve'){
+      m.sauves = (m.sauves || 0) + 1;
+      m.evs.push({ type:'sauve', nous:true, min, moi:true }); tri();
+    } else if (k === 'jaune'){
+      // et on ne prend pas un carton après être sorti
+      if (m.sorti && min > m.sorti) return;
+      /* Un deuxième jaune est un rouge : c'est la règle, et c'est ce qui rend la
+         faute tactique dangereuse quand on en traîne déjà un. */
+      if (m.evs.some(e => e.type === 'jaune' && e.moi)){
+        m.evs.push({ type:'rouge', min, moi:true }); tri();
+      } else { m.jaune++; m.evs.push({ type:'jaune', min, moi:true }); tri(); }
+    } else if (k === 'manque'){
+      m.evs.push({ type:'penratee', nous:true, min, moi:f.choixMoi !== false }); tri();
+    } else if (k === 'bless'){
+      f.blesse = true;
+    } else if (k === 'sortie'){
+      sortirDuMatch(m, min);
+    }
+  });
+}
+/* TU SORS, DONC QUELQU'UN ENTRE. Première version : la sortie coupait seulement tes
+   minutes (`m.minutes = min`), ce qui était faux deux fois — pour un remplaçant,
+   `m.minutes` est un nombre de minutes jouées et non la minute de sortie, donc le
+   fait ne faisait rien du tout ; et pour un titulaire, tu quittais le terrain sans
+   remplaçant, ce qui laissait **un nombre impair de sortants**. C'est exactement le
+   défaut que le propriétaire avait relevé sur les cartons rouges (« c'est forcément
+   un nombre pair sauf s'il y a un carton rouge, mais c'est pas indiqué »), et la
+   sonde l'a rattrapé : 33 matchs sur 2 040 avec neuf sortants pour quatre
+   changements. La sortie s'accroche donc à un changement réel — celui qui était
+   prévu pour toi, avancé à la minute du fait, ou un nouveau pris sur le banc. */
+function sortirDuMatch(m, min){
+  const e0 = m.entree || 0;
+  if (!m.minutes || min <= e0 + 1 || min >= 89) return;
+  /* On ne remplace pas un expulsé : ton rouge a déjà arrêté ton match, et te faire
+     aussi sortir en changement te comptait deux fois. C'est l'unique écart que la
+     sonde des sept invariants trouvait encore (1 match sur 2 040). */
+  if ((m.evs || []).some(e => e.type === 'rouge' && e.moi)) return;
+  const chg = m.chg || (m.chg = []);
+  const mien = chg.find(c => c.sortant && c.sortant.moi);
+  if (mien){ if (min < mien.min) mien.min = min; else return; }
+  else {
+    const pris = chg.filter(c => c.entrant).map(c => c.entrant);
+    const libre = (m.banc || []).filter(x => !x.moi && pris.indexOf(x) < 0);
+    const moi = (m.onze || []).find(x => x.moi) || (m.banc || []).find(x => x.moi);
+    // plus personne sur le banc : tu finis le match, en serrant les dents
+    if (!libre.length || !moi) return;
+    chg.push({ min, entrant: pick(libre), sortant: moi });
+  }
+  m.sorti = min; m.minutes = min - e0;
+}
+/* ---------- le tirage des faits ---------- */
+/* « Tu peux monter le nombre de faits par match. » Mesuré avant : 64 % des matchs
+   n'en avaient aucun, 32 % un, 3 % deux. Avec trente et un faits au lieu de huit,
+   on peut se le permettre : 60 % au moins un, 15 % deux. */
+function tirerMoments(m, entree, sortie){
+  if (!m.minutes) return;
+  const bas = Math.max(entree + 2, 10), haut = Math.min(sortie - 2, 88);
+  if (haut <= bas) return;
+  const gard = S.moi.poste === 'G';
+  const sac = MOMENTS[S.moi.poste].concat(MOMENTS_TOUS.filter(f => !(f.pasG && gard)));
+  /* JUSQU'À TROIS FAITS DANS UN MATCH (le propriétaire, 29/09/2026 : « c'est ok
+     pour les faits à 3 »). Le rendement décroissant de `POIDS_FAIT` empêche le
+     triplé de faits de faire un 10 ; ce qu'il rend, c'est le relief. */
+  const t = Math.random();
+  const n = t < .35 ? 0 : t < .77 ? 1 : t < .94 ? 2 : 3;
+  for (let i = 0; i < n; i++){
+    const f = pick(sac);
+    if (m.moments.some(x => x.id === f.id)) continue;
+    // la cuisse ne tire qu'en seconde période, la montée qu'en fin de match serré
+    let mn = ri(bas, haut);
+    if (f.tard) mn = ri(Math.max(bas, 55), haut);
+    if (f.chaudSeul){ if (m.bn >= m.be || haut < 70) continue; mn = ri(Math.max(bas, 70), haut); }
+    m.moments.push({ ...f, min:mn });
+  }
+  m.moments.sort((a, b) => a.min - b.min);
+}
+/* UN SEUL FAIT LE MERCREDI. « Ça ne rallonge pas ta semaine, ça la coûte » : la coupe
+   et l'Europe gardent leur clic unique, et le fait qui s'y joue parle de la soirée —
+   le petit club, la pelouse, les tirs au but, le déplacement, le grand d'Europe. */
+function momentSemaine(info, m){
+  const ou = info.c, gard = S.moi.poste === 'G';
+  const sac = MOMENTS_CE.filter(f =>
+    (!f.ou || f.ou === ou) && !(f.pasG && gard) && !(f.gOnly && !gard)
+    && !(f.tour && (info.t == null || info.t >= f.tour))
+    && !(f.dehors && info.dom) && !(f.finale && !info.finale)
+    // les tirs au but ne se tirent que s'il y a vraiment une séance de tirs au but
+    && !(f.tab && !(m && m.tab)));
+  if (!sac.length) return null;
+  const f = pick(sac);
+  return { ...f, min: f.tab ? 90 : ri(20, 85) };
+}
+
+/* ---------- le deuxième effet ---------- */
+/* Chaque issue porte un effet sur un axe que tu entraînes ou sur ta situation.
+   C'est la deuxième moitié de la demande du 28/09 : la note dit ce que ça vaut
+   aujourd'hui, celui-ci dit ce que ça laisse. */
+function effetFait(e, raison){
+  if (!e) return;
+  Object.entries(e).forEach(([k, v]) => {
+    if (k === 'ligne') bougerLigne(LIGNE_DU_POSTE[S.moi.poste], v);
+    else if (k === 'vestiaire') bougerVestiaire(v);
+    else if (k === 'ment') v < 0 ? coutMental(-v, raison) : bougerAxe('ment', v);
+    else if (k === 'tech' || k === 'phys' || k === 'spec') bougerAxe(k, v);
+    else if (k === 'fit') S.etats.fraicheur = clamp(S.etats.fraicheur + v);
+    else if (k === 'corps') S.etats.corps = clamp(S.etats.corps + v, 0, 100);
+    else if (k === 'proches') bougerProches(v);
+    else S.liens[k] = clamp(S.liens[k] + v);
+  });
+}
 function choisirMoment(i){
   const m = S.match, f = m.moments[S.momentIdx], o = f.opts[i];
   /* L'axe du fait décide d'abord, mais la technique pèse sur **tous** les faits :
      c'est elle qui fait que le geste sort, quel que soit le geste. Quand le fait
-     est déjà technique, on ne la compte pas deux fois. Mesuré à .0028 : l'écart
-     disparaissait dans le bruit, donc le joueur ne pouvait pas le sentir. */
+     est déjà technique, on ne la compte pas deux fois. */
   const axeV = S.moi.base[f.axe] + S.moi.boost[f.axe];
   const techV = S.moi.base.tech + S.moi.boost.tech;
   /* PRESSION : un moment chaud coûte douze points de réussite, et le mental les
      rend — ou les aggrave quand il est bas. C'est le seul endroit où il agit sur
      le terrain, et l'écran le dit avant le clic. */
   const pression = f.chaud ? .12 * (1 - clamp(encaisse(), -.6, 1)) : 0;
+  /* CERTAINES OPTIONS SONT RÉCOMPENSÉES PAR UNE SÉANCE PRÉCISE (le propriétaire,
+     29/09/2026, sur le penalty du gardien : « on garde la lecture contre le
+     réflexe »). Lire sa course est payé par ta séance de poste, tenir jusqu'au
+     bout par ton mental : deux options, deux entraînements. */
+  const aide = o.aide ? ((S.moi.base[o.aide] + S.moi.boost[o.aide]) - 50) * .006 : 0;
+  const gk = f.gk && f.gk[i] && S.moi.poste === 'G' ? f.gk[i] : null;
   const bonus = (f.axe === 'tech' ? (techV - 50) * .009
       : (axeV - 50) * .006 + (techV - 50) * .005)
+    + aide + (gk && gk.p ? gk.p : 0)
     + (S.etats.fraicheur - 80) * .001 - pression;
   const reussi = Math.random() < clamp(o.p + bonus, .05, .95);
-  f.choix = o.l; f.reussi = reussi;
+  const r = reussi ? o.ok : o.ko;
+  f.choix = o.l; f.reussi = reussi; f.txt = r.t;
+  f.choixMoi = i === 0;
   /* Et quand ça casse dans un moment chaud, on sort du match. Ça porte un nom,
      ça s'écrit dans le film, et ça coûte. Le mental décide si ça arrive. */
   if (!reussi && f.chaud && !m.perduLeFil && Math.random() < .5 - encaisse() * .42){
@@ -1973,52 +2423,61 @@ function choisirMoment(i){
     coutMental(2, "tu es sorti du match après cette action");
   }
   if (reussi && f.chaud) f.tenu = true;
-  /* « Je tire au lieu de faire la passe, ça me retire un point de mental. »
-     Le mauvais choix se paie tout de suite, et plus lourdement quand ça comptait. */
-  if (!reussi) coutMental(f.chaud ? 1.8 : 1.1, `« ${o.l} », à la ${f.min}ᵉ`);
-  /* UN BUT DE FAIT DE MATCH EST UN BUT DU MATCH (le propriétaire, 27/09/2026,
-     capture à l'appui : un 3-0 dont le film ne montrait que deux buts). Le fait
-     ajoutait `m.bn++` — donc un but au score — **sans créer d'événement** : ce
-     troisième but n'apparaissait nulle part, ni dans le film, ni dans la note du
-     buteur quand c'était ta passe qui l'avait servi. L'événement est désormais
-     réel, comme les autres, et tout ce qui lit le film le voit. */
-  if (reussi && (f.id === 'tir' || f.id === 'face' || f.id === 'volee')){
-    const moiBut = o.l.startsWith("Frapper") || o.l.startsWith("Reprendre");
-    m.bn++;
-    if (moiBut){
-      m.buts++;
-      m.evs.push({ type:'but', nous:true, min:f.min, qui:S.moi.nom, moi:true });
-    } else {
-      m.passes++;
-      m.evs.push({ type:'but', nous:true, min:f.min, qui: surLeBanc(m, f.min, 'but'), passeMoi:true });
-    }
-    m.evs.sort((a, b) => a.min - b.min);
+  // ce que l'issue écrit dans le match : score, film, pastilles
+  if (r.ev) ecrireFait(m, f, r.ev);
+  // ce qu'elle vaut sur ta note : zéro quand l'événement la paie déjà
+  if (r.n) (m.noteFaits = m.noteFaits || []).push(r.n);
+  // et le deuxième effet, fusionné avec la variante gardien quand il y en a une
+  const eff = { ...(r.e || {}), ...((gk && (reussi ? gk.ok : gk.ko)) || {}) };
+  effetFait(eff, `« ${o.l} », à la ${f.min}ᵉ`);
+  if (f.blesse){
+    S.etats.blessure = ri(2, 5);
+    m.blessure = { n:S.etats.blessure, pourquoi:"Cette cuisse que tu as voulu tenir" };
+    // on ne finit pas un match sur une cuisse qui a lâché : le staff te sort
+    sortirDuMatch(m, f.min);
   }
-  if (!reussi && f.id === 'tacle') m.jaune++;
-  /* Le même défaut de l'autre côté : une sortie ratée encaissait un but que le film
-     ne montrait pas, et un penalty arrêté en effaçait un que le film montrait encore.
-     Les deux passent maintenant par un événement, donc le score ne peut plus
-     contredire le film. */
-  if (!reussi && f.id === 'sortie'){
-    m.be++;
-    m.evs.push({ type:'but', nous:false, min:f.min, qui: buteurAdverse(m.adv) || m.adv.nom });
-    m.evs.sort((a, b) => a.min - b.min);
+  jrn('moment', `${f.min}ᵉ — ${f.q} → ${o.l} : ${r.t}`);
+  S.momentIdx++;
+  if (S.faitAnnexe){
+    const { info, m: ma } = S.faitAnnexe; S.faitAnnexe = null; S.match = null;
+    S.annexe = finirAnnexe(info, ma);
+    return apresSemaine();
   }
-  if (reussi && f.id === 'pen'){
-    // on n'arrête un penalty que s'il y avait un but à arrêter
-    const cand = m.evs.filter(e => e.type === 'but' && !e.nous);
-    if (cand.length){
-      const cible = cand.reduce((a, e) => Math.abs(e.min - f.min) < Math.abs(a.min - f.min) ? e : a, cand[0]);
-      m.evs.splice(m.evs.indexOf(cible), 1);
-      m.evs.push({ type:'penalty', nous:false, min: cible.min, arrete:true });
-      m.evs.sort((a, b) => a.min - b.min);
-      m.be = Math.max(0, m.be - 1);
-      f.min = cible.min;
-    }
-  }
-  jrn('moment', `${f.min}ᵉ — ${f.q} → ${o.l} : ${reussi ? f.ok : f.ko}`);
-  S.momentIdx++; suiteMatch();
+  suiteMatch();
 }
+/* CE QUE LES FAITS PÈSENT SUR LA NOTE. Le forfait de ±0,95 par fait est remplacé par
+   la valeur propre de chaque issue — arrêter un penalty ne vaut pas la même chose que
+   pousser un ailier vers l'extérieur. Le rendement décroissant du propriétaire reste :
+   « le premier fait vaut un point, le deuxième 0,75, le troisième 0,5 ». */
+/* TON PROPRE CARTON NE TE COÛTAIT RIEN (asymétrie trouvée le 29/09/2026 en
+   relisant les deux formules) : `notesEquipe()` retire .25 par jaune et 1.3 sur
+   un rouge à un coéquipier, et ta note ne regardait pas les tiens. Le propriétaire
+   avait pourtant nommé exactement ce canal : « chaque fait de match doit avoir un
+   impact sur la note, que ce soit à travers la conséquence — exemple un but, un
+   carton jaune, une suspension ». Même barème que pour les autres. */
+/* L'ÉCHELLE DES FAITS. Chaque issue porte sa propre valeur de note, posée cas par
+   cas avec le propriétaire (« la note paie ce que l'action a évité ») : un penalty
+   sauvé vaut 1,2, une action mineure évitée 0,4. Ces valeurs disent le **rapport**
+   entre deux actions, pas des points de note absolus — et mesuré sur 5 300 notes,
+   elles rendaient 40 % de ce que rendait l'ancien forfait de 0,95 par fait : les
+   matchs sous 5,0 tombaient de 6,8 % à 2,8 % et les 9,0 et plus de 6,6 % à 2,6 %,
+   c'est-à-dire exactement le relief qu'il avait demandé le 27/09 (« des soirs de
+   gala et des soirs qu'on veut oublier »). Un seul coefficient commun préserve
+   tous ses arbitrages relatifs et rend le relief. Un seul nombre à bouger. */
+const ECHELLE_FAIT = 1.8;
+function poidsCartons(m){
+  const j = (m.evs || []).filter(e => e.type === 'jaune' && e.moi).length + (m.jaune || 0);
+  const r = (m.evs || []).some(e => e.type === 'rouge' && e.moi);
+  return -j * .25 - (r ? 1.3 : 0);
+}
+function poidsFaits(m){
+  const l = (m.noteFaits || []);
+  const p = l.filter(x => x > 0).sort((a, b) => b - a);
+  const n = l.filter(x => x < 0).sort((a, b) => a - b);
+  const somme = t => t.reduce((a, v, k) => a + v * (POIDS_FAIT[k] == null ? .25 : POIDS_FAIT[k]), 0);
+  return (somme(p) + somme(n)) * ECHELLE_FAIT;
+}
+
 /* Le soir où rien ne va : c'est là que le mental se voit. Seul l'aléa
    défavorable est amorti, jamais le favorable. */
 function aleaNote(){
@@ -2042,8 +2501,7 @@ function finirMatch(){
          en moins »). C'est ce qui fait qu'une saison a des soirs de gala et des
          soirs qu'on veut oublier. */
       + (niveauJour() - S.club.force) * .035
-      + cumul(m.moments.filter(f => f.reussi).length, POIDS_FAIT)
-      - cumul(m.moments.filter(f => f.reussi === false).length, POIDS_FAIT)
+      + poidsFaits(m) + poidsCartons(m)
       - (m.perduLeFil ? .7 : 0) + (m.moments.some(f => f.tenu) ? .35 : 0) + aleaNote(), 3, 10);
     m.note = Math.round(m.note * 10) / 10;
     S.sansJouer = 0;
@@ -2066,7 +2524,15 @@ function finirMatch(){
     S.liens.coach = clamp(S.liens.coach + dCoach);
     // ta ligne te juge sur ta note : c'est avec eux que tu viens de jouer
     bougerLigne(LIGNE_DU_POSTE[S.moi.poste], m.note >= 7 ? 1.4 : m.note < 5.5 ? -1.2 : 0);
-    S.liens.supporters = clamp(S.liens.supporters + (m.buts ? 2 : 0) + (m.note >= 7.5 ? 1 : 0) - (m.note < 5.4 ? 1 : 0));
+    /* LE STADE OUBLIE (29/09/2026). Cette ligne n'a jamais fait que monter — pas de
+       rappel, pas d'oubli — et personne ne s'en apercevait puisque rien ne lisait la
+       jauge. Mesuré avant de la brancher, 20 carrières entières : **médiane 100**,
+       donc l'avantage du terrain qu'on vient de lui donner aurait été une constante
+       de +1,20, c'est-à-dire pas une décision. Un public s'entretient : il revient
+       de 2 % par journée vers ce qu'il donne à n'importe qui, et ce que tu fais
+       samedi l'en écarte. */
+    S.liens.supporters = clamp(S.liens.supporters * .95 + 46 * .05
+      + (m.buts ? 1.5 : 0) + (m.passes ? .7 : 0) + (m.note >= 7.5 ? 1.2 : 0) - (m.note < 5.4 ? 1.4 : 0));
     S.etats.forme = clamp(S.etats.forme + (m.note >= 7 ? 5 : m.note >= 6 ? 1 : -4));
     /* Le propriétaire : « un joueur qui sort, il peut en vouloir au coach. »
        Pour toi ça se paie en tête et en confiance du coach, pas en rancune. */
@@ -2111,7 +2577,12 @@ function finirMatch(){
        simplement pas. Sans ce plancher, ne pas jouer faisait baisser `coach`,
        qui pèse .16 dans `valeurAuPoste()`, donc on jouait encore moins : la même
        spirale que celle du mental, et la seule porte de sortie se refermait. */
-    if (S.liens.coach > 42) S.liens.coach = clamp(S.liens.coach - (m.statut === 'banc' ? .5 : .2));
+    /* Et il te protège quand la saison tourne mal : le plancher de la confiance du
+       coach — ce qui avait fermé la spirale du banc — monte avec la confiance du
+       club. Un club qui tient à toi le dit au coach ; un club qui t'a oublié le
+       laisse t'enterrer. De 36 à 50 au lieu d'un 42 fixe. */
+    const sol = 36 + (S.liens.club - 50) * .28;
+    if (S.liens.coach > sol) S.liens.coach = clamp(S.liens.coach - (m.statut === 'banc' ? .5 : .2));
     S.sansJouer = (S.sansJouer || 0) + 1;
   }
   /* Rester sur le banc ne retire PAS de mental : ça fermait la spirale sur
@@ -2281,7 +2752,11 @@ function notesEquipe(m){
     const mien = faits[S.moi.nom] || { b:0, p:0, j:0, r:0 };
     joueurs.push({ nom:S.moi.nom, poste:S.moi.poste, note:m.note, moi:true, min:m.minutes,
       // ta passe décisive ne passe pas par `faits` : elle est marquée `passeMoi`
-      f: { b:m.buts || 0, p:m.passes || 0, j:mien.j, r:mien.r, bl:0 } });
+      /* « Un petit icône pour chaque, c'est sympa. » Le penalty arrêté, le but
+         sauvé et le penalty manqué n'avaient aucune trace : ils en ont une. */
+      f: { b:m.buts || 0, p:m.passes || 0, j:mien.j, r:mien.r, bl:m.blessure ? 1 : 0,
+        ar:m.arrets || 0, sv:m.sauves || 0,
+        pm:m.evs.filter(e => e.type === 'penratee' && e.moi).length } });
   }
   joueurs.sort((a, b) => b.note - a.note);
   m.notes = joueurs;
@@ -2365,9 +2840,17 @@ function apresMatch(){
      elle devient obligatoire — mesuré, elle écrasait toutes les autres. */
   /* Ce que les tiens changent, et c'est leur seul effet : avec du monde derrière
      toi, un mauvais samedi se répare dans la semaine ; sans personne, il s'installe. */
+  /* UNE BORNE ARRIVE AVEC LA PORTE (29/09/2026). Maintenant que les arrêts peuvent
+     faire bouger les tiens, la récupération naturelle s'arrête **un cran sous ton
+     pic**, jamais au pic : les tiens te sortent du trou, le dernier cran ne
+     s'achète qu'à l'entraînement mental. Sans cette borne, s'occuper des siens
+     remplaçait la séance mentale — ce que le propriétaire avait vu venir tout seul
+     (« si je fais que m'occuper de ma famille, ça va arrêter mon mental
+     suffisamment pour pas avoir à entraîner le mental »). */
   const repare = .12 + (proches() - 50) * .006;
-  if (repare > 0 && S.moi.base.ment < S.moi.pic.ment - .2)
-    bougerAxe('ment', Math.min(repare, S.moi.pic.ment - S.moi.base.ment));
+  const plafondTete = S.moi.pic.ment - BORNE_TETE;
+  if (repare > 0 && S.moi.base.ment < plafondTete - .2)
+    bougerAxe('ment', Math.min(repare, plafondTete - S.moi.base.ment));
   // le corps revient vers ce que l'âge permet : c'est ça qui empêche la spirale
   S.etats.corps = clamp(S.etats.corps + (cibleCorps() - S.etats.corps) * .05, 0, 100);
   S.etats.fond = clamp(S.etats.fond - 1.5);                 // le fond s'use si on ne l'entretient pas
@@ -2409,11 +2892,56 @@ function finSaison(){
      ton ambition — qui lit les deux. Compter l'argent dans `vieillir()` le faisait
      juger sur les chiffres de l'année d'avant. */
   encaisserLaSaison();
+  bougerClubEtSelection(note, pos);
   S.bilan.ambition = jugerAmbition();
   jrn('saison', `Saison terminée : ${S.stats.matchs} matchs, ${S.stats.buts} buts${S.bilan.note == null ? '' : `, note ${nb(S.bilan.note)}`}. ${S.club.nom} ${pos}ᵉ de ${nomDivision()}.`);
   if (S.bilan.descente) jrn('division', `${S.club.nom} descend.`);
   if (S.bilan.montee) jrn('division', `${S.club.nom} monte.`);
   S.ecran = 'bilan'; sauver(); rendre();
+}
+/* CE QUE TA SAISON FAIT À DEUX JAUGES QUI N'AVAIENT AUCUNE VIE (29/09/2026).
+   La confiance du club ne bougeait que sur trois familles d'arrêts, donc elle
+   restait à 50 des carrières entières — une jauge qu'on rebranche sans la faire
+   vivre ne vaut pas mieux qu'une jauge morte. Et la sélection existait à 0 sans
+   jamais rien faire ni jamais bouger : c'était la seule du jeu dans ce cas.
+   Toutes deux se jugent sur la même chose, et ce n'est pas la même lecture : le
+   club regarde ce que tu lui as **donné** (ta présence, ta régularité, ce que
+   l'équipe a fait avec toi), le sélectionneur regarde ce que tu **vaux** à ton
+   poste dans le pays. Le reste de la sélection — la convocation, les deux matchs
+   en pleine semaine, les jambes qu'ils coûtent — est le lot suivant : le
+   propriétaire l'a lui-même remis à plus tard (« oui, mais au prochain lot »). */
+function bougerClubEtSelection(note, pos){
+  const m = S.stats.matchs, n = note == null ? null : note;
+  let d = 0;
+  d += m >= 28 ? 6 : m >= 18 ? 3 : m >= 8 ? 0 : -7;      // ta présence
+  if (n != null) d += n >= 6.8 ? 5 : n >= 6.3 ? 2 : n < 5.9 ? -4 : 0;
+  if (S.coupe && S.coupe.gagnee) d += 4;
+  if (S.euro && S.euro.gagnee) d += 4;
+  if (S.bilan && S.bilan.descente) d -= 3;
+  if (S.bilan && S.bilan.montee) d += 3;
+  if (S.moi.age >= 34) d -= 3;                            // on pense à la suite
+  /* Avec un rappel vers 50 : sans lui, mesuré, une bonne carrière la collait à 100
+     dès la sixième saison et « le club te protège » devenait un acquis. Une direction
+     se refait une opinion chaque été. */
+  S.liens.club = clamp(S.liens.club * .82 + 50 * .18 + d);
+  /* La sélection ne s'accumule pas, elle **converge** vers ce que tu vaux cette
+     année-là : un sélectionneur ne garde pas un crédit acquis à vingt-deux ans. Son
+     étalon est le meilleur club du pays, pas le tien — un très bon joueur d'un club
+     moyen est vu. Première version en cumul (+14 par bonne saison, plancher −4) :
+     mesuré sur 20 carrières, **médiane 100 au sommet, 16 carrières sur 20 au-dessus
+     de 60** — une jauge qui monte toujours ne dit rien. */
+  const sommet = Math.max(...toutesLesEquipes().map(e => e.force));
+  const ecart = niveau() - sommet;
+  let cible = 0;
+  if (m >= 15){
+    cible = clamp(18 + ecart * 5.2, 0, 100);
+    if (n != null) cible += n >= 6.9 ? 14 : n >= 6.5 ? 6 : n < 6 ? -14 : 0;
+    if ((S.division || 1) > 1) cible -= 26;               // on ne va pas les chercher en bas
+  } else cible = m >= 6 ? 14 : 0;
+  if (S.moi.age >= 32) cible -= (S.moi.age - 31) * 11;    // ils regardent devant
+  cible = clamp(cible, 0, 100);
+  S.liens.selection = clamp((S.liens.selection || 0) * .5 + cible * .5);
+  if (S.liens.selection >= 60) jrn('selection', `On parle de toi pour la sélection.`);
 }
 function bilanGagne(note, pos){
   const t = [];
@@ -2742,9 +3270,19 @@ function genererOffres(){
   const n = niveau();
   const joue = S.stats.matchs >= 12, bonne = S.stats.notes.length && moyenneNotes() >= 6.4;
   // ta cote : ce que tu vaux, ce que tu as montré, et ce que ton agent a fait de l'été
+  /* TA COTE : ce que tu vaux, ce que tu as montré, ce que ton agent a fait de l'été
+     — et, depuis le 29/09/2026, **le stade et la sélection**. Un joueur que son
+     public porte se vend mieux ; un joueur que le sélectionneur regarde reçoit des
+     appels de clubs qui ne le connaissaient pas. */
   const cote = n + (joue ? 2 : -3) + (bonne ? 2.5 : 0) + (S.ete ? S.ete.offres : 0)
     + (S.bonusOffres || 0)
-    + (S.liens.agent - 50) * .06 + (S.moi.age >= 33 ? -4 : 0);
+    + (S.liens.agent - 50) * .06 + (S.moi.age >= 33 ? -4 : 0)
+    + (S.liens.supporters - 50) * .03 + (S.liens.selection || 0) * .035;
+  /* Calibré : à .05 et .055, la cote médiane montait de deux points et demi et tes
+     titres par carrière de 5,2 à 6,7 (mesuré, 12 carrières de vingt saisons) — ce
+     n'était plus un coup de pouce, c'était une promotion. À .03 et .035 le stade et
+     la sélection valent ensemble un point et demi de cote, du même ordre que ce que
+     l'agent pèse déjà. */
   /* UN GRAND CLUB N'APPELLE PAS TOUS LES ÉTÉS. La fenêtre était symétrique
      (`|force − cote| < 7`), donc une fois ta cote haute **toutes** les offres
      venaient du haut du tableau et tu suivais le meilleur club d'année en année.
@@ -2774,10 +3312,18 @@ function genererOffres(){
       ans: ri(2, 4) };
   });
   S.offreIdx = 0;
-  /* Ton club peut ne plus vouloir de toi : trop vieux, ou une saison sans jouer.
-     C'est la seule chose qui t'oblige à partir. */
-  S.libre = (S.moi.age >= 33 && S.stats.matchs < 10) || (S.stats.matchs === 0 && S.moi.age >= 21);
-  if (S.libre) jrn('offre', `${S.club.nom} ne prolonge pas.`);
+  /* LA CONFIANCE DU CLUB DÉCIDE DE JUIN (jauge rebranchée le 29/09/2026 : huit
+     options la faisaient bouger, rien ne la lisait, et les pastilles « le club
+     apprécie » ne correspondaient à rien). Elle ne remplace pas les deux vieilles
+     raisons de non-renouvellement — l'âge et la saison blanche — elle les arbitre :
+     un club qui tient à toi passe l'éponge, un club qui ne te croit plus n'attend
+     pas tes trente-trois ans. C'est la seule chose qui t'oblige à partir. */
+  const cl = S.liens.club;
+  const dur = (S.moi.age >= 33 && S.stats.matchs < 10) || (S.stats.matchs === 0 && S.moi.age >= 21);
+  S.libre = (dur && cl < 64) || (cl < 28 && S.stats.matchs < 18);
+  if (S.libre) jrn('offre', cl < 28 && !dur
+    ? `${S.club.nom} ne prolonge pas : ils ont tourné la page depuis longtemps.`
+    : `${S.club.nom} ne prolonge pas.`);
   return S.offres;
 }
 function offreCourante(){ return (S.offres || [])[S.offreIdx || 0] || null; }
@@ -2800,7 +3346,11 @@ function resterAuClub(){
   if (e) S.club = { nom: e.nom, force: e.force };
   /* Rester, c'est renégocier : ton salaire suit ce que tu es devenu, en bien
      comme en mal. */
-  const neuf = salaireDe(niveau(), S.moi.age, S.club.force, S.division || 1);
+  /* Et il décide de ce qu'il met sur la table : ±18 % entre un club qui t'a oublié
+     et un club dont tu es le joueur. La renégociation est le seul endroit du jeu où
+     la confiance du club se compte en argent. */
+  const neuf = salaireDe(niveau(), S.moi.age, S.club.force, S.division || 1)
+    * (1 + (S.liens.club - 50) * .006);
   poserSalaire(Math.max(S.salaire * .8, (S.salaire + neuf) / 2));
   jrn('offre', `Tu restes à ${S.club.nom} : ${sous(S.salaire)} par an.`);
   ouvrirMercato(true);
@@ -3081,7 +3631,41 @@ const MOTS = {
   club: ["Le club veut te voir partir.", "Le club t'a oublié.", "Le club te paie, sans plus.", "Le club tient à toi.", "Le club te protège.", "Tu es leur joueur."],
   supporters: ["On te siffle.", "Personne ne te connaît.", "Ton nom circule un peu.", "Le stade t'apprécie.", "Le stade t'attend.", "Tu es leur chouchou."],
   agent: ["Il ne répond plus.", "Il est évasif.", "Il dit ce qu'il veut bien dire.", "Il répond vite.", "Il te dit tout ce qu'il sait.", "Il travaille pour toi jour et nuit."],
+  /* La sélection part de 0 et se gagne : les deux premières bandes disent qu'il
+     n'y a rien, pas qu'on t'a écarté. */
+  selection: ["Personne ne t'a jamais regardé de là-haut.", "Ton nom n'est pas sur leur liste.",
+    "On t'a cité une fois, sans suite.", "Tu es dans leur carnet.",
+    "Le sélectionneur te suit, et ça se sait.", "Tu es dans les plans de la sélection."],
 };
+/* CE QUE CHAQUE JAUGE CHANGE, en une proposition, accrochée à la phrase. La règle
+   du projet — chaque chiffre affiché doit avoir une conséquence visible — ne vaut
+   que si la conséquence est **écrite** : trois de ces quatre jauges viennent d'être
+   rebranchées, et sans cette ligne le joueur n'aurait aucun moyen de le savoir. */
+function pourquoiLien(lien){
+  /* Les seuils sont ceux du moteur, pas des seuils d'écriture : 64 est la valeur
+     au-dessus de laquelle le club passe l'éponge sur l'âge, 28 celle sous laquelle
+     il ne prolonge pas quoi qu'il arrive. Une phrase qui dirait autre chose que ce
+     que le code fait serait pire qu'une jauge muette. */
+  if (lien === 'club'){
+    const v = S.liens.club;
+    return v >= 64 ? "Si l'âge ou une saison creuse te rattrape, ils passeront l'éponge — et ils paieront."
+      : v >= 45 ? "C'est ce qui décidera de juin, et de ce qu'ils mettront sur la table."
+      : v >= 28 ? "Ils ne passeront rien : une saison creuse, et c'est fini."
+      : "À ce niveau-là, ils ne prolongeront pas.";
+  }
+  if (lien === 'supporters'){
+    // ce qu'ils valent vraiment : (v − 50) × .034, quand le terrain vaut 2,4
+    const v = S.liens.supporters;
+    return v >= 72 ? "À domicile, ils vous portent : un demi-terrain de plus."
+      : v >= 56 ? "À domicile, ils poussent un peu."
+      : v >= 44 ? "À domicile, ça ne pèse presque rien."
+      : "À domicile, le stade vous pèse plus qu'il ne vous porte.";
+  }
+  if (lien === 'selection') return (S.liens.selection || 0) >= 45
+    ? "Ça t'ouvre des clubs qui ne t'appelaient pas."
+    : "Trop peu, encore, pour qu'un club s'en serve.";
+  return null;
+}
 function dire(lien){
   if (lien === 'vestiaire') return MOTS.vestiaire[bande(vestiaire())];   // la moyenne des lignes
   return MOTS[lien] ? MOTS[lien][bande(S.liens[lien])] : '';
@@ -3369,6 +3953,21 @@ function charger(){
       d.v = 12;
     }
 
+    /* MIGRATION 12 → 13 : les trente et un faits de match, et les quatre jauges.
+       Un fait de match a changé de forme (`opts` avec `ok`/`ko` au lieu de deux
+       textes) : une sauvegarde prise **pendant** un match porte les anciens objets
+       dans `S.match.moments`, et l'écran du moment les lirait à vide. On rend donc
+       la journée en cours au lundi — on perd un match, jamais une carrière. Le reste
+       n'a rien à reconstruire : `liens.selection` existait déjà à 0, et les trois
+       autres jauges avaient leur valeur, elles n'avaient simplement aucun lecteur. */
+    if (d.v === 12){
+      if (d.match || d.faitAnnexe || d.ecran === 'moment' || d.ecran === 'resultat'){
+        d.match = null; d.faitAnnexe = null; d.annexe = null; d.momentIdx = 0;
+        d.eqJour = null; d.arret = null; d.semaine = null; d.seance = null;
+        d.ecran = 'semaine';
+      }
+      d.v = 13;
+    }
     /* La qualité et le défaut se découvrent désormais à la création : une carrière
        commencée avant ne les a peut-être pas encore vus, et plus rien ne les lui
        montrerait. On les lui donne. */

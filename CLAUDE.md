@@ -1225,12 +1225,111 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     rien trouvé — environ un match sur seize mille. Le défaut est antérieur à ce lot (rien ici ne
     touche au moteur de match) et la sonde garde désormais le détail du match fautif pour la
     prochaine fois.
-- **Ce qui n'est pas encore là** : la sélection nationale (`liens.selection` existe à 0 et n'est
-  lu nulle part), le mode entraîneur·euse en 2.0, et le **contenu** — dix-sept familles d'arrêts
-  mais seulement **huit faits de match** (deux par poste). (La trêve, les offres, la progression
-  d'une saison sur l'autre et l'usure sont livrées — voir « La carrière continue ».) Les **contenus** sont volontairement repoussés après le moteur (décision du propriétaire) :
-  un contenu n'est une donnée qu'une fois les quatre canaux d'impact et le `ctx` figés. Les quatre
-  `ARRETS` et les huit `MOMENTS` en place sont des marqueurs de forme, pas le contenu final.
+- **TRENTE ET UN FAITS DE MATCH, ET LES QUATRE JAUGES REBRANCHÉES** (le propriétaire,
+  29/09/2026 : « vas-y code le et rebranche les quatre jauges »). C'est la mise en code de la page
+  de décisions écrite avec lui et corrigée cas par cas —
+  **https://claude.ai/artifact/VDvYbM8fkUtuAMyfu58eAW** — après une vingtaine d'allers-retours sur
+  les récompenses et les conséquences.
+  - **Trente et un faits au lieu de huit** : dix-huit par poste (deux à cinq chacun), six communs
+    à tous les postes (le coéquipier qui craque, le ballon qu'il ne t'a pas donné, la ligne à dix,
+    le jeune, la bagarre, la cuisse) et **sept réservés au mercredi** (le petit club, la pelouse,
+    les tirs au but — une version pour le tireur, une pour le gardien —, le déplacement européen,
+    le grand joueur en face, la finale). Chaque option porte **une issue réussie et une issue
+    ratée**, chacune avec son texte, sa valeur de note, son événement et son deuxième effet.
+  - **Chaque issue écrit dans le match** (`ecrireFait()`) : un but, une passe décisive, un but de
+    l'équipe, un but encaissé, une occasion, un penalty arrêté ou manqué, un but sauvé, un carton
+    (un deuxième jaune fait un rouge), une blessure, une sortie. Le film, le score, les pastilles
+    et la note viennent donc **de la même source** : ils ne peuvent plus se contredire. Trois
+    pastilles de plus (🧤 penalty arrêté, 🛡️ but sauvé, ❌ penalty manqué).
+  - **Le mercredi a son fait**, un seul, joué avant que la note du match tombe. `jouerAnnexe()` rend
+    la main à l'écran du moment (`S.faitAnnexe`) et `finirAnnexe()` reprend là où elle s'était
+    arrêtée : la semaine garde ses trois clics.
+  - **Et parfois ça va aux tirs au but.** Un nul de coupe était **toujours** tranché en
+    prolongation, donc la séance n'existait pas — et les deux faits qui en parlent pouvaient tomber
+    sur un 3-0, ce qui se lit tout de suite comme un défaut (vu à l'écran avant de livrer). Une fois
+    sur deux le match va au bout : mesuré, **65 séances sur 1 107 mercredis**, et **26 faits de tirs
+    au but joués, zéro sur un match qui n'y allait pas**.
+  - **L'échelle des faits sur la note** (`ECHELLE_FAIT` = 1,8). Chaque issue porte sa valeur, posée
+    cas par cas avec lui (« la note paie ce que l'action a évité » : un penalty sauvé 1,2, une action
+    mineure évitée 0,4). Ces valeurs disent le **rapport** entre deux actions, pas des points de note
+    absolus — et à l'échelle 1, mesuré sur 13 600 notes de trente carrières entières, elles rendaient
+    un tiers de ce que rendait l'ancien forfait de 0,95 par fait : les matchs **sous 5,0 tombaient de
+    5,8 % à 3,0 %** et les **9,0 et plus de 7,4 % à 2,9 %**, c'est-à-dire exactement le relief qu'il
+    avait demandé le 27/09 (« des soirs de gala et des soirs qu'on veut oublier »). Un seul
+    coefficient commun préserve tous ses arbitrages relatifs et rend le relief. Mesuré après :
+    **10ᵉ 5,4 · médiane 7,0 · 90ᵉ 8,5**, sous 5,0 **5,2 %**, 9,0 et plus **5,0 %**, 9,5 et plus
+    **2,1 %** (contre 2,7 % avant : le 10 reste rare). *Le nombre de faits n'était pas le levier* :
+    monter à trois faits par match, comme il l'a demandé, n'a déplacé les queues que d'un dixième de
+    point — c'est la valeur d'un fait qui les fait, pas leur nombre.
+  - **Ton propre carton te coûtait zéro** : `notesEquipe()` retire .25 par jaune et 1,3 sur un rouge
+    à un coéquipier, et ta note ne regardait pas les tiens. Il avait pourtant nommé ce canal lui-même
+    (« chaque fait de match doit avoir un impact sur la note, que ce soit à travers la conséquence —
+    exemple un but, un carton jaune, une suspension »). Même barème pour toi (`poidsCartons()`).
+  - **Tu sors, donc quelqu'un entre.** Première version : la sortie coupait seulement tes minutes,
+    ce qui était faux deux fois — pour un remplaçant, `m.minutes` est un nombre de minutes jouées et
+    non la minute de sortie, donc le fait ne faisait **rien du tout** ; et pour un titulaire, tu
+    quittais le terrain sans remplaçant, ce qui laissait **un nombre impair de sortants** (mesuré :
+    33 matchs sur 2 040), exactement le défaut qu'il avait relevé sur les rouges. `sortirDuMatch()`
+    l'accroche à un changement réel. Et **on ne remplace pas un expulsé** : ton rouge a déjà arrêté
+    ton match, t'en faire aussi sortir te comptait deux fois.
+  - **Un joueur entré en jeu peut ressortir**, et c'est la sonde qui avait tort : l'invariant
+    supposait deux sortants par changement, alors qu'un remplaçant dont la cuisse lâche compte pour
+    deux changements et une seule ligne de notes. Il compte désormais les joueurs **distincts**.
+  - **Les quatre jauges.** Mesuré sur 25 carrières entières, avant et après :
+    | jauge | avant | après | ce qu'elle fait maintenant |
+    |---|---|---|---|
+    | **le club** | 5ᵉ 23 · méd. 50 · 95ᵉ 70, **lue nulle part** | 5ᵉ 39 · méd. 57 · 95ᵉ 94 | il prolonge ou non en juin (seuils 64 et 28), il paie ±18 % à la renégociation, et il te protège : le plancher de la confiance du coach passe de 42 fixe à **36-50 selon lui** |
+    | **les supporters** | 5ᵉ 51 · **méd. 100** | 5ᵉ 49 · méd. 68 · 95ᵉ 89 | **l'avantage du terrain à domicile** (`(v−50)×.034`, borné ±1,2 quand le terrain vaut 2,40) et ta cote aux offres |
+    | **la sélection** | **0 partout, jamais lue** | 5ᵉ 0 · méd. 18 · 95ᵉ 74 | converge vers ce que tu vaux face au meilleur club du pays, et ouvre des clubs qui ne t'appelaient pas |
+    | **les tiens** | 5ᵉ 0 · méd. 56 | 5ᵉ 1 · méd. 55 · 95ᵉ 100 | **les arrêts l'ouvrent enfin** (`liens:{ proches }`), et une **borne** arrive avec la porte |
+  - **Deux jauges ne s'accumulent plus.** Les supporters n'avaient **que des gains** — pas de rappel,
+    pas d'oubli — et personne ne s'en apercevait puisque rien ne les lisait : médiane **100** sur une
+    carrière entière, donc l'avantage du terrain qu'on venait de leur donner aurait été une constante
+    de +1,20, c'est-à-dire pas une décision. Un public s'entretient (rappel de 5 % par journée vers
+    46). La sélection, elle, **converge** vers ce que tu vaux cette année-là au lieu de cumuler : un
+    sélectionneur ne garde pas un crédit acquis à vingt-deux ans. Mesuré après : le stade pèse
+    **−0,05 à +1,20** selon les matchs (médiane +0,63), et **10 carrières sur 25** passent au-dessus
+    de 60 en sélection.
+  - **LA BORNE, ET LA QUESTION QU'IL AVAIT POSÉE LUI-MÊME** : « si je fais que m'occuper de ma
+    famille, ça va arrêter mon mental suffisamment pour pas avoir à entraîner le mental ». Maintenant
+    que les arrêts peuvent faire bouger les tiens, la récupération naturelle s'arrête **deux points
+    sous ton pic** (`BORNE_TETE`), jamais au pic. Mesuré, trois politiques sur des carrières
+    entières :
+    | politique | réserve | pic | manque |
+    |---|---|---|---|
+    | les tiens, jamais le mental | 59,0 | 61,6 | **2,60** |
+    | le mental, jamais les tiens | 66,1 | 67,0 | 0,89 |
+    | ni l'un ni l'autre | 40,4 | 53,4 | 12,96 |
+    Les tiens te tiennent la réserve pleine à un cran près, **et ne montent jamais le pic** : le
+    dernier cran ne s'achète qu'à l'entraînement. Sa lecture était juste, et la borne y répond.
+  - **Chaque jauge dit ce qu'elle change** (`pourquoiLien()`, une ligne grise sous la phrase, aux
+    **seuils du moteur** et non à des seuils d'écriture) : « Le club t'a oublié. *Ils ne passeront
+    rien : une saison creuse, et c'est fini.* » Sans elle, rebrancher une jauge ne se verrait pas —
+    c'est la règle du projet, chaque chiffre affiché doit avoir une conséquence visible. Première
+    version relue à l'écran avant de livrer : le HTML passait par `esc()` et s'affichait en clair,
+    et « Le stade t'apprécie » tombait à côté de « le stade est neutre ». Les deux corrigés.
+  - **Le calibrage de la cote, mesuré et resserré** : à `.05` et `.055`, le stade et la sélection
+    montaient la cote de deux points et demi et **tes titres par carrière de 5,2 à 6,7** — ce n'était
+    plus un coup de pouce, c'était une promotion. À `.03` et `.035` ils valent ensemble un point et
+    demi, du même ordre que l'agent : mesuré sur 24 carrières de vingt saisons, **5,3 titres contre
+    6,3** avant, 4,8 champions différents contre 4,6, titre conservé **43 % contre 49 %**.
+  - **Vérifié** : les **sept invariants du tableau des notes à zéro écart sur 6 120 matchs** (trois
+    passages) ; **31 faits sur 31** tirés, score = film **0 écart** ; l'arbitrage de la semaine tient
+    aux trois croisements (l'or des matchs à « deux séances puis un repos » partout, l'or de la trace
+    ailleurs, et « lever le pied » n'est le meilleur nulle part) ; les invariants du monde à zéro
+    (effectifs, postes, doublons) ; `tests/simulate.js` → `ERRORS: none` ; **migration 12 → 13** sur
+    une vraie partie de la version déployée — saison finie, trêve passée, signature en D2, saison
+    entière rejouée — et une sauvegarde prise **en plein match** (les faits ont changé de forme) est
+    rendue au lundi de la même journée, sans erreur.
+  - **Ce qui reste de la page de décisions** : les dix-sept arrêts réécrits (§ 2) et les douze
+    familles nouvelles (§ 3) ne sont pas encore codés, et **le sous-système de la sélection** — la
+    convocation, les deux matchs en pleine semaine, les jambes que ça coûte — est celui qu'il a
+    lui-même remis au lot suivant (« oui, mais au prochain lot »). Seule la jauge est vivante.
+- **Ce qui n'est pas encore là** : le **sous-système** de la sélection (la jauge vit et se lit, la
+  convocation reste à faire), le mode entraîneur·euse en 2.0, et les **arrêts** — dix-sept familles
+  réécrites sur la page de décisions, pas encore codées. (Les trente et un faits de match, la trêve,
+  les offres, la progression d'une saison sur l'autre et l'usure sont livrés.) Les `ARRETS` en place
+  restent des marqueurs de forme, pas le contenu final.
 
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).
