@@ -152,15 +152,23 @@ function lancerRoulette(){
 function finirTirage(){ S.ecran = 'semaine'; sauver(); rendre(); }
 
 /* ---------------- bandeau ---------------- */
-const LIEN_NOM = { coach:"Le coach", vestiaire:"Le vestiaire", club:"Le club", supporters:"Le stade", agent:"Ton agent" };
+const LIEN_NOM = { coach:"Le coach", vestiaire:"Le vestiaire", club:"Le club", supporters:"Le stade",
+  agent:"Ton agent", selection:"La sélection", proches:"Les tiens" };
 /* LES CASES RÉELLEMENT AFFICHÉES. « Le vestiaire » n'en est plus une : c'est, au
    mot près, **la moyenne des trois ententes de ligne**, déjà lisibles dans « Ta
    ligne » et dans l'effectif — et il ne pèse que −0,43 à +0,77 sur la force de
    l'équipe quand l'avantage du terrain en vaut 2,40. Une case qui redit une
    moyenne et ne décide de rien n'a pas sa place. Le moteur, lui, garde
    `vestiaire()` : deux familles d'arrêts s'y accrochent. */
+/* LA SÉLECTION ENTRE DANS LES CASES (29/09/2026) : elle existait à 0 dans l'état
+   et n'était lue nulle part — la seule jauge du jeu qui n'a jamais rien fait.
+   Elle ne s'affiche qu'une fois qu'on t'a regardé : une case qui dit « rien »
+   pendant six saisons est du bruit. */
 const LIENS_VUS = ['coach', 'club', 'supporters', 'agent'];
-const LIEN_ICO = { coach:"🎽", vestiaire:"✊", club:"🏟️", supporters:"📣", agent:"🤝",
+function liensVus(){
+  return (S.liens.selection || 0) >= 20 ? LIENS_VUS.concat('selection') : LIENS_VUS;
+}
+const LIEN_ICO = { coach:"🎽", vestiaire:"✊", club:"🏟️", supporters:"📣", agent:"🤝", selection:"🇫🇷",
   fraicheur:"🫁", blessure:"🩼", suspension:"🟥",
   def:"🛡️", mil:"🧭", att:"🎯", reserve:"🧱" };
 
@@ -189,12 +197,15 @@ function maPlace(){ return classementTrie().findIndex(x => x.nom === S.club.nom)
    **Chaque icône est celle de la séance qui nourrit la chose** — ⚽ la technique,
    💪 le corps, 🧠 le mental, 🎯 ton poste — pour qu'on n'ait jamais à deviner. */
 const minuscule = t => t ? t.charAt(0).toLowerCase() + t.slice(1) : t;
-function celSit(ico, nom, txt, cle){
+/* `pq` est la conséquence de la jauge, écrite sous la phrase : c'est la seule
+   chose qu'on laisse passer en HTML ici, et elle est construite par le moteur, pas
+   par une saisie. Tout le reste est échappé comme avant. */
+function celSit(ico, nom, txt, cle, pq){
   return `<div${cle ? ' class="cle"' : ''}><span class="k">${ico} ${esc(nom)}</span>
-    <span class="v">${esc(txt)}</span></div>`;
+    <span class="v">${esc(txt)}${pq ? `<i class="pq">${esc(pq)}</i>` : ''}</span></div>`;
 }
 function situationHTML(ouvert){
-  const gens = LIENS_VUS.map(k => celSit(LIEN_ICO[k], LIEN_NOM[k], dire(k))).join('')
+  const gens = liensVus().map(k => celSit(LIEN_ICO[k], LIEN_NOM[k], dire(k), false, pourquoiLien(k))).join('')
     /* Les tiens : la seule case de cette section qui ne parle pas de football, et
        celle qui décide de ce que ta tête encaisse. */
     + celSit('\u{1F3E1}', "Les tiens", direProches());
@@ -370,7 +381,7 @@ function annexeHTML(a){
   const ico = a.comp === 'coupe' ? '🏅' : '⭐';
   return `<h3>Mercredi — ${COMP_NOM[a.comp]}</h3>
     <div class="bloc ${ton}"><span class="i">${ico}</span><div>
-      <h4>${esc(tours[a.tour])} · ${a.bn}–${a.be} contre ${esc(a.adv)}${a.prolong ? ' (après prolongation)' : ''}</h4>
+      <h4>${esc(tours[a.tour])} · ${a.bn}–${a.be} contre ${esc(a.adv)}${a.tab ? (a.tabNous ? ' (qualifiés aux tirs au but)' : ' (sortis aux tirs au but)') : a.prolong ? ' (après prolongation)' : ''}</h4>
       <p class="narr" style="margin:0">${a.minutes
         ? `Tu as joué ${a.minutes} min, note ${virg(a.note)}${a.buts ? `, ${a.buts} but${a.buts > 1 ? 's' : ''}` : ''}${a.passes ? `, ${a.passes} passe${a.passes > 1 ? 's' : ''} décisive${a.passes > 1 ? 's' : ''}` : ''}. Samedi partira de plus loin.`
         : a.statut === 'banc' ? `Tu étais sur le banc et tu n'es pas entré.`
@@ -424,6 +435,11 @@ function faitsHTML(f){
   if (f.b) l.push('⚽'.repeat(Math.min(f.b, 3)) + (f.b > 3 ? `×${f.b}` : ''));
   // le 🅰️ se lit comme un carton sur un téléphone : on prend le crampon
   if (f.p) l.push('👟'.repeat(Math.min(f.p, 3)));
+  // le penalty arrêté, le but sauvé et le penalty manqué : un fait de match qui
+  // produit quelque chose doit se voir ici, pas seulement dans le film
+  if (f.ar) l.push('🧤'.repeat(Math.min(f.ar, 3)));
+  if (f.sv) l.push('🛡️'.repeat(Math.min(f.sv, 3)));
+  if (f.pm) l.push('❌');
   if (f.j) l.push('🟨');
   if (f.r) l.push('🟥');
   if (f.bl) l.push('🩼');
@@ -442,6 +458,10 @@ function filmHTML(m){
     if (e.type === 'penalty') lignes.push({ min:e.min, moi:!!e.arrete, ico:'🎪',
       t: e.arrete ? `Penalty pour ${esc(m.adv.nom)} — <b>tu l'arrêtes</b>`
         : `Penalty pour ${esc(e.nous ? S.club.nom : m.adv.nom)}` });
+    if (e.type === 'sauve') lignes.push({ min:e.min, moi:true, ico:'🛡️', t: `<b>Tu sauves un but</b>` });
+    if (e.type === 'tab') lignes.push({ min:e.min, moi:true, ico:'🧤', t: `Tirs au but — <b>tu en sors un</b>` });
+    if (e.type === 'penratee') lignes.push({ min:e.min, moi:!!e.moi, ico:'❌',
+      t: e.moi ? `<b>Ton penalty</b> — manqué` : `Penalty manqué par ${esc(qui)}` });
     if (e.type === 'blessure') lignes.push({ min:e.min, moi:false, ico:'🩼', t: `Sortie sur blessure — ${esc(qui)}` });
   });
   // le coach change : ça fait vivre le groupe, et ça te concerne quand c'est toi
@@ -454,7 +474,7 @@ function filmHTML(m){
         : `${esc(c.e)} entre, ${esc(c.s)} sort`) + tact });
   });
   m.moments.forEach(f => lignes.push({ min:f.min, moi:true, ico: f.reussi ? '🎯' : '💨',
-    t: `${f.chaud ? '<b>' + (f.reussi ? 'Sous pression' : 'Sous pression') + '</b> · ' : ''}${esc(f.choix)} — ${esc(f.reussi ? f.ok : f.ko)}` }));
+    t: `${f.chaud ? '<b>' + (f.reussi ? 'Sous pression' : 'Sous pression') + '</b> · ' : ''}${esc(f.choix)} — ${esc(f.txt || '')}` }));
   if (m.perduLeFil) lignes.push({ min:m.perduLeFil + 1, moi:true, ico:'🌫️',
     t: "<b>Tu as perdu le fil</b> — vingt minutes à côté de la partie" });
   lignes.sort((a, b) => a.min - b.min);
