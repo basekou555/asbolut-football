@@ -1636,7 +1636,8 @@ function jouerAnnexe(info){
   let bn = poisson(tameXG(1.35 * Math.exp(diff / 19)));
   let be = poisson(tameXG(1.35 * Math.exp(-diff / 19)));
   const m = { comp: info.c, tour: info.t, adv: adv.nom, bn, be, statut: eq.statut,
-    minutes: 0, note: null, buts: 0, passes: 0 };
+    minutes: 0, note: null, buts: 0, passes: 0,
+    ecartForce: (S.club.force + eq.ecart) - adv.force };
   // un match à élimination directe se décide, même mal
   const groupe = info.c === 'euro' && info.t <= 5;
   if (!groupe && bn === be){
@@ -1682,9 +1683,10 @@ function finirAnnexe(info, m){
       if (Math.random() < chance) m.buts++;
       else if (Math.random() < { G:0, D:.10, M:.24, A:.18 }[S.moi.poste] * (m.minutes / 90)) m.passes++;
     }
-    m.note = Math.round(clamp(6.1 + (m.res === 'V' ? .5 : m.res === 'D' ? -.4 : 0)
+    const duel = duelResultat(m.ecartForce);
+    m.note = Math.round(clamp(6.1 + poidsResultat(m.res, m.bn, m.be, derriere, m.ecartForce)
       + cumul(m.buts, POIDS_BUT) + m.passes * .4
-      + (derriere ? (be === 0 ? .8 : be >= 4 ? -.7 : 0) : 0)
+      + (derriere ? (be === 0 ? .8 * duel : be >= 4 ? -.7 : 0) : 0)
       + (niveauJour() - S.club.force) * .05 + poidsFaits(m) + poidsCartons(m) + aleaNote(), 3, 10) * 10) / 10;
     S.stats.matchs++; S.stats.buts += m.buts; S.stats.passes += m.passes;
     S.stats.minutes += m.minutes; S.stats.notes.push(m.note);
@@ -1775,7 +1777,14 @@ function lancerMatch(){
   const m = { adv, statut, bn, be, faits: [], minutes: 0, buts:0, passes:0, note:null, moments:[], jaune:0, blessure:0,
     onze: eq.onze, banc: eq.banc, reserve: eq.reserve,
     absents: eq.absents.map(x => ({ nom:x.nom, poste:x.poste,
-      raison: (x.ref.susp > 0 ? 'susp' : 'blesse') })), ecartOnze: eq.ecart, porte };
+      raison: (x.ref.susp > 0 ? 'susp' : 'blesse') })), ecartOnze: eq.ecart, porte,
+    /* La difficulté est celle de **l'équipe**, pas la tienne : `nous` contient ton
+       propre apport (`(niveauJour() − force) × .12` quand tu es titulaire), et le
+       laisser dedans voulait dire que mieux tu t'entraînais, moins tes victoires
+       payaient. Mesuré avec ce couplage, le banc d'essai renvoyait « lever le pied »
+       en tête des matchs à deux croisements sur trois — l'inverse de ce que le jeu
+       doit dire. */
+    ecartForce: (S.club.force + eq.ecart) - eux };
 
   // les buts, répartis dans le temps
   const mins = shuffle([...Array(90).keys()].map(i => i + 1));
@@ -2458,13 +2467,44 @@ function choisirMoment(i){
 /* L'ÉCHELLE DES FAITS. Chaque issue porte sa propre valeur de note, posée cas par
    cas avec le propriétaire (« la note paie ce que l'action a évité ») : un penalty
    sauvé vaut 1,2, une action mineure évitée 0,4. Ces valeurs disent le **rapport**
-   entre deux actions, pas des points de note absolus — et mesuré sur 5 300 notes,
-   elles rendaient 40 % de ce que rendait l'ancien forfait de 0,95 par fait : les
-   matchs sous 5,0 tombaient de 6,8 % à 2,8 % et les 9,0 et plus de 6,6 % à 2,6 %,
-   c'est-à-dire exactement le relief qu'il avait demandé le 27/09 (« des soirs de
-   gala et des soirs qu'on veut oublier »). Un seul coefficient commun préserve
-   tous ses arbitrages relatifs et rend le relief. Un seul nombre à bouger. */
+   entre deux actions, pas des points de note absolus — et à l'échelle 1, mesuré sur
+   13 600 notes de trente carrières entières, elles rendaient un tiers de ce que
+   rendait l'ancien forfait de 0,95 par fait : les matchs sous 5,0 tombaient de
+   5,8 % à 3,0 % et les 9,0 et plus de 7,4 % à 2,9 %, c'est-à-dire exactement le
+   relief qu'il avait demandé le 27/09 (« des soirs de gala et des soirs qu'on veut
+   oublier »). Un seul coefficient commun préserve tous ses arbitrages relatifs et
+   rend le relief. Un seul nombre à bouger. */
 const ECHELLE_FAIT = 1.8;
+/* UNE DÉFAITE LOURDE EST UN SOIR QU'ON VEUT OUBLIER, POUR TOUT LE MONDE (le
+   propriétaire, 29/09/2026 : « les matchs en dessous de 5,0 c'est très peu, trop
+   peu »). Mesuré sur 8 700 de tes notes avant d'y toucher : tu **gagnes 61 % de tes
+   matchs** (un joueur de carrière finit dans un bon club), et le seul terme négatif
+   du barème était un forfait de −0,4 sur une défaite, quel que soit le score. Une
+   défaite **4-0** te laissait donc une médiane de 6,1 et seulement 18 % de notes
+   sous 5,0 — et pour un milieu ou un attaquant, les buts encaissés ne comptaient
+   pas du tout. Désormais l'écart au score pèse (−0,38 par but au-delà du premier,
+   borné à −1,1), et une équipe qui prend quatre buts le paie **à tous les postes**.
+   C'est le contrepoids qui manquait aux buts, aux passes et au clean sheet. */
+/* ET IL VAUT CE QU'IL A COÛTÉ. Mesuré par tranche de carrière, 9 000 de tes notes :
+   en saisons 1 à 3 tu gagnes **41 %** de tes matchs et 15 % de tes notes sont sous
+   5,0 — exactement le relief validé le 27/09 ; au sommet (saisons 4 à 14) tu gagnes
+   **69 %**, et alors **42 % de tes matchs passent au-dessus de 7,5** pour 4 % sous
+   5,0. Ce n'est pas que les mauvais soirs manquent, c'est que les grands soirs sont
+   devenus ordinaires — le même argument qu'il faisait lui-même sur le 10. La cause
+   est que gagner et garder sa cage inviolée payaient **le même prix contre n'importe
+   qui**. Un clean sheet dans une équipe qui domine son championnat est un dimanche
+   de travail ; le même contre plus fort que soi est une performance. `duelResultat()`
+   fait donc suivre la récompense à la difficulté (0,55 quand on écrase, 1,3 quand on
+   va chez plus fort), et **seulement la récompense** : une défaite lourde coûte son
+   prix plein quel que soit l'adversaire. */
+function duelResultat(ecart){ return clamp(1 - (ecart || 0) * .045, .55, 1.3); }
+function poidsResultat(res, bn, be, derriere, ecart){
+  const d = duelResultat(ecart);
+  let v = res === 'V' ? .5 * d : res === 'D' ? -.4 - Math.min(1.1, Math.max(0, be - bn - 1) * .38) : 0;
+  // les buts encaissés étaient l'affaire des seuls postes de derrière
+  if (!derriere && be >= 4) v -= .45;
+  return v;
+}
 function poidsCartons(m){
   const j = (m.evs || []).filter(e => e.type === 'jaune' && e.moi).length + (m.jaune || 0);
   const r = (m.evs || []).some(e => e.type === 'rouge' && e.moi);
@@ -2478,12 +2518,18 @@ function poidsFaits(m){
   return (somme(p) + somme(n)) * ECHELLE_FAIT;
 }
 
-/* Le soir où rien ne va : c'est là que le mental se voit. Seul l'aléa
-   défavorable est amorti, jamais le favorable. */
-function aleaNote(){
-  const a = rnd(-.7, .7);
-  return a < 0 ? a * (1 - encaisse() * .55) : a;
-}
+/* LA PART DE CHANCE D'UNE NOTE, ET POURQUOI ELLE N'EST PLUS AMORTIE (29/09/2026).
+   Elle l'était par le mental — la malchance seule, jamais la chance — ce qui donnait
+   à un joueur au mental entraîné un **biais vers le haut d'environ deux dixièmes
+   que rien à l'écran ne nommait**. Le propriétaire avait déjà tranché le principe le
+   27/09 en redéfinissant le mental : « ma définition amortissait un aléa
+   (`aleaNote()`) que le joueur ne voit jamais » — le mental se paie depuis par
+   `coutMental()`, sur des événements qui ont un nom. L'amorti restait en place :
+   c'était compter le mental deux fois, et par le bout invisible. Le tirage est
+   désormais symétrique, et de la même amplitude que celui de tes coéquipiers
+   (±0,95 chez eux, ±0,85 chez toi, qui as déjà tes faits de match pour faire
+   l'écart). */
+function aleaNote(){ return rnd(-.85, .85); }
 function moyenneNotes(){ const n = S.stats.notes; return n.length ? n.reduce((a, b) => a + b, 0) / n.length : 6; }
 function finirMatch(){
   const m = S.match, res = m.bn > m.be ? 'V' : m.bn < m.be ? 'D' : 'N';
@@ -2491,9 +2537,10 @@ function finirMatch(){
   m.semaine = S.semaine; m.seance = S.seance;
   if (m.minutes){
     const derriere = S.moi.poste === 'G' || S.moi.poste === 'D';
-    m.note = clamp(6.1 + (res === 'V' ? .5 : res === 'D' ? -.4 : 0)
+    const duel = duelResultat(m.ecartForce);
+    m.note = clamp(6.1 + poidsResultat(res, m.bn, m.be, derriere, m.ecartForce)
       + cumul(m.buts, POIDS_BUT) + m.passes * .4
-      + (derriere ? (m.be === 0 ? 1 : m.be === 1 ? .35 : m.be >= 4 ? -.5 : 0) : 0)
+      + (derriere ? (m.be === 0 ? 1 * duel : m.be === 1 ? .35 * duel : m.be >= 4 ? -.7 : 0) : 0)
       /* Un fait de match pèse **un point de note**, pas trois dixièmes (demande du
          propriétaire, 27/09/2026 : « on fait quasiment que des matchs corrects, il
          n'y a pas de très bons ni de très mauvais matchs ; on peut appuyer un peu
