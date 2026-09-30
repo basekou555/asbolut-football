@@ -1549,6 +1549,70 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     — une sauvegarde v13 porte un `etats.fond` que plus rien ne lit, et une vraie partie de la version
     déployée reprend à la 17ᵉ journée, finit sa saison, passe la trêve et rejoue une saison entière.
 
+- **LE REMBOURSEMENT DU PHYSIQUE N'ARRIVAIT QU'À L'ÉCHELLE D'UNE CARRIÈRE** (le propriétaire,
+  30/09/2026 : « ça doit pas forcément faire augmenter sa fraîcheur. Mais peut-être qu'on avait codé
+  quelque chose dans ce style-là : **s'il y a eu un entraînement de physique, dans la semaine qui
+  suit, il récupère des points de fraîcheur.** Je ne sais plus comment on l'avait codé, mais il faut
+  que ce soit une des deux versions — et celle que je t'ai proposée en premier est peut-être plus
+  juste »). Les deux versions ont bien existé, à trois jours d'intervalle : la réserve `fond`
+  (supprimée le matin même) et la **vitesse de récupération** pilotée par l'axe. C'est la seconde
+  qu'il avait demandée en premier, et c'est celle en place — sa question portait donc sur son
+  calibrage, et la mesure lui a donné raison.
+  - **Mesuré avant de toucher à quoi que ce soit** : une séance physique rendait **0,36 point de
+    fraîcheur** la semaine suivante, pour un coût de 11. Trois pour cent. La séance ajoute 2,3 points
+    à l'axe, dont l'essentiel est du `boost` qui se divise par deux à chaque match — et le boost était
+    **retombé à 0,39 avant la séance physique suivante**. Le seul vrai paiement venait du **niveau**
+    de l'axe (6,5 points par journée à physique 30, **14,2 à 80**), c'est-à-dire d'années de travail.
+    À l'échelle de la semaine, la séance la plus chère du jeu n'était toujours pas remboursée.
+  - **`recupPhys()` a maintenant deux termes, et il fallait les deux** : *ce que tu es* (le niveau de
+    l'axe, `(base.phys − 50) × .016`, la trace d'une carrière) et *ce que tu viens de faire*
+    (`min(boost.phys × RECUP_SEANCE, RECUP_SEANCE_MAX)`, avec `RECUP_SEANCE`=.135). Le boost se
+    divisant par deux à chaque match, le remboursement **arrive la semaine qui suit, fort, puis
+    s'éteint** — exactement la forme qu'il décrit. Mesuré après : une séance rend **2,0 points** au
+    lieu de 0,36, puis la récupération retombe (13,7 · 12,5 · 11,8 sur les trois journées qui
+    suivent).
+  - **`RECUP_SEANCE_MAX` est ce qui garde le choix de la semaine vivant** : une séance est
+    remboursée, dix séances d'affilée ne le sont pas dix fois. Sans ce plafond, « toujours le
+    physique » encaisse 34 remboursements par saison et redevient la meilleure politique partout —
+    le piège déjà rencontré avec le fond à +7.
+  - **Avant / après sur la même sonde, 250 saisons par ligne, avec les erreurs-types.** Les deux
+    lignes témoins ne font jamais de physique, donc elles ne peuvent pas bouger : elles donnent le
+    bruit (0,3 à 1,4 match d'un passage à l'autre).
+    | croisement | fraîcheur | matchs | titularisations | trace |
+    |---|---|---|---|---|
+    | académie · M | 52,0±2,4 → **73,4±1,9** | 18,4±0,46 → 20,9±0,46 | 6,3 → 7,7 | +7,3 → +7,2 |
+    | quartier · D | 24,5±1,7 → **38,2±2,0** | 19,8±0,52 → 20,5±0,46 | 9,1 → 9,7 | +10,4 → **+10,8** |
+    | étranger · A | 59,1±2,3 → **81,4±1,7** | 17,3±0,44 → 18,8±0,50 | 3,7 → 4,3 | +6,9 → +6,9 |
+    Le gain de fraîcheur est de **+14 à +22 points**, loin au-delà du bruit ; le gain en matchs est
+    de 0,7 à 2,5, dont il faut retirer le ~0,7 de dérive des témoins. **Le physique cesse d'être la
+    ligne punie** sans prendre l'or des matchs à personne : « deux séances puis un repos » garde les
+    matchs aux trois croisements (22,2 / 21,4 / 21,0 contre 20,9 / 20,5 / 18,8).
+  - **Le remboursement se dit, sinon il n'existe pas** (la règle du projet). Le compte rendu d'une
+    séance physique finit par : « Samedi tu le paieras. C'est la semaine d'après que tes jambes te
+    le rendront. » Vérifié à l'écran sur dix journées : la phrase sort à chaque séance physique et le
+    moteur la tient.
+  - **Une correction à une affirmation de moi**, mesurée à 250 saisons avec les erreurs-types : je
+    lui avais écrit que « toujours lever le pied » ne prend les matchs nulle part. Sur les **matchs**
+    c'est vrai (son avance à quartier·D est de 0,3 sur « au hasard », **dans une erreur-type**), mais
+    sur les **titularisations** à quartier·D il prend l'or franchement (12,9±0,56 contre 11,7±0,49,
+    trois erreurs-types) — avant comme après ce lot. C'est la question de conception déjà posée et
+    non tranchée : **le poids de la fraîcheur dans `niveauJour()`** (50 points d'écart valent +2,5).
+    Se reposer *doit-il* faire titulariser plus ? C'est à lui de le dire.
+  - **Ce que la fraîcheur gagnée ne fait pas** : elle n'entre dans la note que par
+    `(niveauJour − force) × .035`, donc les +22 points du plus gros croisement valent **0,025 de
+    note** — calculé sur la formule, pas mesuré. Ce qu'elle change, c'est le temps de jeu, mesuré
+    ci-dessus. La sonde des notes par tranche de carrière joue `spec, spec, repos`, donc sans séance
+    physique le boost reste à zéro et **les deux formules y donnent le même nombre** : elle est
+    inchangée par construction (carrière entière : moyenne 6,96 · médiane 7,0 · 10ᵉ 5,1 · 90ᵉ 8,8 ·
+    sous 5,0 8,6 % ; saisons 1 à 3 : 12,5 % sous 5,0).
+  - **Un mort d'outillage réparé** : le banc d'essai (`v2sem.js`) affichait encore une colonne `fond`
+    à `NaN` depuis sa suppression, et ne portait pas les erreurs-types que la leçon de méthode du
+    29/09 impose. Il montre le **physique** et chaque colonne qui décide porte son erreur-type.
+  - **Vérifié** : sept invariants du tableau des notes à **zéro écart sur 4 080 matchs**, score =
+    film **0 écart**, zéro doublon de nom, aucun entrant à zéro minute ; 24 carrières entières de 18
+    à 38 ans avec tous les écrans, zéro erreur ; `tests/simulate.js` → `ERRORS: none` ; **aucune
+    migration** (`RECUP_SEANCE` ne lit que `base.phys` et `boost.phys`, déjà dans la sauvegarde).
+
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).
 - Tout l'état d'une carrière est dans l'objet global `state` (sérialisé dans localStorage). `state.pendingChoice` désigne l'écran courant ; `render()` dans `ui.js` dispatche.
