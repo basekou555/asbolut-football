@@ -404,7 +404,10 @@ function ecranResultat(){
     <div class="score"><span class="big">${score}</span><div><b>${esc(gauche)}</b> – ${esc(droite)}<br><span class="sub">${maLigne}</span></div></div>
     ${annexeHTML(m.annexe)}
     ${m.arret || m.seance ? `<h3>Ta semaine</h3>
-      ${m.arret ? `<p class="narr" style="margin-bottom:6px"><b>${esc(m.arret.titre)}</b> \u2014 tu as choisi : \u00ab ${esc(m.arret.choix)} \u00bb.</p>` : ''}
+      ${m.arret ? `<p class="narr" style="margin-bottom:6px"><b>${esc(m.arret.titre)}</b> \u2014 tu as choisi : \u00ab ${esc(m.arret.choix)} \u00bb.${
+        /* Ce que la décision a produit tout de suite, quand il y a quelque chose à
+           dire : une prime tombée, un salaire renégocié, un poste qui change. */
+        m.arret.suite ? ` ${esc(m.arret.suite)}` : ''}</p>` : ''}
       ${m.seance ? `<p class="narr">${esc(m.seance.texte)}</p>` : ''}` : ''}
     <h3>Le film du match</h3>
     <div class="tl">${filmHTML(m)}</div>
