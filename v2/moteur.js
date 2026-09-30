@@ -985,9 +985,26 @@ function physique(){ return clamp(S.moi.base.phys + S.moi.boost.phys, 0, 100); }
 /* Ce que coûte une charge — une séance, un match. À 80 on paie 82 % du prix, à 30
    on en paie 112 %. C'est le « sans avoir à se reposer » de sa phrase. */
 function chargePhys(){ return clamp(1 - (physique() - 50) * .006, .62, 1.24); }
-/* Et la vitesse à laquelle la semaine te rend ce que samedi t'a pris. À 80 tu
-   récupères une fois et demie plus vite qu'à 50, à 30 deux tiers moins. */
-function recupPhys(){ return clamp(1 + (physique() - 50) * .016, .62, 1.5); }
+/* Et la vitesse à laquelle la semaine te rend ce que samedi t'a pris. Elle a
+   **deux termes, et il fallait les deux** (le propriétaire, 30/09/2026 : « ça doit
+   pas forcément faire augmenter sa fraîcheur, mais s'il y a eu un entraînement de
+   physique, dans la semaine qui suit il récupère des points de fraîcheur »).
+   1. **Ce que tu es** : le niveau de l'axe, la trace d'une carrière. À 80 tu
+      récupères une fois et demie plus vite qu'à 50, à 30 deux tiers moins.
+   2. **Ce que tu viens de faire** : la séance de la semaine, par le `boost`, qui se
+      divise par deux à chaque match — donc le remboursement arrive la semaine qui
+      suit, fort, puis s'éteint. Sans ce terme, mesuré : une séance physique rendait
+      **0,36 point de fraîcheur** la semaine suivante pour un coût de 11, et le boost
+      était retombé à 0,39 avant la séance physique suivante. Le remboursement
+      n'existait qu'à l'échelle d'une carrière, jamais à celle de la semaine.
+   `RECUP_SEANCE_MAX` empêche de l'empiler : une séance est remboursée, dix séances
+   d'affilée ne le sont pas dix fois. C'est ce qui garde le choix de la semaine
+   vivant — et c'est vrai du football. */
+const RECUP_SEANCE = .135, RECUP_SEANCE_MAX = .34;
+function recupPhys(){
+  return clamp(1 + (S.moi.base.phys - 50) * .016
+    + Math.min(S.moi.boost.phys * RECUP_SEANCE, RECUP_SEANCE_MAX), .62, 1.5);
+}
 function choisirSemaine(id){
   const s = SEMAINES.find(x => x.id === id); if (!s) return;
   S.semaine = s.id;
@@ -1024,6 +1041,10 @@ function choisirSemaine(id){
     else if (S.seance.plafond) S.seance.texte += ` À ce niveau-là tu ne progresses plus vraiment, mais c'est prêt pour samedi.`;
     else if (S.seance.terrain) S.seance.texte += ` C'est un terrain que tu connais : ça répondra vite, ça ne montera plus beaucoup.`;
     else S.seance.texte += ` Tu pars de loin sur ce point-là : ça ne se verra pas samedi, mais ça reste.`;
+    /* Le remboursement du physique doit se voir, sinon il n'existe pas (la règle du
+       projet). Il arrive **après** samedi, pas avant : la séance coûte plein tarif
+       maintenant, et la semaine d'après on récupère mieux. */
+    if (a === 'phys') S.seance.texte += ` Samedi tu le paieras. C'est la semaine d'après que tes jambes te le rendront.`;
   } else if (s.id === 'repos'){
     S.etats.corps = clamp(S.etats.corps + .8, 0, 100);
   }
