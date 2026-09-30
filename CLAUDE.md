@@ -1757,6 +1757,12 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
 - Pas de dépendance ni d'outil de build : `vercel.json` et `.github/workflows/pages.yml` copient simplement les fichiers.
 - Textes en français avec écriture inclusive (entraîneur·euse, joueur·euse).
 - Chaque chiffre affiché doit avoir une conséquence visible en jeu (retour du propriétaire après la version 1).
+- **Les comptes rendus sont courts** (le propriétaire, 30/09/2026 : « il y a trop de blabla et trop
+  d'explications, je veux que tu sois plus synthétique quand tu as fini tes productions »). Quand un
+  lot est livré : le lien, ce qui change, les chiffres qui comptent, et ce qui reste à décider.
+  Pas de réexplication du raisonnement, pas de tableau qui n'appuie aucune décision, pas de
+  reformulation de ce qu'il vient de dire. Le détail va dans ce fichier et dans la description de
+  la pull request — c'est là qu'il se lit quand on le cherche, pas dans la réponse.
 
 ## Vérifier
 - Syntaxe : `for f in *.js; do node -e "new Function(require('fs').readFileSync('$f','utf8'))"; done`
