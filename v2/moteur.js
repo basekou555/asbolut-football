@@ -2935,8 +2935,21 @@ function apresMatch(){
   // le corps revient vers ce que l'âge permet : c'est ça qui empêche la spirale
   S.etats.corps = clamp(S.etats.corps + (cibleCorps() - S.etats.corps) * .05, 0, 100);
   S.etats.fond = clamp(S.etats.fond - 1.5);                 // le fond s'use si on ne l'entretient pas
+  /* LE PHYSIQUE REND SA FRAÎCHEUR AU COURS DE L'ANNÉE (le propriétaire, 27/09/2026 :
+     « le physique qui consomme beaucoup de fraîcheur, il faut qu'au cours de l'année
+     on regagne de la fraîcheur grâce à lui, sur la vitesse de récupération » ;
+     30/09/2026 : « c'est la fraîcheur, la qualité au poste, et peut-être aussi le
+     physique et la technique qui fait jouer »). Son intention n'était pas tenue : à
+     `.05` le point de fond, mesuré à 200 saisons par ligne, « toujours le physique »
+     finissait avec **la fraîcheur la plus basse de toutes les séances** (34 à 43 %
+     contre 80 à 100 %) et était **la politique qui faisait le moins jouer aux trois
+     croisements**. La séance la plus chère n'était pas remboursée. À `.13`, un fond
+     de 65 rend 8,5 points par journée au lieu de 3,3 : le physique remonte à
+     **64-77 %** de fraîcheur et gagne deux matchs, sans prendre l'or des matchs à
+     personne. Le réglage est chirurgical — qui ne travaille jamais le physique a un
+     fond de zéro et ne voit aucune différence. */
   S.etats.fraicheur = clamp(S.etats.fraicheur
-    + ((S.etats.blessure ? 14 : 9.6) + S.etats.fond * .05)
+    + ((S.etats.blessure ? 14 : 9.6) + S.etats.fond * .13)
       * (1 - Math.max(0, 88 - S.etats.corps) * .002));
   S.journee++;
   if (S.journee >= JOURNEES) return finSaison();

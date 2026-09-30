@@ -1431,10 +1431,56 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     seul au premier passage) — vérifié en reprenant une vraie partie de la version déployée, saison
     finie, trêve passée, saison entière rejouée. Ton rang moyen dans la liste des notes reste au
     **47ᵉ centile** : tu restes meilleur que la moyenne de tes coéquipiers, tu es juste plus exposé.
-- **Une question ouverte, posée par la mesure** : le poids de la fraîcheur dans `niveauJour()`
-  (`.05` le point, soit 2,5 entre 100 % et 50 %) fait que **se reposer bat s'entraîner sur le temps
-  de jeu** à un croisement sur trois. C'est peut-être juste — un joueur frais joue —, mais ça
-  contredit ce que le banc d'essai est censé montrer. À trancher avant de le régler.
+- **CE QUI FAIT JOUER, ET UNE AFFIRMATION DE MOI QUI ÉTAIT FAUSSE** (le propriétaire, 30/09/2026,
+  en réponse à la question ouverte : « lever le pied doit faire augmenter la fraîcheur, mais c'est
+  la fraîcheur, la qualité au poste, et peut-être aussi le physique et la technique qui fait
+  jouer »).
+  - **Je lui avais dit deux fois que « toujours lever le pied » dominait. C'est faux.** Le banc
+    d'essai (`v2sem.js`) **codait 40 saisons en dur** et ignorait la variable `NS` : quand j'ai
+    écrit « mesuré à 100 saisons par ligne », il en tournait toujours 40. À **250 saisons avec
+    l'erreur-type** (±0,5 match), « lever le pied » n'est **le meilleur nulle part** : 20,7 contre
+    21,1 pour « deux séances puis un repos » en académie milieu, 21,4 contre 22,9 en quartier
+    défenseur, 17,7 contre 19,2 chez l'étranger attaquant. L'invariant que le propriétaire avait
+    posé tenait depuis le début ; c'est moi qui lisais du bruit. La sonde honore maintenant `NS`.
+  - **Et le choix du coach est déjà ce qu'il décrit.** Décomposé terme par terme sur une saison,
+    l'écart moyen entre « lever le pied » et « deux séances puis un repos » :
+    | terme | lever le pied | deux séances | l'écart |
+    |---|---|---|---|
+    | fraîcheur | +0,64 | +0,01 | −0,64 |
+    | ton niveau (les quatre axes) | +53,81 | +54,56 | **+0,75** |
+    | ta qualité au poste | +0,30 | +0,89 | **+0,59** |
+    | confiance du coach | −1,87 | −2,38 | −0,52 |
+    | **TOTAL** | **+45,94** | **+46,00** | **+0,06** |
+    S'entraîner gagne sur le niveau et le poste exactement ce que le repos gagne sur la fraîcheur.
+    La fraîcheur, la qualité au poste, le physique et la technique pèsent déjà tous les quatre —
+    les trois derniers par les poids de poste de `niveau()` (le physique vaut .32 chez un
+    défenseur, la technique .32 chez un milieu).
+  - **LE VRAI TROU ÉTAIT AILLEURS : LE PHYSIQUE N'ÉTAIT JAMAIS REMBOURSÉ.** Le propriétaire l'avait
+    demandé le 27/09 (« le physique qui consomme beaucoup de fraîcheur, il faut qu'au cours de
+    l'année on regagne de la fraîcheur grâce à lui, sur la vitesse de récupération ») et le code ne
+    le tenait pas. Mesuré à 200 saisons par ligne : « toujours le physique » finissait avec **la
+    fraîcheur la plus basse de toutes les séances** (34 à 43 % contre 80 à 100 %) et était **la
+    politique qui faisait le moins jouer aux trois croisements** (16,3 / 20,1 / 15,7). La séance la
+    plus chère (−11) n'avait aucun retour : le fond ne rendait que `.05` par point, soit 3,3 par
+    journée à fond 65, contre 3 à 4 de surcoût par semaine.
+  - **Le fond rend `.13` le point.** À fond 65 il rend 8,5 par journée. Mesuré après, 250 saisons
+    par ligne : le physique remonte à **66 à 80 % de fraîcheur** et gagne deux matchs (18,5 / 21,7 /
+    16,9), sans prendre l'or des matchs à personne, et il garde l'or de la trace en quartier
+    défenseur (+10,6). **Le réglage est chirurgical** : qui ne travaille jamais le physique a un
+    fond de zéro et ne voit aucune différence — les autres lignes du banc ne bougent pas.
+  - **L'invariant tient aux trois croisements** : l'or des matchs et l'or de la trace restent sur
+    deux lignes différentes. Là où « lever le pied » est nominalement en tête (académie milieu 21,0
+    contre 20,7 ; quartier défenseur 22,4 contre 22,1), **l'écart est trois fois plus petit que
+    l'erreur-type** : c'est une égalité, pas une victoire.
+  - **Vérifié** : les sept invariants du tableau des notes à zéro écart ; les invariants du monde à
+    zéro ; `tests/simulate.js` → `ERRORS: none` ; la distribution des notes par tranche de carrière
+    est inchangée (deux passages : 14,4 / 7,5 / 6,8 / 15,1 puis 15,1 / 9,1 / 8,3 / 16,7 de notes
+    sous 5,0 — ils encadrent les 16,9 / 8,8 / 7,5 / 15,5 de la veille) ; aucune migration, `fond`
+    existe déjà dans la sauvegarde.
+  - **La leçon de méthode** : une sonde qui ignore son propre paramètre d'échantillon est pire
+    qu'une sonde absente — elle donne une fausse confiance. Toute conclusion du banc porte
+    désormais son **erreur-type** à côté du chiffre, et une différence plus petite qu'elle ne se
+    raconte pas comme un résultat.
 
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).
