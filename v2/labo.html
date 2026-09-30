@@ -120,14 +120,14 @@ function uneSaison(iOrig, poste, polF){
   const g = {}; AXES.forEach(a => g[a] = S.moi.base[a] - dep[a]);
   return { m:S.stats.matchs, t:S.stats.titus, b:S.stats.buts, pa:S.stats.passes,
     note: S.stats.notes.length ? moyenneNotes() : 0, pos:S.bilan ? S.bilan.pos : 18,
-    fr:S.etats.fraicheur, fond:S.etats.fond, tete:S.moi.base.ment, faits:nFaits,
+    fr:S.etats.fraicheur, phys:S.moi.base.phys, tete:S.moi.base.ment, faits:nFaits,
     reus: nFaits ? nReussis / nFaits * 100 : 0, g, zero: S.stats.matchs === 0 ? 1 : 0 };
 }
 function moyenner(lignes){
   const n = lignes.length, s = k => lignes.reduce((a, x) => a + x[k], 0) / n;
   const ga = {}; AXES.forEach(a => ga[a] = lignes.reduce((x, l) => x + l.g[a], 0) / n);
   return { m:s('m'), t:s('t'), b:s('b'), pa:s('pa'), note:s('note'), pos:s('pos'),
-    fr:s('fr'), fond:s('fond'), tete:s('tete'), faits:s('faits'), reus:s('reus'), zero:s('zero') * 100, g:ga };
+    fr:s('fr'), phys:s('phys'), tete:s('tete'), faits:s('faits'), reus:s('reus'), zero:s('zero') * 100, g:ga };
 }
 const v1 = x => x.toFixed(1).replace('.', ',');
 const vd = x => (x > 0 ? '+' : x < 0 ? '−' : '') + Math.abs(x).toFixed(1).replace('.', ',');
@@ -177,15 +177,15 @@ function tableau(cols, lignes, marquees){
     }).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 const COLS = [['nom',''],['m','matchs'],['t','titul.'],['b','buts'],['pa','passes'],
-  ['note','note'],['pos','place'],['fr','fraîch.'],['fond','fond'],['tete','tête'],['reus','faits ✓'],['tr','trace'],
+  ['note','note'],['pos','place'],['fr','fraîch.'],['phys','physique'],['tete','tête'],['reus','faits ✓'],['tr','trace'],
   ['tech','techn.'],['phys','phys.'],['ment','mental'],['spec','poste']];
 function ligne(nom, r){
   // la trace est ce qui se CONSTRUIT ; le mental se dépense, il a sa colonne
   const tr = ['tech','phys','spec'].reduce((a, x) => a + r.g[x], 0);
-  return { cells:{ nom:0, m:r.m, t:r.t, b:r.b, pa:r.pa, note:r.note, pos:-r.pos, fr:r.fr, fond:r.fond, tete:r.tete, reus:r.reus, tr,
+  return { cells:{ nom:0, m:r.m, t:r.t, b:r.b, pa:r.pa, note:r.note, pos:-r.pos, fr:r.fr, phys:r.phys, tete:r.tete, reus:r.reus, tr,
       tech:r.g.tech, phys:r.g.phys, ment:r.g.ment, spec:r.g.spec },
     txt:{ nom, m:v1(r.m), t:v1(r.t), b:v1(r.b), pa:v1(r.pa), note:v1(r.note),
-      pos:v1(r.pos) + 'ᵉ', fr:Math.round(r.fr) + ' %', fond:Math.round(r.fond), tete:v1(r.tete),
+      pos:v1(r.pos) + 'ᵉ', fr:Math.round(r.fr) + ' %', phys:Math.round(r.phys), tete:v1(r.tete),
       reus:Math.round(r.reus) + ' %', tr:vd(tr),
       tech:vd(r.g.tech), phys:vd(r.g.phys), ment:vd(r.g.ment), spec:vd(r.g.spec) } };
 }
@@ -194,7 +194,7 @@ const LEGENDE = `<div class="legend">
   <div><b>titul.</b> — combien de fois tu as commencé le match. Le reste, tu es entré en jeu.</div>
   <div><b>place</b> — où ton club a fini au classement, sur 18.</div>
   <div><b>fraîch.</b> — ce qui te reste dans les jambes à la fin de la saison.</div>
-  <div><b>fond</b> — la réserve construite par le travail physique : on récupère mieux et on se blesse moins.</div>
+  <div><b>physique</b> — l'axe, en fin de saison : il décide de la vitesse à laquelle on récupère, de la charge qu'on encaisse sans se reposer, et du risque de blessure.</div>
   <div><b>tête</b> — ce qu'il reste de ta réserve de mental à la fin de la saison. Elle se vide à chaque
     coup dur et seule la séance mentale la répare vraiment.</div>
   <div><b>faits ✓</b> — la part des faits de match réussis. C'est là que se voit la technique.</div>
