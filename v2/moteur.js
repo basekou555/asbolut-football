@@ -30,6 +30,16 @@ let SIM = false;
 const rnd = (a, b) => a + Math.random() * (b - a);
 const ri = (a, b) => Math.floor(rnd(a, b + 1));
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
+/* LA FRAÎCHEUR PEUT TOMBER DANS LE NÉGATIF (le propriétaire, 30/09/2026 : « celui qui
+   ne fait que s'entraîner au physique et enchaîner les matchs se blesse, car la
+   fraîcheur ne se régénère pas assez vite — il est censé pouvoir tomber dans le
+   négatif »). Elle était bornée à zéro, et le plancher était **réellement atteint** :
+   mesuré, « toujours le physique » y était collé **5,1 % des journées** et son
+   cinquième centile valait 0. La dette existait donc déjà dans le jeu ; le modèle la
+   tronquait, donc elle ne se payait pas. Sous zéro on joue sur la réserve : le niveau
+   du jour continue de descendre, on sort tôt, et on se blesse. */
+const PLANCHER_FR = -35;
+const clampFr = v => clamp(v, PLANCHER_FR, 100);
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const shuffle = a => [...a].sort(() => Math.random() - .5);
 function poisson(l){ let k = 0, p = Math.exp(-l), s = p, u = Math.random();
@@ -936,8 +946,23 @@ function niveau(){
   AXES.forEach(a => n += p.w[a] * ((a === 'ment' ? S.moi.pic.ment : S.moi.base[a]) + S.moi.boost[a]));
   return n;
 }
+/* CE QUE TU VAUX SUR LE TERRAIN AUJOURD'HUI : le niveau, la forme, et la fraîcheur.
+   C'est ce que lit le moteur de match, ta contribution à la force de l'équipe et ta
+   note — là où être vidé se paie pour de bon. */
 function niveauJour(){
   return niveau() + (S.etats.forme - 60) * .06 + (S.etats.fraicheur - 85) * .05;
+}
+/* CE QUE LE COACH REGARDE QUAND IL FAIT SON ONZE — et **la fraîcheur n'en fait pas
+   partie** (le propriétaire, 30/09/2026 : « le repos, la fraîcheur, ne doit pas faire
+   titulariser plus, mais par contre il joue sur le temps de jeu du joueur : moins on
+   est frais, moins on peut jouer longtemps »). Mesuré avant de le retirer : la
+   fraîcheur valait **4,5 points** de `valeurAuPoste()` entre 100 % et 10 %, soit plus
+   que la confiance du coach d'un bout à l'autre — donc se reposer était la façon la
+   plus rapide d'entrer dans le onze, ce qui n'est pas du football. Elle décide
+   maintenant de **combien de temps tu restes sur le terrain**, jamais de ta
+   présence sur la feuille. */
+function niveauCoach(){
+  return niveau() + (S.etats.forme - 60) * .06;
 }
 
 /* ---------- la semaine ---------- */
@@ -1009,7 +1034,7 @@ function choisirSemaine(id){
   const s = SEMAINES.find(x => x.id === id); if (!s) return;
   S.semaine = s.id;
   // un coût de fraîcheur est amorti par le physique ; un gain ne l'est pas
-  S.etats.fraicheur = clamp(S.etats.fraicheur + (s.fit < 0 ? s.fit * chargePhys() : s.fit));
+  S.etats.fraicheur = clampFr(S.etats.fraicheur + (s.fit < 0 ? s.fit * chargePhys() : s.fit));
   S.seance = null;
   if (s.axe){
     const a = s.axe, pl = plafondReel(a);
@@ -1332,7 +1357,7 @@ function appliquer(o){
     if (k === 'ment' && v < 0) coutMental(-v, o.coup || "cette histoire t'est restée");
     else bougerAxe(k, v);
   });
-  if (o.fit) S.etats.fraicheur = clamp(S.etats.fraicheur + o.fit);
+  if (o.fit) S.etats.fraicheur = clampFr(S.etats.fraicheur + o.fit);
   if (o.corps) S.etats.corps = clamp(S.etats.corps + o.corps, 0, 100);
 }
 
@@ -1340,7 +1365,7 @@ function appliquer(o){
 /* Ta valeur aux yeux du coach quand il fait son onze. `spec` compte une deuxième
    fois : être juste à son poste, c'est exactement ce qu'il regarde. */
 function valeurAuPoste(){
-  return niveauJour() + (S.moi.base.spec + S.moi.boost.spec - 50) * .09
+  return niveauCoach() + (S.moi.base.spec + S.moi.boost.spec - 50) * .09
     + (S.liens.coach - 50) * .16
     /* L'âge pèse : depuis que ta place se décide dans le classement de tout
        l'effectif, c'est le principal frein d'un débutant, et un coach ne donne pas
@@ -1549,7 +1574,20 @@ function planChangements(m, onze, banc){
      fatigués. » Pour toi la fraîcheur est connue ; pour les autres, le tirage en
      tient lieu. Sans ce tirage, le coach sortait toujours les mêmes et tu ne
      sortais jamais : mesuré, 14 sorties sur 900 titularisations. */
-  const jambes = mene ? .05 : .08;
+  /* Et elle pèse **plus lourd** depuis qu'elle ne pèse plus rien dans le choix du
+     onze : c'est devenu son seul canal, donc il doit se sentir. Dans le rouge tu es
+     le premier que le coach sort. */
+  const jambes = mene ? .09 : .13;
+  /* ET SURTOUT : UN JOUEUR CUIT SORT **PLUS TÔT**. La fraîcheur décidait seulement de
+     *qui* sortait, jamais de *quand* — or il n'y a que trois à cinq changements, donc
+     l'effet saturait : être le premier candidat plaçait dans le premier créneau
+     (≈ 57ᵉ), rien de plus. Mesuré ainsi : 70,4 minutes en étant frais contre 64,9
+     **à −35 de fraîcheur**, et 15 % des matchs encore finis à 90 minutes en pleine
+     dette. Ce n'était pas « moins on est frais, moins on peut jouer longtemps », c'était
+     un dixième de ça. La minute du changement avance donc avec la dette du sortant,
+     jusqu'à vingt-deux minutes plus tôt. Pour toi la fraîcheur est connue ; pour les
+     autres, le tirage de `laisse` en tient lieu, comme avant. */
+  const tot = x => x.moi ? Math.min(22, Math.max(0, (70 - S.etats.fraicheur) * .21)) : 0;
   const laisse = x => x.choix + rnd(-3, 3) - (x.moi ? (100 - S.etats.fraicheur) * jambes : 0);
   /* ON REMPLACE UN JOUEUR PAR UN JOUEUR DE SON POSTE (le propriétaire, 27/09/2026,
      capture à l'appui : « les deux attaquants ont joué 90 minutes, mais moi j'en
@@ -1604,6 +1642,8 @@ function planChangements(m, onze, banc){
     let min;
     if (chg.filter(c => !c.gardien).length < 3){ const b = ri(56, 68); min = etat(b) < 0 ? Math.max(45, b - ri(6, 12)) : b; }
     else min = ri(74, 86);
+    // un sortant qui n'a plus rien dans les jambes ne va pas au bout du créneau
+    min = Math.max(35, Math.round(min - tot(s)));
     chg.push({ min, entrant: e, sortant: s, tactique: tact });
   }
   return chg.sort((a, b) => a.min - b.min);
@@ -1738,7 +1778,7 @@ function finirAnnexe(info, m){
     if (m.note < 5.6) coutMental(1.2, `ce mercredi à ${m.adv}`);
   }
   // mercredi coûte samedi : c'est tout l'intérêt
-  S.etats.fraicheur = clamp(S.etats.fraicheur - (m.minutes ? 7 + m.minutes * .14 : 4));
+  S.etats.fraicheur = clampFr(S.etats.fraicheur - (m.minutes ? 7 + m.minutes * .14 : 4));
   suiteAnnexe(info, m);
   return m;
 }
@@ -2435,7 +2475,7 @@ function effetFait(e, raison){
     else if (k === 'vestiaire') bougerVestiaire(v);
     else if (k === 'ment') v < 0 ? coutMental(-v, raison) : bougerAxe('ment', v);
     else if (k === 'tech' || k === 'phys' || k === 'spec') bougerAxe(k, v);
-    else if (k === 'fit') S.etats.fraicheur = clamp(S.etats.fraicheur + v);
+    else if (k === 'fit') S.etats.fraicheur = clampFr(S.etats.fraicheur + v);
     else if (k === 'corps') S.etats.corps = clamp(S.etats.corps + v, 0, 100);
     else if (k === 'proches') bougerProches(v);
     else S.liens[k] = clamp(S.liens[k] + v);
@@ -2632,7 +2672,7 @@ function finirMatch(){
        Depuis que tu entres 71 % des fois où tu es sur le banc, le total de minutes
        a bondi et la fraîcheur s'effondrait — « lever le pied » redevenait la
        meilleure politique partout, ce qui tue le choix de la semaine. */
-    S.etats.fraicheur = clamp(S.etats.fraicheur
+    S.etats.fraicheur = clampFr(S.etats.fraicheur
       - (m.minutes / 90) * ri(10, 16) * (m.entree ? .7 : 1) * chargePhys());
     /* L'USURE S'ACCUMULE, ET ELLE COÛTE PLUS CHER QUAND ON FINIT SUR LES JAMBES. */
     S.etats.corps = clamp(S.etats.corps - (m.minutes / 90) * .4 * (S.etats.fraicheur < 55 ? 1.6 : 1), 0, 100);
@@ -2677,10 +2717,18 @@ function finirMatch(){
        on rend un peu de ce que coûtent les jambes vides — sinon la correction se
        paie en blessures qu'on n'a pas demandées. */
     const risqueVide = S.etats.fraicheur < 60 ? .035 : 0;
-    if (Math.random() < risqueBase + risqueIschios + risqueVide){
+    /* ET LA DETTE SE PAIE. En dessous de zéro on ne récupère plus entre deux matchs :
+       chaque journée de plus creuse le trou, et c'est là que le corps lâche. C'est le
+       cas nommé par le propriétaire — ne travailler que le physique **et** enchaîner
+       les matchs — et c'est la seule porte de sortie du cercle, puisque l'infirmerie
+       rend enfin le temps de remonter. */
+    const risqueDette = Math.max(0, -S.etats.fraicheur) * .0045;
+    if (Math.random() < risqueBase + risqueIschios + risqueVide + risqueDette){
       m.blessure = ri(1, 5);
       S.etats.corps = clamp(S.etats.corps - 1.5, 0, 100);
-      m.pourquoi = risqueVide >= Math.max(risqueBase, risqueIschios)
+      m.pourquoi = risqueDette >= Math.max(risqueBase, risqueIschios, risqueVide)
+          ? "Tu joues sur la réserve depuis des semaines. Ça devait arriver."
+        : risqueVide >= Math.max(risqueBase, risqueIschios)
           ? "Tu as fini le match sur les jambes, et le corps a lâché là où il lâche toujours."
         : risqueIschios >= risqueBase
           ? "Encore cette gêne derrière la cuisse. Tu la connais par cœur."
@@ -2985,7 +3033,7 @@ function apresMatch(){
      récupère une fois et demie plus vite qu'à 50, et deux tiers moins vite à 30.
      C'est la seule contrepartie de la séance la plus chère du jeu, et elle est
      neutre à 50 : qui ne travaille jamais le physique ne voit aucune différence. */
-  S.etats.fraicheur = clamp(S.etats.fraicheur
+  S.etats.fraicheur = clampFr(S.etats.fraicheur
     + (S.etats.blessure ? 14 : 9.6) * recupPhys()
       * (1 - Math.max(0, 88 - S.etats.corps) * .002));
   S.journee++;
@@ -3946,9 +3994,18 @@ function direCorps(){
 }
 function direJambes(){ const v = S.etats.fraicheur;
   return v > 88 ? "Tu sors du match sans une courbature." : v > 72 ? "Les jambes ont tenu."
-    : v > 58 ? "Tu as fini sur les nerfs." : "Tes jambes ont pris cher."; }
+    : v > 58 ? "Tu as fini sur les nerfs." : v > 20 ? "Tes jambes ont pris cher."
+    : v > 0 ? "Tu n'avais plus rien à donner sur la fin."
+    : "Tu as fini le match en dette. Il n'y a plus rien à prendre."; }
+/* Un état que le moteur peut atteindre doit pouvoir se dire : sous zéro, on joue sur
+   la réserve, et l'écran le nomme pour que la blessure qui suit ne sorte pas de nulle
+   part. La phrase dit aussi ce que ça change — on sort tôt — puisque c'est désormais
+   le seul effet de la fraîcheur sur ta place. */
 function direFraicheur(){ const v = S.etats.fraicheur;
-  return v > 88 ? "Frais" : v > 72 ? "En jambes" : v > 58 ? "Émoussé" : "Vidé"; }
+  return v > 88 ? "Frais" : v > 72 ? "En jambes" : v > 58 ? "Émoussé"
+    : v > 20 ? "Vidé — le coach te sortira tôt"
+    : v > 0 ? "À bout — tu ne finiras pas le match"
+    : "Dans le rouge — tu joues sur la réserve, et ça va casser"; }
 /* CE QUE LE STAFF DIT DE TOI. Deux défauts, tous deux relevés par le propriétaire
    le 27/09/2026 :
    1. « La finition : c'est ce qui te fait jouer. Mental : tu es en retard sur le
