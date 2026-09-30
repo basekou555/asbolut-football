@@ -1613,6 +1613,81 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     à 38 ans avec tous les écrans, zéro erreur ; `tests/simulate.js` → `ERRORS: none` ; **aucune
     migration** (`RECUP_SEANCE` ne lit que `base.phys` et `boost.phys`, déjà dans la sauvegarde).
 
+- **LA FRAÎCHEUR NE FAIT PLUS TITULARISER, ELLE FAIT TENIR — ET ELLE PEUT PASSER SOUS ZÉRO**
+  (le propriétaire, 30/09/2026, en tranchant la question de conception que je lui avais laissée :
+  « non, le repos — la fraîcheur — ne doit pas faire titulariser plus. Mais par contre il joue sur le
+  temps de jeu du joueur : **moins on est frais, moins on peut jouer longtemps.** Et d'ailleurs celui
+  qui ne fait que s'entraîner au physique et enchaîner les matchs se blesse, car la fraîcheur ne se
+  régénère pas assez vite : **il est censé pouvoir tomber dans le négatif.** ») Trois décisions, trois
+  changements.
+  1. **LA FRAÎCHEUR SORT DU CHOIX DU ONZE.** Mesuré avant d'y toucher : elle valait **4,5 points** de
+     `valeurAuPoste()` entre 100 % et 10 % — plus que la confiance du coach d'un bout à l'autre. Se
+     reposer était donc la façon la plus rapide d'entrer dans le onze, ce qui n'est pas du football, et
+     c'était la cause que j'avais nommée sans la trancher. `niveauCoach()` (niveau + forme) remplace
+     `niveauJour()` dans `valeurAuPoste()` ; `niveauJour()` garde la fraîcheur là où elle doit rester :
+     le moteur de match, ta contribution à la force de l'équipe, ta note. Mesuré après : **écart 0** —
+     `valeurAuPoste()` vaut 46,2 à 100 % comme à 10 %.
+  2. **ELLE DÉCIDE DE COMBIEN DE TEMPS TU RESTES.** Première version : j'ai seulement relevé le poids
+     des jambes dans *qui* sort (`.05/.08` → `.09/.13`). Mesuré, et **c'était un dixième de sa
+     phrase** : 70,4 minutes en étant frais contre **64,9 à −35**, et **15 % des matchs encore finis à
+     90 minutes en pleine dette**. La cause est mécanique : la fraîcheur décidait *qui* sortait mais
+     pas *quand*, et comme il n'y a que trois à cinq changements, l'effet **saturait** — être le
+     premier candidat plaçait dans le premier créneau (≈ 57ᵉ), rien de plus. `tot()` avance donc la
+     minute du changement avec la dette du sortant, jusqu'à vingt-deux minutes plus tôt (plancher à la
+     35ᵉ). Mesuré après, 1 143 titularisations rangées par la fraîcheur au coup d'envoi :
+     | fraîcheur au coup d'envoi | minutes | a fini les 90 | sorti avant la 60ᵉ |
+     |---|---|---|---|
+     | 80 à 100 | **71,3** | 33 % | 31 % |
+     | 60 à 80 | 69,7 | 29 % | 35 % |
+     | 40 à 60 | 65,7 | 25 % | 47 % |
+     | 0 à 40 | 57,8 | 16 % | 70 % |
+     | **dans le rouge (< 0)** | **52,5** | 18 % | **76 %** |
+     **Un résidu que je n'ai pas maquillé** : 18 % des titularisations dans le rouge finissent encore
+     les 90 minutes, parce qu'un changement demande un remplaçant **de ton poste ou d'un poste voisin**
+     dans les trois à cinq premiers candidats du coach. C'est une vraie contrainte d'effectif, pas un
+     oubli, et à n = 78 elle est dans le bruit de la bande 0-40 (16 %). Inventer un chemin « on sort
+     toujours l'homme cuit » casserait les garde-fous de formation gagnés le 27/09 (le 2-5-3).
+  3. **LA DETTE EXISTE MAINTENANT POUR DE BON.** La fraîcheur était bornée à zéro — et **le plancher
+     était réellement atteint** : mesuré, « toujours le physique » y était collé **5,1 % des journées**
+     et son cinquième centile valait 0. La dette était donc déjà dans le jeu, le modèle la tronquait,
+     donc elle ne se payait pas. `PLANCHER_FR` = −35 et `clampFr()` remplacent le `clamp()` par défaut
+     aux six endroits qui écrivent la fraîcheur ; `risqueDette` ajoute `(−fraîcheur) × .0045` au tirage
+     de blessure, et la raison s'écrit (« Tu joues sur la réserve depuis des semaines. Ça devait
+     arriver. »). Mesuré, son cas exact — ne travailler que le physique :
+     | | avant | après |
+     |---|---|---|
+     | fraîcheur minimale | 0 | **−35** |
+     | 5ᵉ centile | 0 | **−18,4** |
+     | journées collées au plancher | 5,1 % | 11,8 % |
+     | semaines à l'infirmerie | 11,3 % | **15 %** |
+     C'est exactement ce qu'il décrivait, et **le cercle se referme tout seul** : l'infirmerie rend les
+     14 points de récupération hebdomadaire, donc elle est la seule porte de sortie de la dette.
+  - **Les mots du négatif** : un état que le moteur peut atteindre doit pouvoir se dire. `direFraicheur()`
+    passe de quatre à six bandes et **nomme la conséquence**, puisque c'est désormais son seul effet sur
+    ta place (« Vidé — le coach te sortira tôt », « À bout — tu ne finiras pas le match », « Dans le
+    rouge — tu joues sur la réserve, et ça va casser ») et `direJambes()` gagne les deux dernières.
+    Vérifié à l'écran de 95 à −35 : aucune bande muette, aucun `undefined`.
+  - **L'INVARIANT TIENT AUX TROIS CROISEMENTS — et j'ai failli conclure le contraire sur du bruit.** À
+    250 saisons par ligne, étranger·A montrait « toujours la technique » prenant **les matchs (21,4) et
+    la trace (+9,8)**, soit une ligne qui prend les deux. L'écart aux suivants ne valait que 1,7
+    erreur-type, donc j'ai remonté l'échantillon plutôt que de le raconter : **à 600 saisons c'est
+    « toujours le mental » qui prend les matchs** (20,23±0,35 contre 19,92±0,33) et la technique garde
+    la trace (+10,0 contre +3,9). C'était du bruit — la leçon de méthode du 29/09, appliquée à temps
+    cette fois.
+  - **Une conséquence émergente, et c'est la sienne.** À quartier·D (physique 40, donc une charge qui
+    coûte 6 % plus cher et une récupération 16 % plus lente), **toutes** les politiques d'entraînement
+    finissent la saison entre 5 % et 21 % de fraîcheur, et « lever le pied » reprend l'or des matchs
+    (21,9). Mais **plus du tout par le choix du coach** — il n'y lit plus la fraîcheur : par les
+    **blessures**, c'est-à-dire par la disponibilité. C'est mot pour mot le mécanisme qu'il a décrit, et
+    l'invariant tient puisque cette ligne a la pire trace (+4,4 contre +11,1 pour le physique).
+  - **Vérifié** : sept invariants du tableau des notes à **zéro écart sur 4 080 matchs**, score = film
+    **0 écart**, zéro doublon de nom, aucun entrant à zéro minute ; 24 carrières entières de 18 à 38 ans
+    avec tous les écrans, zéro erreur ; `tests/simulate.js` → `ERRORS: none` ; les notes se creusent
+    légèrement comme la dette l'exige (carrière entière : moyenne **6,83**, sous 5,0 de 8,6 % à
+    **9,8 %** ; saisons 1 à 3 : 15,9 % sous 5,0) et la moyenne reste **au-dessus du pivot de 6,2** que
+    lit la confiance du coach, ce qui est la contrainte à ne pas franchir ; **aucune migration** — une
+    sauvegarde v13 porte une fraîcheur positive, qui est dans le nouveau domaine.
+
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).
 - Tout l'état d'une carrière est dans l'objet global `state` (sérialisé dans localStorage). `state.pendingChoice` désigne l'écran courant ; `render()` dans `ui.js` dispatche.
