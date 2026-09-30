@@ -1688,6 +1688,76 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     lit la confiance du coach, ce qui est la contrainte à ne pas franchir ; **aucune migration** — une
     sauvegarde v13 porte une fraîcheur positive, qui est dans le nouveau domaine.
 
+- **LES VINGT-NEUF ARRÊTS** (le propriétaire, 30/09/2026 : « vas-y pour les arrêts »). Mise en code
+  des §2 et §3 de la page de décisions — **https://claude.ai/artifact/VDvYbM8fkUtuAMyfu58eAW** — soit
+  les dix-sept arrêts réécrits et les douze familles nouvelles. C'était le dernier gros morceau de
+  contenu : le moteur était solide depuis une semaine, et les décisions qu'il servait étaient encore
+  des marqueurs de forme.
+  - **Le défaut qu'il avait trouvé en mesurant les cinquante options d'avant** : **dix-neuf étaient un
+    gain gratuit, douze une perte sèche, et dix-neuf seulement un vrai arbitrage** — 62 % des options
+    du jeu ne décidaient rien. La règle appliquée aux seize familles réécrites, et c'est la seule :
+    **chaque option coûte et gagne quelque chose, dans deux monnaies différentes.** La plupart passent
+    de trois options à deux, parce qu'une troisième option tiède est exactement ce qui fabriquait les
+    gratuités. Le kiné (`corps`) est **laissé tel quel** : c'était déjà la seule famille conforme, et
+    c'est elle qui a servi de modèle aux autres.
+  - **Douze familles nouvelles**, classées par le trou qu'elles bouchent. Les quatre premières
+    n'existaient nulle part dans la semaine et ce sont celles où **l'argent et le contrat deviennent
+    des décisions** : `contrat` (signer, demander plus, attendre juin), `sponsor`, `premierGros`
+    (une fois par carrière, quand ton salaire a doublé), `offreHiver`. Puis le football qui manquait :
+    `nouveauCoach`, `brassard`, `retour` (de blessure), `piqure`, `double` (changer de poste). Puis le
+    hors-football : `pereStade`, `rumeur`, `selection`.
+  - **Les mécaniques que ça demandait, toutes nouvelles.** Chacune est une **porte** dans `appliquer()`,
+    comme `liens` ou `axes` : une option reste une donnée, jamais du code.
+    | porte | ce qu'elle fait |
+    |---|---|
+    | `promesse` | une **conséquence différée** : promettre un résultat au micro, faire venir son père au stade, revenir d'infirmerie trop tôt. `reglerPromesses()` la règle après le match, une fois, et elle se dit |
+    | `brassard` | les journées où chaque note sous 5,6 coûte **le double** en mental — c'est tout ce que le brassard coûte, et c'est assez |
+    | `piqure` | le corps ne remonte plus **cette saison** : échanger la fin de sa carrière contre samedi |
+    | `forfait` | un forfait décidé après que le coach a annoncé son groupe : `poserEquipeDuJour()` est rappelé, sinon le match jouerait le onze d'avant |
+    | `renego` | le seul **pari** de la semaine : ce que le club lâche dépend de ce qu'il pense de toi et de ta saison |
+    | `poste` | `changerPoste()` — le socle descend avec la base, la seule chose du jeu qui le fasse, et c'est juste : « j'ai toujours été bon à ce poste » ne veut plus rien dire quand on change de poste |
+    | `prime` / `debours` | l'argent en mois de salaire, qui entre ou qui sort |
+    | `prochesPlancher` | aider les tiens au premier gros salaire **ne s'oublie pas** : la seule jauge du jeu à recevoir un plancher, et il tient toute la carrière |
+    | `avant` | une famille peut changer l'état **avant** que tu choisisses : le nouveau coach remet sa confiance à 50 en arrivant, pas après ta réponse |
+    Et chaque décision qui produit quelque chose tout de suite **le dit** : `S.semaineArret.suite` ramène
+    la phrase (« La prime est tombée : 4 k€ », « Il a pris un stylo et il a barré le chiffre ») sous ton
+    choix dans « Ta semaine ».
+  - **Mesuré, 40 carrières entières, 774 saisons, 13 977 arrêts** : **29 familles sur 29 tirées**,
+    **aucune option jamais prise** sur les soixante-cinq, **18,1 arrêts par saison** (inchangé) et la
+    plus fréquente à **9,1 %** contre 12 % avant — la diversité gagne parce qu'il y a douze familles de
+    plus, pas parce que le tirage a changé. Les sept phrases de résultat sortent toutes, les six issues
+    de promesse aussi, et la rechute du retour de blessure tombe à **41 %** (spec : 40 %). Tu changes de
+    poste dans **6 carrières sur 40**.
+  - **DEUX DÉFAUTS DANS MON PROPRE CODE, TROUVÉS À LA MESURE.** Le second est le plus intéressant :
+    1. `S.reprise = 0` au lieu de 2 à la sortie d'infirmerie — la fenêtre où le coach peut te demander
+       de jouer avant l'heure ne s'ouvrait jamais. Elle se pose maintenant là où l'infirmerie se vide.
+    2. **Les promesses se réglaient dans `apresMatch()`, donc après l'écran de résultat.** `m.mvt` est
+       ce que cet écran affiche : le joueur n'aurait **jamais vu** une promesse se tenir ou se retourner
+       contre lui. Mesuré : zéro promesse visible sur 774 saisons. Déplacé dans `finirMatch()`, avant
+       le rendu. Une conséquence invisible n'existe pas — c'est la règle du projet, et je l'avais
+       enfreinte en écrivant la mécanique censée la servir.
+  - **Un cas fermé au passage** : un remplaçant expulsé **à la minute où il entre** restait à zéro
+    minute au compteur. Un match sur huit mille, et c'était devenu un peu plus probable depuis que les
+    changements peuvent avancer de vingt minutes (lot précédent). Le carton est décalé d'une minute
+    après l'entrée ; vérifié trois fois de suite à zéro sur 4 080 matchs.
+  - **L'invariant de la semaine, banc à 250 saisons par ligne** : matchs et trace restent sur deux
+    lignes différentes à académie·M (mental 22,7 / poste +7,6) et quartier·D (normale 20,9 / physique
+    +9,8). À étranger·A les trois premiers sur les matchs sont **dans une erreur-type** (technique
+    20,3±0,48 · mental 20,2 · au hasard 20,2) : c'est une égalité, pas une victoire, et la trace va à
+    la technique (+9,5). Les titularisations montent partout d'un demi-point à un point, ce qui est
+    attendu : les options gratuites ont disparu, donc chaque décision paie désormais quelque chose.
+  - **Vérifié** : sept invariants du tableau des notes à zéro écart, score = film **0 écart**, zéro
+    doublon de nom, aucun entrant à zéro minute (trois passages) ; 24 carrières entières de 18 à 38 ans
+    avec tous les écrans, zéro erreur ; `tests/simulate.js` → `ERRORS: none` ; les notes restent dans
+    leur bande (carrière entière : moyenne **6,85**, sous 5,0 **10,1 %** ; saisons 1 à 3 : 16,1 %) et la
+    moyenne reste au-dessus du pivot de 6,2 que lit la confiance du coach ; **migration 13 → 14** sur
+    une vraie sauvegarde de la version déployée, reprise **en plein match** puis à la 17ᵉ journée, fin
+    de saison, trêve passée et **deuxième saison entière** jouée.
+  - **Ce qui reste de la page** : le **sous-système** de la sélection. La famille `selection` est
+    codée — c'est la décision, et son prix est dans les jambes de samedi (−12 de fraîcheur) — mais la
+    convocation, les deux matchs de milieu de semaine dans le film et le calendrier international
+    n'existent pas. C'est le sujet qu'il avait lui-même mis après celui-ci.
+
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).
 - Tout l'état d'une carrière est dans l'objet global `state` (sérialisé dans localStorage). `state.pendingChoice` désigne l'écran courant ; `render()` dans `ui.js` dispatche.

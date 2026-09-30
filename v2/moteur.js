@@ -14,7 +14,7 @@
    - tout ce qui arrive est écrit dans `S.journal`, seule mémoire du jeu.
    ============================================================ */
 
-const VERSION = 13;  // les faits de match et les quatre jauges rebranchées
+const VERSION = 14;  // les dix-sept arrêts réécrits et les douze familles nouvelles
 /* MIGRATION 10 → 11 : deux choses à construire, et une partie en cours les reprend
    sans rien perdre — le propriétaire joue la version déployée.
    1. **L'échelon inférieur** (`S.ligue.autre`) n'existait pas : on le fabrique avec
@@ -339,7 +339,13 @@ function nouvellePartie(c){
   S = {
     v: VERSION, mode: 'joueur', annee: c.annee, division: 1, bonusOffres: 0,
     argent: 0, salaire: 0,
-    vie: { proches: 58, chantiers: [], gagne: 0, gagneAvant: 0 },
+    /* CE QUE LES ARRÊTS PEUVENT MAINTENANT PROMETTRE OU PORTER (30/09/2026).
+       `promesses` : les conséquences différées — une phrase à la presse qu'on peut
+       avoir à tenir, un père dans les tribunes. Elles se règlent après le match
+       suivant, une fois, et elles se disent. `brassard` : les journées qu'il te
+       reste à le porter. `piqure` : le corps ne remonte plus cette saison. */
+    promesses: [], brassard: 0, piqure: false, prolonge: false, reprise: 0,
+    vie: { proches: 58, chantiers: [], gagne: 0, gagneAvant: 0, salaire0: 0, grosFait: false, prochesPlancher: 0 },
     moi: { nom: c.nom, poste: poste.id, posteNom: poste.nom, specNom: poste.spec,
       age: 18, base, boost: { tech:0, phys:0, ment:0, spec:0 }, plafond, socle,
       u0: c.origine.u0, origine: c.origine.id, ambition: c.ambition.id, pic,
@@ -363,6 +369,7 @@ function nouvellePartie(c){
      venait de lui tirer. Sans ça il en aurait deux dès la première minute. */
   syncClubSq();
   poserSalaire(salaireDe(niveau(), S.moi.age, S.club.force, 1));
+  S.vie.salaire0 = S.salaire;      // « quand ton salaire double » se mesure d'ici
   jrn('argent', `Premier contrat : ${sous(S.salaire)} par an.`);
   jrn('debut', `${S.moi.nom}, ${poste.nom.toLowerCase()} de ${S.club.nom}. Première saison.`);
   sauver(); return S;
@@ -1118,34 +1125,49 @@ function equipeDuJourLue(){
 }
 
 /* ---------- les arrêts (placeholders : le contenu viendra après) ---------- */
+/* ====================== LES ARRÊTS ======================
+   LA MISE EN CODE DE LA PAGE DE DÉCISIONS (le propriétaire, 30/09/2026 : « vas-y
+   pour les arrêts »), §2 et §3 de
+   https://claude.ai/artifact/VDvYbM8fkUtuAMyfu58eAW
+   Ce qu'il avait trouvé en mesurant les cinquante options d'avant : **dix-neuf
+   étaient un gain gratuit, douze une perte sèche, et dix-neuf seulement un vrai
+   arbitrage** — 62 % des options du jeu ne décidaient rien. La règle appliquée
+   partout ci-dessous, et c'est la seule : **chaque option coûte et gagne quelque
+   chose**, dans deux monnaies différentes. La plupart passent de trois options à
+   deux, parce qu'une troisième option tiède est ce qui fabriquait les gratuités.
+   `corps` (le kiné) est laissé tel quel : c'était déjà la seule famille conforme,
+   et c'est elle qui a servi de modèle aux seize autres. */
 const ARRETS = [
   // il ne peut plus te dire ça si tu commences le match : le groupe est déjà connu
   { id:'banc', quand: () => S.journee >= 2 && S.eqJour && S.eqJour.statut === 'banc',
     titre:"Le coach t'attend dans son bureau",
     texte:"« Je vais être direct : samedi, tu commences sur le banc. Ce n'est pas contre toi. »",
     options:[
-      { l:"Encaisser sans un mot", liens:{ coach:4 }, dit:[{c:'foot',t:"🎽 il te trouve professionnel"}] },
-      { l:"Demander ce qui te manque", liens:{ coach:2 }, axes:{ ment:1 }, dit:[{c:'foot',t:"🎽 il te dit la vérité"},{c:'risk',t:"🧠 elle pique"}] },
-      { l:"Lui dire que tu mérites mieux", liens:{ coach:-6, vestiaire:4 }, dit:[{c:'risk',t:"🎽 il ne l'oubliera pas"},{c:'foot',t:"✊ le vestiaire te respecte"}] },
+      { l:"Encaisser sans un mot", liens:{ coach:5 }, ment:-1, coup:"ce que tu as ravalé dans son bureau",
+        dit:[{c:'foot',t:"🎽 il te trouve professionnel"},{c:'risk',t:"🧠 tu ravales"}] },
+      { l:"Demander ce qu'il te manque", liens:{ coach:2 }, axes:{ spec:1 }, fit:-4, ment:-.8,
+        coup:"sa réponse, qui était franche",
+        dit:[{c:'foot',t:"🎯 il te donne du travail"},{c:'risk',t:"🫁 des séances en plus"},{c:'risk',t:"🧠 sa réponse pique"}] },
+      { l:"Lui dire que tu mérites mieux", liens:{ vestiaire:6, coach:-6 }, axes:{ ment:1 },
+        dit:[{c:'foot',t:"✊ tu t'es fait entendre"},{c:'risk',t:"🎽 il ne l'oubliera pas"}] },
     ] },
   /* QUAND TU NE JOUES PAS, LA VIE PREND LA PLACE (le propriétaire, 27/09/2026 :
-     « j'ai joué 4 matchs alors que c'est la 22ᵉ journée… soit j'ai mon agent qui
-     vient me voir, soit il y a des discussions avec le coach qui doivent
-     s'installer… ça doit amener des événements hors football pour compenser le
-     fait qu'au niveau football il se passe pas grand-chose. Là, étant donné que
-     je ne suis même pas dans le groupe le week-end, ce serait bien qu'il y ait
-     des trucs positifs comme le temps avec la famille »). Trois familles qui ne
-     se déclenchent que là, et qui sont les seules portes de sortie. */
+     « ça doit amener des événements hors football pour compenser le fait qu'au
+     niveau football il se passe pas grand-chose… ce serait bien qu'il y ait des
+     trucs positifs comme le temps avec la famille »). Ces familles ne se
+     déclenchent que là, et ce sont les seules portes de sortie. */
   { id:'coachTemps', quand: () => (S.sansJouer || 0) >= 3,
     titre:"Tu frappes à la porte du coach",
     texte:"« Entre. Je sais pourquoi tu viens. » Il repousse son ordinateur. Tu as deux minutes et une phrase à trouver.",
     options:[
       { l:"« Dites-moi ce que je dois faire pour jouer »", liens:{ coach:9 }, fit:-5, axes:{ spec:1.2 },
-        dit:[{c:'foot',t:"🎽 il te donne un programme"},{c:'risk',t:"🫁 des séances en plus"},{c:'foot',t:"🎯 juste à ton poste"}] },
-      { l:"« Je veux jouer, sinon je pars en juin »", liens:{ coach:-7, agent:10, club:-5 },
-        dit:[{c:'risk',t:"🎽 il n'aime pas les ultimatums"},{c:'foot',t:"🤝 ton agent se met au travail"}] },
-      { l:"« Je vais attendre mon tour »", liens:{ coach:3 }, axes:{ ment:1.4 },
-        dit:[{c:'foot',t:"🎽 il apprécie"},{c:'foot',t:"🧠 tu tiens"},{c:'neutre',t:"↔️ rien ne change samedi"}] },
+        dit:[{c:'foot',t:"🎽 il te donne un programme"},{c:'foot',t:"🎯 juste à ton poste"},{c:'risk',t:"🫁 des séances en plus"}] },
+      { l:"« Je veux jouer, sinon je pars en juin »", liens:{ agent:10, coach:-7, club:-8 }, axes:{ ment:1 },
+        dit:[{c:'foot',t:"🤝 il se met au travail"},{c:'risk',t:"🎽 il n'aime pas les ultimatums"},{c:'risk',t:"🏟️ ça remonte au directeur sportif"}] },
+      /* « Attendre mon tour » était gratuit. Son prix est le bon : ton agent
+         arrête de travailler pour toi, et ça se paiera en juin. */
+      { l:"« Je vais attendre mon tour »", liens:{ coach:3, agent:-5 }, axes:{ ment:1.4 },
+        dit:[{c:'foot',t:"🧠 tu tiens"},{c:'foot',t:"🎽 il apprécie"},{c:'risk',t:"🤝 ton agent comprend que tu ne pousses pas"}] },
     ] },
   { id:'agentTemps', quand: () => (S.sansJouer || 0) >= 4 && S.journee >= 8,
     titre:"Ton agent ne prend plus de gants",
@@ -1153,72 +1175,81 @@ const ARRETS = [
     options:[
       { l:"Qu'il cherche un club où tu joues", liens:{ agent:12, club:-8, coach:-3 },
         dit:[{c:'foot',t:"🤝 il décroche son téléphone"},{c:'risk',t:"🏟️ le club le saura"}] },
-      { l:"Rester et se battre", liens:{ coach:6, club:5, agent:-4 }, axes:{ ment:1.2 },
-        dit:[{c:'foot',t:"🎽 le coach le remarque"},{c:'risk',t:"🤝 ton agent soupire"}] },
-      { l:"Ne pas répondre tout de suite", ment:-.8, coup:"cette décision que tu repousses",
-        dit:[{c:'risk',t:"🧠 ça te travaille"},{c:'neutre',t:"🤝 il rappellera"}] },
+      { l:"Rester et se battre", liens:{ coach:6, club:5, agent:-6 }, axes:{ ment:1.2 },
+        dit:[{c:'foot',t:"🎽 le coach le remarque"},{c:'foot',t:"🏟️ le club aussi"},{c:'risk',t:"🤝 ton agent te lâche un peu"}] },
     ] },
   // « Tu n'es même pas dans le groupe » : désormais c'est vrai quand ça s'affiche
   { id:'tempsLibre', quand: () => S.eqJour && S.eqJour.statut === 'hors',
     titre:"Un week-end à toi",
     texte:"Tu n'es même pas dans le groupe. Pour la première fois depuis longtemps, samedi t'appartient.",
     options:[
-      { l:"Rentrer chez tes parents", axes:{ ment:1.4 }, corps:3, fit:4, liens:{ proches:4 },
-        dit:[{c:'vie',t:"🏡 les tiens comptent les week-ends"},{c:'foot',t:"🧠 tu respires"}] },
-      { l:"Aller voir le match depuis la tribune", liens:{ coach:4, vestiaire:3 },
-        dit:[{c:'foot',t:"🎽 il t'a vu dans les tribunes"},{c:'foot',t:"✊ le groupe aussi"}] },
-      { l:"Travailler seul au centre", fit:-6, axes:{ spec:1.4 }, ment:-.6, liens:{ proches:-5 },
+      { l:"Rentrer chez tes parents", liens:{ proches:8, coach:-4 }, axes:{ ment:1.4 }, corps:3,
+        dit:[{c:'vie',t:"🏡 les tiens comptent les week-ends"},{c:'foot',t:"🧠 tu respires"},{c:'risk',t:"🎽 il t'a cherché samedi"}] },
+      { l:"Aller voir le match depuis la tribune", liens:{ coach:5, vestiaire:3, proches:-4 },
+        dit:[{c:'foot',t:"🎽 il t'a vu dans les tribunes"},{c:'foot',t:"✊ le groupe aussi"},{c:'risk',t:"🏡 encore un week-end sans toi"}] },
+      { l:"Travailler seul au centre", fit:-6, axes:{ spec:1.4 }, liens:{ proches:-3 }, ment:-.6,
         coup:"ce samedi à t'entraîner seul",
-        dit:[{c:'foot',t:"🎯 personne ne te le demandait"},{c:'risk',t:"🫁 tu y laisses ta semaine"},{c:'risk',t:"🏡 le seul week-end libre de l'année"}] },
+        dit:[{c:'foot',t:"🎯 personne ne te le demandait"},{c:'risk',t:"🫁 tu y laisses ta semaine"},{c:'risk',t:"🏡 le stade te manque"}] },
     ] },
-  /* LA VRAIE SITUATION QUAND ON NE JOUE PAS, MESURÉE. Dans la queue des
-     carrières (dix matchs ou moins sur la saison), on est **hors du groupe 2,9 %
-     des semaines et sur le banc 79,2 %** : « tu n'es même pas dans le groupe »
-     ne pouvait donc presque jamais être vrai — c'était le défaut que le
-     propriétaire a vu. La vie qu'il réclamait s'accroche donc au banc, là où elle
-     se passe vraiment : le week-end n'est pas libre, mais le dimanche l'est. */
+  /* LA VRAIE SITUATION QUAND ON NE JOUE PAS, MESURÉE. Dans la queue des carrières,
+     on est **hors du groupe 2,9 % des semaines et sur le banc 79,2 %** : la vie
+     s'accroche donc au banc, là où elle se passe vraiment. */
   { id:'bancLong', quand: () => S.eqJour && S.eqJour.statut === 'banc' && (S.sansJouer || 0) >= 3,
     titre:"Encore un survêtement",
     texte:"Tu voyages, tu t'échauffes, tu t'assois. Il ne se retourne pas. Dimanche, en revanche, t'appartient.",
     options:[
-      { l:"Le passer avec les tiens", axes:{ ment:1.5 }, corps:3, fit:3, liens:{ proches:4 },
-        dit:[{c:'vie',t:"🏡 on ne te parle pas de foot"},{c:'foot',t:"🧠 tu reviens entier"}] },
-      { l:"Rester seul sur le terrain après le match", fit:-7, axes:{ spec:1.3 }, liens:{ coach:3, proches:-5 },
-        dit:[{c:'foot',t:"🎯 personne ne te le demandait"},{c:'foot',t:"🎽 l'adjoint l'a noté"},{c:'risk',t:"🏡 dimanche y passe aussi"}] },
-      { l:"Demander à l'adjoint ce qu'il regarde chez toi", liens:{ coach:6, vestiaire:2 }, axes:{ ment:.8 },
-        dit:[{c:'foot',t:"🎽 il te répond franchement"},{c:'foot',t:"✊ ça circule dans le vestiaire"}] },
+      { l:"Le passer avec les tiens", liens:{ proches:8, coach:-3 }, axes:{ ment:1.5 },
+        dit:[{c:'vie',t:"🏡 un dimanche entier"},{c:'foot',t:"🧠 tu recharges"},{c:'risk',t:"🎽 la séance du dimanche était ouverte"}] },
+      { l:"Rester seul sur le terrain après le match", liens:{ coach:3, proches:-3 }, fit:-7, axes:{ spec:1.3 },
+        dit:[{c:'foot',t:"🎯 tu grattes"},{c:'risk',t:"🫁 samedi dans les jambes"},{c:'risk',t:"🏡 encore un dimanche"}] },
+      /* La franchise de l'adjoint a maintenant son prix, qui est celui qu'elle a
+         dans la vraie vie : elle ne fait pas plaisir. */
+      { l:"Demander à l'adjoint ce qu'il regarde chez toi", liens:{ coach:6, vestiaire:2 }, ment:-1.2,
+        coup:"ce que l'adjoint t'a dit sans détour",
+        dit:[{c:'foot',t:"🎽 il aime qu'on demande"},{c:'risk',t:"🧠 il te répond franchement"}] },
     ] },
+  /* LA PIRE DES DIX-SEPT : une option qui ne faisait **strictement rien** (« rester
+     poli et vague », club +2 sur une jauge alors morte) et deux options gratuites.
+     « Promettre un résultat » est la seule option du jeu dont le coût tombe **la
+     semaine suivante** — une phrase qu'on peut avoir à tenir. */
   { id:'presse', quand: () => S.stats.notes.length >= 3 && moyenneNotes() >= 6.8,
     titre:"Un journaliste t'attend à la sortie",
     texte:"« Trois bons matchs de suite. On commence à parler de vous ailleurs. Vous vous sentez à l'étroit ici ? »",
     options:[
-      { l:"Rester poli et vague", liens:{ club:2 }, dit:[{c:'neutre',t:"🤐 personne n'est fâché"}] },
-      { l:"Dire que tu veux plus haut", liens:{ agent:8, club:-6, supporters:-3 }, dit:[{c:'foot',t:"🤝 ton agent adore"},{c:'risk',t:"🏟️ le club beaucoup moins"}] },
-      { l:"Parler du groupe, pas de toi", liens:{ vestiaire:7, supporters:3 }, dit:[{c:'foot',t:"✊ le vestiaire lit la presse"}] },
+      { l:"Dire que tu veux jouer plus haut", liens:{ agent:9, club:-7, supporters:-4 },
+        dit:[{c:'foot',t:"🤝 ton agent adore"},{c:'risk',t:"🏟️ le club beaucoup moins"},{c:'risk',t:"📣 la tribune l'a lu"}] },
+      { l:"Parler du groupe, pas de toi", liens:{ vestiaire:7, club:4, agent:-5 },
+        dit:[{c:'foot',t:"✊ le vestiaire lit la presse"},{c:'foot',t:"🏟️ le club apprécie"},{c:'risk',t:"🤝 il voulait du bruit"}] },
+      { l:"Promettre un résultat", liens:{ supporters:8, club:3 }, promesse:'resultat',
+        dit:[{c:'foot',t:"📣 le stade s'enflamme"},{c:'risk',t:"⏳ si vous perdez samedi, tu le paieras"}] },
     ] },
   { id:'ancien', quand: () => S.journee >= 5 && vestiaire() < 52,
     titre:"Le plus ancien du vestiaire te prend à part",
     texte:"« On mange tous ensemble jeudi. Tu viens, ou tu rentres encore chez toi ? »",
     options:[
-      { l:"Venir, et rester tard", liens:{ vestiaire:9 }, fit:-4, dit:[{c:'foot',t:"✊ le groupe t'adopte"},{c:'risk',t:"🫁 la nuit sera courte"}] },
-      { l:"Passer une heure", liens:{ vestiaire:4 }, dit:[{c:'neutre',t:"↔️ correct, sans plus"}] },
-      { l:"Décliner", liens:{ vestiaire:-5 }, dit:[{c:'risk',t:"✊ on l'a remarqué"},{c:'vie',t:"🏡 une soirée chez toi"}] },
+      { l:"Venir, et rester tard", liens:{ vestiaire:9, proches:-3 }, fit:-5,
+        dit:[{c:'foot',t:"✊ le groupe t'adopte"},{c:'risk',t:"🫁 la nuit sera courte"},{c:'risk',t:"🏡 encore un jeudi soir dehors"}] },
+      /* Deux options exactement opposées, et « décliner » n'est plus une punition :
+         la soirée chez toi compte pour de vrai. */
+      { l:"Décliner, tu rentres chez toi", liens:{ proches:6, vestiaire:-5 }, fit:2,
+        dit:[{c:'vie',t:"🏡 une soirée qui compte"},{c:'foot',t:"🫁 tu dors"},{c:'risk',t:"✊ on l'a remarqué"}] },
     ] },
-  /* Les gens autour de toi. Le propriétaire, 27/09/2026 : « pas assez d'éléments
-     liés au vestiaire ou au coach ; l'événement du kiné apparaît un peu tout le
-     temps. Mon concurrent au poste fait une meilleure séance que moi, est-ce que
-     je m'entraîne plus ? Un coéquipier qui s'améliore, est-ce que je passe du
-     temps avec lui ? Une situation qui se dégrade avec mon milieu ou mon
-     attaquant, comment je réagis ? » Chaque famille vise quelqu'un de nommé. */
+  /* Les gens autour de toi. Chaque famille vise quelqu'un de nommé. */
   { id:'rival', quand: () => S.journee >= 3 && devantToi(),
     ligne: () => LIGNE_DU_POSTE[S.moi.poste],
     sujet: () => devantToi(),
     titre: q => `${q.nom} a fait une séance énorme`,
     texte: q => `L'adjoint n'a regardé que lui pendant une heure. Le coach a souri deux fois. Toi, tu as fini ton travail dans ton coin.`,
     options:[
-      { l:"Rester une heure de plus, seul", fit:-7, axes:{ spec:1.2 }, dit:[{c:'foot',t:"🎽 ta place : tu grattes"},{c:'risk',t:"🫁 samedi dans les jambes"}] },
-      { l:"Aller le voir et lui demander comment il fait", ligne:6, axes:{ spec:.5 }, dit:[{c:'foot',t:"✊ ta ligne apprécie"},{c:'neutre',t:"🎯 tu apprends un peu"}] },
-      { l:"Laisser couler, ton tour viendra", ment:-1.4, coup:"cette séance où il t'a dépassé", dit:[{c:'risk',t:"🧠 ça te reste en travers"},{c:'foot',t:"🫁 tu es frais samedi"}] },
+      { l:"Rester une heure de plus, seul", fit:-7, axes:{ spec:1.2 },
+        dit:[{c:'foot',t:"🎯 ta place : tu grattes"},{c:'risk',t:"🫁 samedi dans les jambes"}] },
+      // demander à ton rival lui donne de la confiance : c'est ce qui se passe
+      { l:"Aller le voir et lui demander comment il fait", ligne:6, axes:{ spec:.5 }, rivalForme:2,
+        dit:[{c:'foot',t:"✊ ta ligne apprécie"},{c:'foot',t:"🎯 tu apprends un peu"},{c:'risk',t:"🎽 il sait que tu t'inquiètes"}] },
+      /* « Tu es frais samedi » était promis **sans ajouter un point de fraîcheur** :
+         la pastille mentait par omission. Elle en donne quatre. */
+      { l:"Laisser couler, ton tour viendra", fit:4, ment:-1.4, coup:"cette séance où il t'a dépassé",
+        dit:[{c:'foot',t:"🫁 samedi : frais, pour de vrai"},{c:'risk',t:"🧠 ça te reste en travers"}] },
     ] },
   { id:'jeune', quand: () => S.journee >= 6 && S.equipe.some(j => j.monte),
     ligne: () => { const j = S.equipe.find(x => x.monte); return j ? LIGNE_DU_POSTE[j.poste] : 'mil'; },
@@ -1226,81 +1257,271 @@ const ARRETS = [
     titre: q => `${q.nom} progresse vite`,
     texte: q => `Le gamin est arrivé il y a six mois et il a déjà pris dix ans. Il traîne après la séance, il pose des questions. Souvent à toi.`,
     options:[
-      { l:"Passer du temps avec lui", fit:-4, ligne:9, dit:[{c:'foot',t:"✊ sa ligne te voit autrement"},{c:'risk',t:"🫁 une heure de plus"}] },
-      { l:"Répondre quand il demande, sans plus", ligne:3, dit:[{c:'neutre',t:"↔️ correct"}] },
-      { l:"Le laisser se débrouiller", ligne:-5, dit:[{c:'risk',t:"✊ sa ligne l'a remarqué"},{c:'vie',t:"🏡 tu rentres à l'heure"}] },
+      { l:"Passer du temps avec lui", ligne:9, fit:-4,
+        dit:[{c:'foot',t:"✊ sa ligne te voit autrement"},{c:'risk',t:"🫁 une heure de plus"}] },
+      // « tu rentres à l'heure » était une pastille sans effet : elle en a deux
+      { l:"Le laisser se débrouiller", ligne:-5, liens:{ proches:4 }, fit:2,
+        dit:[{c:'vie',t:"🏡 tu rentres à l'heure"},{c:'foot',t:"🫁 tu récupères"},{c:'risk',t:"✊ sa ligne l'a remarqué"}] },
     ] },
+  /* C'ÉTAIT LA PERTE SÈCHE LA PLUS LOURDE DU JEU (ligne −11, coach −3, mental −1,2,
+     rien à gagner). Elle gagne maintenant ce qu'une engueulade donne vraiment : tu
+     joues libéré. Et « attendre que ça passe » était gratuit : supprimée. */
   { id:'tension', quand: () => S.journee >= 5 && !!ligneFaible() && !!visageDe(ligneFaible()),
     ligne: () => ligneFaible(),
     sujet: (l) => visageDe(l),
     titre: (q, l) => `Ça se tend avec ${LIGNE_LA[l]}`,
     texte: (q, l) => `Deux ballons mal donnés, un regard de trop, et ${q.nom} ne te parle plus à l'échauffement. Toute la ligne s'est rangée derrière lui.`,
     options:[
-      { l:"Mettre les choses à plat, tout de suite", ligne:13, fit:-3, dit:[{c:'foot',t:"✊ la ligne respire"},{c:'risk',t:"🫁 une soirée de plus"}] },
-      { l:"Attendre que ça passe", ligne:2, dit:[{c:'risk',t:"✊ ça pourrit doucement"}] },
-      { l:"Lui répondre devant tout le monde", ligne:-11, liens:{ coach:-3 }, ment:-1.2,
-        coup:"cette engueulade devant tout le monde", dit:[{c:'risk',t:"✊ la ligne se fige"},{c:'risk',t:"🧠 tu rumines"}] },
+      { l:"Mettre les choses à plat, tout de suite", ligne:13, fit:-3, ment:-1,
+        coup:"cette conversation qu'il fallait avoir",
+        dit:[{c:'foot',t:"✊ la ligne respire"},{c:'risk',t:"🫁 une soirée de plus"},{c:'risk',t:"🧠 la conversation coûte"}] },
+      { l:"Lui répondre devant tout le monde", ligne:-11, liens:{ coach:-3 }, axes:{ ment:1.5 },
+        dit:[{c:'foot',t:"🧠 tu t'es vidé, tu joues libéré"},{c:'risk',t:"✊ la ligne se fige"},{c:'risk',t:"🎽 le coach a vu"}] },
     ] },
+  /* La famille que la jauge morte abîmait le plus : « je me sens bien ici » ne
+     gagnait **que du club, que rien ne lisait** — donc c'était une perte pure.
+     Rebranchée, elle devient l'exact contraire de la première. */
   { id:'agent', quand: () => S.journee >= 7 && (S.stats.matchs >= 5 || S.liens.coach < 45),
     titre:"Ton agent t'appelle",
     texte:"« Je regarde ta situation. Je peux commencer à bouger, ou on laisse la saison se faire et on voit en juin. Dis-moi. »",
     options:[
-      { l:"Qu'il bouge dès maintenant", liens:{ agent:10, club:-5 }, dit:[{c:'foot',t:"🤝 il se met au travail"},{c:'risk',t:"🏟️ le club l'apprendra"}] },
-      { l:"Attendre juin", liens:{ agent:2 }, dit:[{c:'neutre',t:"🤝 il note"}] },
-      { l:"Lui dire que tu te sens bien ici", liens:{ club:7, agent:-4 }, dit:[{c:'foot',t:"🏟️ le club apprécie"},{c:'risk',t:"🤝 ton agent soupire"}] },
+      { l:"Qu'il bouge dès maintenant", liens:{ agent:10, club:-6 },
+        dit:[{c:'foot',t:"🤝 il se met au travail"},{c:'risk',t:"🏟️ le club l'apprendra"}] },
+      { l:"Lui dire que tu te sens bien ici", liens:{ club:8, coach:3, agent:-6 },
+        dit:[{c:'foot',t:"🏟️ le club apprécie"},{c:'foot',t:"🎽 le coach aussi"},{c:'risk',t:"🤝 ton agent soupire"}] },
     ] },
+  /* « Acquiescer et passer à autre chose » était coach −1 et rien : une punition
+     pour n'avoir rien choisi. Supprimée. La famille la plus fréquente du jeu
+     (2,47 par saison) devient un vrai duel. */
   { id:'coachPlan', quand: () => S.journee >= 4,
     titre:"Le coach te montre une vidéo",
     texte:"« Regarde. Là, tu es en retard d'une demi-seconde. Je ne te demande pas d'être plus fort, je te demande d'être là avant. »",
     options:[
-      { l:"Travailler ça toute la semaine", fit:-6, axes:{ spec:1 }, liens:{ coach:5 }, dit:[{c:'foot',t:"🎽 il te suit"},{c:'foot',t:"🎯 juste à ton poste"}] },
-      { l:"Dire que tu n'es pas d'accord", liens:{ coach:-5 }, axes:{ ment:1 }, dit:[{c:'risk',t:"🎽 il n'aime pas"},{c:'foot',t:"🧠 tu tiens ta position"}] },
-      { l:"Acquiescer et passer à autre chose", liens:{ coach:-1 }, dit:[{c:'neutre',t:"↔️ rien ne change"}] },
+      { l:"Travailler ça toute la semaine", liens:{ coach:5 }, fit:-6, axes:{ spec:1 },
+        dit:[{c:'foot',t:"🎽 il te suit"},{c:'foot',t:"🎯 juste à ton poste"},{c:'risk',t:"🫁 la semaine y passe"}] },
+      { l:"Dire que tu n'es pas d'accord", liens:{ coach:-5 }, axes:{ ment:1.5 },
+        dit:[{c:'foot',t:"🧠 tu tiens ta lecture du jeu"},{c:'risk',t:"🎽 il n'aime pas"}] },
     ] },
+  // coach −2 contre vestiaire +9 et mental +1,5, ce n'était pas un coût : il passe à −5
   { id:'capitaine', quand: () => S.journee >= 8 && vestiaire() >= 55,
     sujet: () => pick(S.equipe.filter(j => j.age >= 28)) || S.equipe[0],
     titre: q => `${q.nom} te demande quelque chose`,
     texte: q => `« On perd trop de matchs bêtement. J'organise une réunion entre nous, sans le staff. Tu viens, et tu parles ? »`,
     options:[
-      { l:"Venir et prendre la parole", liens:{ vestiaire:9, coach:-2 }, axes:{ ment:1.5 }, dit:[{c:'foot',t:"✊ tu comptes ici"},{c:'risk',t:"🎽 le staff n'aime pas les réunions sans lui"}] },
-      { l:"Venir et écouter", liens:{ vestiaire:4 }, dit:[{c:'neutre',t:"✊ présent, c'est déjà ça"}] },
-      { l:"Ne pas y aller", liens:{ vestiaire:-6, coach:3 }, dit:[{c:'risk',t:"✊ ils t'ont attendu"},{c:'foot',t:"🎽 le coach le saura"}] },
+      { l:"Venir et prendre la parole", liens:{ vestiaire:9, coach:-5 }, axes:{ ment:1.5 },
+        dit:[{c:'foot',t:"✊ tu comptes ici"},{c:'foot',t:"🧠 tu prends la parole"},{c:'risk',t:"🎽 le staff n'aime pas les réunions sans lui"}] },
+      { l:"Ne pas y aller", liens:{ coach:4, vestiaire:-6 },
+        dit:[{c:'foot',t:"🎽 le coach le saura"},{c:'risk',t:"✊ ils t'ont attendu"}] },
     ] },
-  { id:'serie', quand: () => S.stats.notes.length >= 4 && moyenneNotes() < 5.9,
+  /* SA CORRECTION : la condition exige maintenant qu'**aucune blessure des quatre
+     dernières journées n'explique la série**. Un coach ne reproche pas à un joueur
+     d'être revenu d'infirmerie. Et « le problème vient de l'équipe » était la
+     triple perte sèche : supprimée. */
+  { id:'serie', quand: () => S.stats.notes.length >= 4 && moyenneNotes() < 5.9
+      && !S.etats.blessure && !(S.reprise || 0),
     titre:"Le coach ferme la porte du bureau",
     texte:"« Quatre matchs que je ne te reconnais pas. Je te laisse encore un peu, mais tu as compris. »",
     options:[
-      { l:"Demander à travailler avec lui", liens:{ coach:6 }, fit:-5, axes:{ spec:.8 }, dit:[{c:'foot',t:"🎽 il te donne du temps"},{c:'risk',t:"🫁 des séances en plus"}] },
-      { l:"Dire que tu vas le régler seul", liens:{ coach:1 }, axes:{ ment:1.2 }, dit:[{c:'foot',t:"🧠 tu te reprends en main"}] },
-      { l:"Expliquer que le problème vient de l'équipe", liens:{ coach:-7, vestiaire:-5 }, ment:-1,
-        coup:"cette phrase que tu n'aurais pas dû dire", dit:[{c:'risk',t:"🎽 très mauvaise idée"},{c:'risk',t:"✊ ça a fuité"}] },
+      { l:"Demander à travailler avec lui", liens:{ coach:6 }, fit:-5, axes:{ spec:.8 },
+        dit:[{c:'foot',t:"🎽 il te donne du temps"},{c:'foot',t:"🎯 à ton poste"},{c:'risk',t:"🫁 des séances en plus"}] },
+      { l:"Dire que tu vas le régler seul", liens:{ coach:-4 }, axes:{ ment:1.2 },
+        dit:[{c:'foot',t:"🧠 tu te reprends en main"},{c:'risk',t:"🎽 il n'aime pas qu'on refuse son aide"}] },
     ] },
-  // celle-ci suppose une semaine chargée : quand tu ne joues pas, `tempsLibre` prend le relais
+  /* C'ÉTAIT TROIS OPTIONS, TROIS PERTES, AUCUN GAIN — la seule famille du jeu dont
+     on ne pouvait que sortir perdant, et c'est justement celle où il demandait
+     « des trucs positifs avec la famille ». Y aller **rapporte** maintenant. */
   { id:'famille', quand: () => S.journee >= 9 && (S.sansJouer || 0) < 2,
     titre:"Un coup de fil de chez toi",
     texte:"« Ton père a fait un malaise. Rien de grave, il est rentré. Mais il a demandé si tu venais dimanche. »",
     options:[
-      { l:"Y aller dimanche, quoi qu'il arrive", fit:-3, ment:-.4, liens:{ proches:6 },
-        dit:[{c:'vie',t:"🏡 tu seras là, et ils s'en souviendront"},{c:'risk',t:"🫁 la route fatigue"}] },
-      { l:"Appeler tous les soirs de la semaine", ment:-.8, liens:{ proches:2 }, coup:"ce coup de fil",
-        dit:[{c:'vie',t:"🏡 tu gardes le lien"},{c:'risk',t:"🧠 tu n'es pas à l'entraînement"}] },
-      { l:"Attendre la trêve", ment:-2, liens:{ proches:-9 }, coup:"ce dimanche où tu n'es pas allé",
-        dit:[{c:'risk',t:"🏡 il avait demandé si tu venais"},{c:'foot',t:"🫁 ta semaine est intacte"}] },
+      { l:"Y aller dimanche, quoi qu'il arrive", liens:{ proches:9 }, axes:{ ment:1 }, fit:-4,
+        dit:[{c:'vie',t:"🏡 tu seras là, et ils s'en souviendront"},{c:'foot',t:"🧠 tu as fait ce qu'il fallait"},{c:'risk',t:"🫁 la route"}] },
+      { l:"Attendre la trêve", fit:3, liens:{ proches:-7 }, ment:-2,
+        coup:"ce dimanche où tu n'es pas allé",
+        dit:[{c:'foot',t:"🫁 ta semaine est intacte, pour de vrai"},{c:'risk',t:"🏡 il avait demandé si tu venais"},{c:'risk',t:"🧠 ça te restera"}] },
     ] },
+  // les deux premières étaient gratuites, la troisième une perte sèche
   { id:'supporters', quand: () => S.journee >= 6 && S.liens.supporters < 45,
     titre:"Quelqu'un t'attend à la sortie du parking",
     texte:"« Je te suis depuis le début. Là, franchement, tu nous fais quoi ? » Il n'est pas agressif. C'est presque pire.",
     options:[
-      { l:"Prendre le temps de lui répondre", liens:{ supporters:8 }, dit:[{c:'foot',t:"📣 ça se raconte en tribune"}] },
-      { l:"Signer et partir", liens:{ supporters:1 }, dit:[{c:'neutre',t:"↔️ poli"}] },
-      { l:"Passer sans s'arrêter", liens:{ supporters:-6 }, ment:-.8, coup:"ce type sur le parking", dit:[{c:'risk',t:"📣 il le racontera aussi"}] },
+      { l:"Prendre le temps de lui répondre", liens:{ supporters:8 }, ment:-.8,
+        coup:"ce que ce type t'a dit sur le parking",
+        dit:[{c:'foot',t:"📣 ça se raconte en tribune"},{c:'risk',t:"🧠 ce qu'il te dit reste"}] },
+      { l:"Passer sans s'arrêter", liens:{ proches:2, supporters:-6 },
+        dit:[{c:'vie',t:"🏡 tu rentres à l'heure"},{c:'risk',t:"📣 il le racontera aussi"}] },
     ] },
+  /* JE N'Y TOUCHE PAS. C'était déjà la seule des dix-sept où chaque option coûte
+     et gagne — c'est le modèle appliqué aux seize autres. */
   { id:'corps', quand: () => S.etats.fraicheur < 70,
     titre:"Le kiné veut te voir avant l'entraînement",
     texte:"« Tu tires sur la corde. Je peux te sortir de la séance de jeudi, mais c'est le coach qui décidera ce qu'il en pense. »",
     options:[
       { l:"Accepter de lever le pied", fit:10, liens:{ coach:-3 }, dit:[{c:'foot',t:"🫁 samedi : frais"},{c:'risk',t:"🎽 le coach le note"}] },
       { l:"Serrer les dents", fit:-4, corps:-3, liens:{ coach:3 }, dit:[{c:'foot',t:"🎽 il apprécie"},{c:'risk',t:"🩼 ton corps encaisse"}] },
+    ] },
+
+  /* ============ LES DOUZE FAMILLES NOUVELLES (§3 de la page) ============
+     Classées par le trou qu'elles bouchent. Les quatre premières n'existaient
+     nulle part dans la semaine, et ce sont celles où **l'argent et le contrat
+     deviennent des décisions** — ce qui manquait le plus, de son avis comme du
+     mien. Les familles qui ne doivent sortir qu'une fois par saison le disent dans
+     leur propre `quand` en lisant `S.vuArrets`, qui compte les passages et que
+     `demarrerSaison()` remet à zéro chaque été. */
+
+  /* À MON AVIS LA DÉCISION LA PLUS IMPORTANTE QUI MANQUAIT, et elle est dans sa
+     partie préférée : elle met l'argent, ta place et ton avenir dans un écran. */
+  { id:'contrat',
+    quand: () => S.journee >= 20 && S.journee <= 26 && S.liens.club >= 52
+      && !S.prolonge && !(S.vuArrets || {}).contrat,
+    titre:"Le contrat",
+    texte:"Le directeur sportif te tend une feuille. Un an de plus, même salaire. « On est content de toi. Signe et on n'en parle plus. »",
+    options:[
+      { l:"Signer tout de suite", liens:{ club:10, agent:-7 }, prolonge:true,
+        dit:[{c:'foot',t:"🏟️ tu es de la maison"},{c:'foot',t:"💰 un an garanti"},{c:'risk',t:"🤝 il voulait attendre juin"},{c:'risk',t:"⏳ aucune offre cet été"}] },
+      { l:"Demander plus", renego:true,
+        dit:[{c:'foot',t:"💰 +15 à +30 % s'il cède"},{c:'risk',t:"🏟️ et la proposition disparaît s'il refuse"}] },
+      { l:"Attendre juin", liens:{ agent:6, club:-8 }, pasProlonge:true,
+        dit:[{c:'foot',t:"🤝 il a les mains libres"},{c:'foot',t:"⏳ de meilleures offres cet été"},{c:'risk',t:"🏟️ le club peut ne pas prolonger du tout"}] },
+    ] },
+  { id:'sponsor',
+    quand: () => S.journee >= 5 && ((S.vuArrets || {}).sponsor || 0) < 2
+      && (S.liens.supporters >= 55 || niveau() >= S.club.force + 4),
+    titre:"Le sponsor",
+    texte:"Une marque veut ton visage sur une affiche. Une journée de tournage. Mercredi. En pleine semaine.",
+    options:[
+      { l:"Y aller", prime:1/6, liens:{ supporters:6, coach:-3 }, fit:-7,
+        dit:[{c:'foot',t:"💰 deux mois de salaire"},{c:'foot',t:"📣 ton visage partout"},{c:'risk',t:"🫁 mercredi y passe"},{c:'risk',t:"🎽 il apprendra où tu étais"}] },
+      { l:"Refuser", liens:{ coach:3, agent:-5 }, fit:2,
+        dit:[{c:'foot',t:"🎽 le coach apprécie"},{c:'foot',t:"🫁 ta semaine est à toi"},{c:'risk',t:"🤝 c'est lui qui avait monté le coup"}] },
+    ] },
+  /* LE SEUL ÉCRAN DU JEU OÙ L'ARGENT EST UN ARBITRAGE **MORAL** et pas comptable.
+     Et il pèse sur la carrière entière, puisque *les tiens* décident de ce que ta
+     tête encaisse. Une fois par carrière, quand ton salaire a doublé. */
+  { id:'premierGros',
+    quand: () => !S.vie.grosFait && S.vie.salaire0 > 0 && S.salaire >= 2 * S.vie.salaire0,
+    titre:"Le premier gros salaire",
+    texte:"Tu viens de signer pour trois fois ce que tu gagnais. Ton frère a un projet. Ton père n'a jamais demandé, mais la maison a quarante ans.",
+    options:[
+      { l:"Aider les tiens", liens:{ proches:14 }, prochesPlancher:52, debours:1, grosFait:true,
+        dit:[{c:'vie',t:"🏡 les tiens, et ça ne redescendra plus vraiment"},{c:'risk',t:"💰 un an de salaire"}] },
+      { l:"Tout mettre de côté", liens:{ proches:-7 }, ment:-1.5, grosFait:true,
+        coup:"ce que tu aurais pu faire avec cet argent",
+        dit:[{c:'foot',t:"💰 ton compte, et un chantier plus tôt"},{c:'risk',t:"🏡 les tiens l'ont compris"},{c:'risk',t:"🧠 tu sais ce que tu aurais pu faire"}] },
+    ] },
+  /* Les offres n'arrivaient qu'en été. Celle-ci arrive **au milieu de ta saison**,
+     quand elle coûte quelque chose. */
+  { id:'offreHiver',
+    quand: () => S.journee >= 18 && S.journee <= 22 && S.liens.agent >= 60
+      && !(S.vuArrets || {}).offreHiver,
+    titre:"L'offre d'hiver",
+    texte:"« Un club appelle. Maintenant, pas en juin. Tu joues tout de suite, mais tu pars au milieu de la saison. »",
+    options:[
+      { l:"Écouter", liens:{ agent:8, club:-8, coach:-5, vestiaire:-4 },
+        dit:[{c:'foot',t:"🤝 une bien meilleure offre en juin"},{c:'risk',t:"🏟️ le club le prend mal"},{c:'risk',t:"✊ ils savent"}] },
+      { l:"Fermer la porte", liens:{ club:8, coach:4, agent:-8 },
+        dit:[{c:'foot',t:"🏟️ le club te le rend"},{c:'foot',t:"🎽 le coach aussi"},{c:'risk',t:"🤝 il ne t'appellera plus pour rien"}] },
+    ] },
+
+  /* ---- le football qui manquait à la semaine ---- */
+  /* ELLE REMET LE CLASSEMENT DE TON POSTE À ZÉRO AU MILIEU D'UNE SAISON : la seule
+     famille qui peut **sauver** une saison morte, ou tuer une saison réussie. La
+     confiance du coach est remise à 50 **avant** le choix — c'est à ça que sert le
+     hook `avant`. */
+  { id:'nouveauCoach',
+    quand: () => S.nouveauCoachJ && S.journee >= S.nouveauCoachJ && !S.nouveauCoachFait,
+    avant: () => { S.liens.coach = 50; S.nouveauCoachFait = true;
+      jrn('coach', `Le coach est parti. Le nouveau veut voir tout le monde.`); },
+    titre:"Le nouveau coach",
+    texte:"Celui d'avant est parti hier soir. Le nouveau a demandé à voir les joueurs un par un. Tu passes en premier. Sa confiance est à refaire, dans les deux sens.",
+    options:[
+      { l:"Lui dire ce que tu sais faire", liens:{ coach:8, vestiaire:-4 },
+        dit:[{c:'foot',t:"🎽 tu existes pour lui dès le premier jour"},{c:'risk',t:"✊ les anciens trouvent que tu t'es placé"}] },
+      { l:"Attendre qu'il te regarde", liens:{ vestiaire:5, coach:-4 },
+        dit:[{c:'foot',t:"✊ le vestiaire apprécie"},{c:'risk',t:"🎽 il a déjà son onze en tête"}] },
+    ] },
+  { id:'brassard',
+    quand: () => S.journee >= 6 && vestiaire() >= 55 && !S.brassard
+      && S.equipe.some(j => j.age >= 28 && (j.blesse > 0 || j.susp > 0)),
+    titre:"Le brassard",
+    texte:"« Le capitaine est out trois semaines. Samedi, c'est toi qui sors avec le brassard. Si tu le veux. »",
+    options:[
+      { l:"Accepter", liens:{ vestiaire:8, coach:5 }, axes:{ ment:1 }, brassard:3,
+        dit:[{c:'foot',t:"✊ le vestiaire te suit"},{c:'foot',t:"🎽 le coach cherchait un patron"},{c:'risk',t:"🧠 chaque mauvais soir pèsera double"}] },
+      { l:"Proposer quelqu'un d'autre", liens:{ vestiaire:4, coach:-5 },
+        dit:[{c:'foot',t:"✊ le geste est vu"},{c:'risk',t:"🎽 il cherchait un patron"}] },
+    ] },
+  { id:'retour', quand: () => (S.reprise || 0) > 0 && !S.etats.blessure,
+    titre:"Le retour de blessure",
+    texte:"« Le kiné dit deux semaines. Moi, j'ai besoin de toi samedi. Je ne te forcerai pas. »",
+    options:[
+      { l:"Jouer quand même", liens:{ coach:6 }, corps:-5, promesse:'rechute',
+        dit:[{c:'foot',t:"🎽 tu gardes ta place"},{c:'risk',t:"🩼 quatre fois sur dix, ça relâche"},{c:'risk',t:"🩼 et plus longtemps que la première fois"}] },
+      { l:"Attendre deux semaines", corps:6, liens:{ coach:-5 }, forfait:2,
+        dit:[{c:'foot',t:"🩼 aucun risque"},{c:'risk',t:"🎽 ton concurrent prend ta place"},{c:'risk',t:"🎽 et il la garde"}] },
+    ] },
+  /* ELLE FAIT EXACTEMENT CE QUE LA JAUGE *CORPS* ATTENDAIT : échanger la fin de ta
+     carrière contre samedi. */
+  { id:'piqure', quand: () => S.etats.corps < 78 && !S.piqure && S.journee >= 5,
+    titre:"La piqûre",
+    texte:"« Une injection et tu ne sens plus rien pendant quatre-vingt-dix minutes. Ce n'est pas interdit. Ce n'est pas rien non plus. »",
+    options:[
+      { l:"Accepter", fit:8, liens:{ coach:3 }, corps:-6, piqure:true,
+        dit:[{c:'foot',t:"🫁 tu ne sentiras plus rien"},{c:'foot',t:"🎽 le coach est soulagé"},{c:'risk',t:"🩼 ton corps ne remontera plus cette saison"}] },
+      { l:"Refuser", corps:2, liens:{ coach:-4 },
+        dit:[{c:'foot',t:"🩼 tu ménages ton corps"},{c:'risk',t:"🎽 il avait besoin de toi"},{c:'risk',t:"🫁 tu joues comme tu es"}] },
+    ] },
+  /* CHANGER DE POSTE EN COURS DE CARRIÈRE n'existait pas, et ça devrait : c'est une
+     vraie histoire de footballeur, et le coût (ton poste −8, socle compris) est
+     assez lourd pour que ce soit une décision et pas une porte de sortie facile. */
+  { id:'double',
+    quand: () => S.moi.poste !== 'G' && (S.sansJouer || 0) >= 8 && !!devantToi(),
+    titre:"Il t'a doublé",
+    texte:"Ce n'est plus une mauvaise passe. Il joue, tu ne joues pas, et le coach n'hésite même plus. L'adjoint te glisse qu'il te voit ailleurs sur le terrain.",
+    options:[
+      { l:"Demander à changer de poste", poste:true, ment:-1.5,
+        coup:"ce poste que tu n'as jamais appris",
+        dit:[{c:'foot',t:"🎽 tu repasses devant, ailleurs"},{c:'risk',t:"🎯 tout ce que tu savais ne sert qu'à moitié"},{c:'risk',t:"🧠 recommencer, à ton âge"}] },
+      { l:"Rester et attendre ton heure", axes:{ spec:1 }, liens:{ coach:2 }, ment:-1.5,
+        coup:"toutes ces semaines à attendre",
+        dit:[{c:'foot',t:"🎯 tu continues à travailler"},{c:'foot',t:"🎽 il apprécie"},{c:'risk',t:"🧠 et rien ne change samedi"}] },
+    ] },
+
+  /* ---- le hors-football, une fois les portes ouvertes ---- */
+  { id:'pereStade',
+    quand: () => S.journee >= 4 && proches() >= 55 && !(S.vuArrets || {}).pereStade,
+    titre:"Ton père au stade",
+    texte:"Il n'est jamais venu. Il a soixante ans. Il a demandé s'il y avait de la place samedi.",
+    options:[
+      { l:"Le faire venir", liens:{ proches:8 }, axes:{ ment:1 }, promesse:'pere',
+        dit:[{c:'vie',t:"🏡 il sera là"},{c:'foot',t:"🧠 tu joues pour lui"},{c:'risk',t:"⏳ et s'il te voit rater ton match…"}] },
+      { l:"Une autre fois", liens:{ proches:-4 }, axes:{ ment:.5 },
+        dit:[{c:'foot',t:"🧠 tu joues sans ce regard"},{c:'risk',t:"🏡 il a soixante ans"}] },
+    ] },
+  { id:'rumeur',
+    quand: () => S.journee >= 6 && (S.liens.agent >= 60
+      || (S.stats.notes.length >= 3 && moyenneNotes() >= 6.8)),
+    titre:"La rumeur",
+    texte:"Un journal écrit que tu as déjà signé ailleurs. C'est faux. Le vestiaire l'a lu avant toi.",
+    options:[
+      { l:"Démentir publiquement", liens:{ club:8, vestiaire:5, agent:-7 },
+        dit:[{c:'foot',t:"🏟️ le club respire"},{c:'foot',t:"✊ le vestiaire aussi"},{c:'risk',t:"🤝 le bruit lui servait"}] },
+      { l:"Laisser dire", liens:{ agent:8, club:-6, vestiaire:-4 },
+        dit:[{c:'foot',t:"🤝 les clubs appellent"},{c:'risk',t:"🏟️ le club n'aime pas"},{c:'risk',t:"✊ le vestiaire non plus"}] },
+    ] },
+  /* LE TROU QU'IL A NOMMÉ LUI-MÊME, et la seule chose du jeu qui fait de la
+     **fatigue une conséquence de la réussite** : plus tu es bon, plus on te prend
+     tes semaines. Ici c'est la décision, pas le sous-système — les deux matchs ne
+     se jouent pas, ils se lisent, et leur prix est dans les jambes de samedi. */
+  { id:'selection',
+    quand: () => S.journee >= 8 && S.liens.selection >= 55 && !(S.vuArrets || {}).selection,
+    titre:"La sélection",
+    texte:"Une lettre, pas un coup de fil. Deux matchs, en pleine semaine, à trois mille kilomètres.",
+    options:[
+      { l:"Y aller", liens:{ supporters:8, agent:10 }, fit:-12, corps:-3,
+        dit:[{c:'foot',t:"📣 le pays te regarde"},{c:'foot',t:"🤝 ta cote monte pour juin"},{c:'risk',t:"🫁 tu joueras samedi sur les jambes"}] },
+      { l:"Te faire porter pâle", liens:{ club:6, coach:4, selection:-15, supporters:-5 },
+        dit:[{c:'foot',t:"🏟️ le club approuve"},{c:'foot',t:"🎽 il n'a jamais aimé les trêves"},{c:'risk',t:"🇫🇷 ils ne rappellent pas deux fois"}] },
     ] },
 ];
 /* « L'événement du kiné apparaît un peu tout le temps. » Il n'y avait pas de
@@ -1322,6 +1543,9 @@ function ouvrirArrets(){
   S.recentArrets = [a.id, ...recents].slice(0, 3);
   // certaines familles parlent de quelqu'un : on fige qui, et les textes le nomment
   // la ligne dont parle l'arrêt : c'est elle que ses options font monter ou tomber
+  /* Une famille peut avoir à changer l'état **avant** que tu choisisses : le
+     nouveau coach remet sa confiance à 50 en arrivant, pas après ta réponse. */
+  if (a.avant) a.avant();
   const l = a.ligne ? (typeof a.ligne === 'function' ? a.ligne() : a.ligne) : null;
   const q = a.sujet ? a.sujet(l) : null;
   S.arret = { id:a.id, options:a.options, sujet: q ? q.nom : null, ligne: l,
@@ -1331,12 +1555,12 @@ function ouvrirArrets(){
 }
 function choisirArret(i){
   const a = S.arret, o = a.options[i]; if (!o) return;
-  appliquer(o);
+  const suite = appliquer(o);
   jrn('arret', `${a.titre} → ${o.l}`);
   /* Le propriétaire, 27/09/2026 : « dans ma semaine, il n'y a que l'impact de
      mon choix d'entraînement. » La décision de la semaine y manquait : on la
      garde pour l'afficher à côté du compte rendu de séance. */
-  S.semaineArret = { titre: a.titre, choix: o.l };
+  S.semaineArret = { titre: a.titre, choix: o.l, suite: suite || null };
   S.arret = null; lancerMatch();
 }
 function appliquer(o){
@@ -1359,6 +1583,71 @@ function appliquer(o){
   });
   if (o.fit) S.etats.fraicheur = clampFr(S.etats.fraicheur + o.fit);
   if (o.corps) S.etats.corps = clamp(S.etats.corps + o.corps, 0, 100);
+  /* ---- ce que les douze familles nouvelles ont demandé en plus (30/09/2026) ----
+     Chaque clé est une porte, comme `liens` ou `axes` : l'option est une donnée,
+     jamais du code. Elles rendent une phrase quand il y a quelque chose à dire, et
+     c'est cette phrase que « Ta semaine » affiche sous ton choix. */
+  let suite = '';
+  // l'argent, en mois de salaire : une prime qui rentre, une somme qui sort
+  if (o.prime){ S.argent += S.salaire * o.prime;
+    suite = `La prime est tombée : ${sous(S.salaire * o.prime)}.`; }
+  if (o.debours){ S.argent -= S.salaire * o.debours;
+    suite = `Tu as sorti ${sous(S.salaire * o.debours)}. Tu ne le regrettes pas.`; }
+  if (o.brassard){ S.brassard = o.brassard;
+    suite = `Tu le porteras ${o.brassard} journées. Chaque mauvais soir pèsera double.`; }
+  if (o.piqure){ S.piqure = true;
+    suite = `Tu ne sentiras plus rien samedi. Ton corps ne remontera plus cette saison.`; }
+  if (o.promesse) S.promesses = [...(S.promesses || []), { k:o.promesse }];
+  /* Un forfait décidé **après** que le coach a annoncé son groupe : il faut le
+     reposer, sinon le match jouerait le onze d'avant et démentirait l'écran. */
+  if (o.forfait){ S.etats.blessure = o.forfait; poserEquipeDuJour();
+    suite = `Tu ne joueras pas les ${o.forfait} prochaines journées. Ton concurrent a le champ libre.`; }
+  // prolonger : un an de plus, et plus aucune offre cet été
+  if (o.prolonge){ S.contrat = (S.contrat || 0) + 1; S.prolonge = true;
+    jrn('argent', `Prolongation d'un an, ${sous(S.salaire)} par an.`);
+    suite = `Un an de plus, au même salaire. Cet été, personne ne t'appellera.`; }
+  /* Renégocier est un pari, et c'est le seul de la semaine : ce que le club lâche
+     dépend de ce qu'il pense de toi et de la saison que tu fais. */
+  if (o.renego){
+    const chance = clamp(.34 + (S.liens.club - 50) * .006 + (moyenneNotes() - 6.2) * .12, .08, .8);
+    if (Math.random() < chance){ const f = rnd(1.15, 1.30); poserSalaire(S.salaire * f);
+      jrn('argent', `Il a cédé : ${sous(S.salaire)} par an.`);
+      suite = `Il a pris un stylo et il a barré le chiffre. ${sous(S.salaire)} par an.`; }
+    else { S.liens.club = clamp(S.liens.club - 6);
+      suite = `Il a rangé la feuille dans son tiroir. On n'en reparlera pas cette saison.`; }
+  }
+  if (o.coach50){ S.liens.coach = 50; }
+  if (o.pasProlonge) S.prolonge = false;
+  // changer de poste : la seule décision du jeu qui touche à ce que tu es
+  if (o.poste){ const n = changerPoste();
+    suite = n ? `Tu t'entraînes à ${POSTE_A[n]} depuis lundi. Ça ne ressemble à rien pour l'instant.` : ''; }
+  // ton rival prend confiance : c'est ce qui se passe quand on va lui demander
+  if (o.rivalForme && S.concurrents[0]) S.concurrents[0].forme = clamp(S.concurrents[0].forme + o.rivalForme, -5, 5);
+  /* Les tiens ne redescendent jamais complètement après ça : c'est le seul effet
+     du jeu qui pose un plancher sur une jauge, et il est mérité. */
+  if (o.prochesPlancher) S.vie.prochesPlancher = Math.max(S.vie.prochesPlancher || 0, o.prochesPlancher);
+  if (o.grosFait) S.vie.grosFait = true;
+  return suite;
+}
+const POSTE_A = { G:'dans les buts', D:'en défense', M:'au milieu', A:'devant' };
+/* CHANGER DE POSTE EN COURS DE CARRIÈRE. Ça n'existait pas, et c'est une vraie
+   histoire de footballeur : on te voit ailleurs, tu rejoues, mais tout ce que tu
+   avais appris ne sert qu'à moitié. Le socle descend avec la base — c'est la seule
+   chose du jeu qui le fasse, et c'est juste : « j'ai toujours été bon à ce poste »
+   ne veut plus rien dire quand on change de poste. */
+const VOISIN_POSTE = { D:['M'], M:['D', 'A'], A:['M'] };
+function changerPoste(){
+  const n = pick(VOISIN_POSTE[S.moi.poste] || []); if (!n) return null;
+  S.moi.poste = n;
+  S.moi.socle.spec = Math.max(30, S.moi.socle.spec - 8);
+  bougerAxe('spec', -8);
+  // tout l'effectif se re-partage : tes anciens rivaux redeviennent des coéquipiers
+  const tous = [...S.concurrents, ...S.equipe];
+  const auPoste = tous.filter(j => j.poste === n).sort((a, b) => b.niv - a.niv);
+  S.concurrents = auPoste.slice(0, n === 'G' ? 1 : 2);
+  S.equipe = tous.filter(j => S.concurrents.indexOf(j) < 0);
+  jrn('poste', `Tu changes de poste : ${POSTE_A[n]}.`);
+  return n;
 }
 
 /* ---------- le match ---------- */
@@ -1936,6 +2225,12 @@ function lancerMatch(){
        le film disait « tu sors à la 79ᵉ » après t'avoir exclu à la 67ᵉ, et ton
        remplaçant prenait une note pour un temps de jeu qui n'existait pas. */
     for (let i = chg.length - 1; i >= 0; i--) if (chg[i].sortant && chg[i].sortant.moi) chg.splice(i, 1);
+    /* UN ROUGE À LA MINUTE OÙ TU ENTRES te laissait **zéro minute** au compteur —
+       mesuré une fois sur huit mille matchs, et c'est devenu un peu plus probable
+       depuis que les changements peuvent avancer de vingt minutes. Ça arrive au
+       football, mais ça ne s'écrit pas « 0 min » : on décale le carton d'une
+       minute après l'entrée. */
+    if (monRouge.min <= entree) monRouge.min = Math.min(90, entree + 1);
     sortie = monRouge.min; m.minutes = sortie - entree; m.sorti = 0;
   }
 
@@ -2701,7 +2996,11 @@ function finirMatch(){
       coutMental(1.2, `cette sortie à la ${m.sorti}e minute`);
       S.liens.coach = clamp(S.liens.coach - 1);
     }
-    if (m.note < 5.6) coutMental(1.7, "un match que tu voudrais oublier");
+    /* LE BRASSARD SE PAIE LES MAUVAIS SOIRS. C'est tout ce qu'il coûte, et c'est
+       assez : on accepte de porter le poids du groupe, donc un match raté pèse
+       double. */
+    if (m.note < 5.6) coutMental((S.brassard > 0 ? 3.4 : 1.7),
+      S.brassard > 0 ? "ce match raté avec le brassard" : "un match que tu voudrais oublier");
     if (m.rouge) coutMental(2.2, "ce carton rouge");
     /* UNE BLESSURE A UNE CAUSE, ET ELLE SE DIT (le propriétaire, 27/09/2026 :
        « je trouve que je me blesse sans explication »). Le tirage en avait déjà
@@ -2796,6 +3095,11 @@ function finirMatch(){
   LIGNES.forEach(k => { const d = S.lignes[k] - l0[k];
     if (Math.abs(d) >= .8) m.mvt.push({ k, up: d > 0, mot: `${LIGNE_NOM[k]} \u2014 ${direLigne(k)}` }); });
   if (S.etats.fraicheur - e0.fraicheur <= -8) m.mvt.push({ k:'fraicheur', up:false, mot:direJambes() });
+  /* LES PROMESSES SE RÈGLENT ICI, et pas dans `apresMatch()` où je les avais mises
+     d'abord : `m.mvt` est ce que l'écran de résultat affiche, or `apresMatch()`
+     tourne **après** cet écran. Le joueur n'aurait donc jamais vu une promesse se
+     tenir ou se retourner contre lui — une conséquence invisible n'existe pas. */
+  reglerPromesses(m);
   if (m.blessure) m.mvt.push({ k:'blessure', up:false,
     mot:`${m.pourquoi || ''} ${m.blessure} journée${m.blessure > 1 ? 's' : ''} d'absence.`.trim() });
   if (m.suspendu) m.mvt.push({ k:'suspension', up:false, mot:`Suspendu ${m.suspendu} match${m.suspendu > 1 ? 's' : ''}.` });
@@ -2989,8 +3293,38 @@ function autresMatchs(){
    donc **déjà vus**, et l'écran du tirage les montre avant le premier match. */
 
 /* ---------- la suite ---------- */
+/* UNE PHRASE QU'ON PEUT AVOIR À TENIR (30/09/2026). Les arrêts pouvaient déjà
+   coûter tout de suite ; il leur manquait la conséquence **différée** — promettre
+   un résultat à un journaliste, faire venir son père au stade. Chaque promesse se
+   règle après le match suivant, une seule fois, et elle passe par `m.mvt` pour que
+   le joueur lise pourquoi ça vient de lui tomber dessus. */
+function reglerPromesses(m){
+  const reste = [];
+  (S.promesses || []).forEach(pr => {
+    if (pr.k === 'resultat'){
+      if (m.res === 'D'){ coutMental(2.5, "ce résultat que tu avais promis");
+        S.liens.supporters = clamp(S.liens.supporters - 7);
+        m.mvt.push({ k:'promesse', up:false, mot:"Tu avais promis un résultat au micro. Le stade s'en souvient." }); }
+      else m.mvt.push({ k:'promesse', up:true, mot:"Tu avais promis un résultat. Tu l'as tenu." });
+    } else if (pr.k === 'pere'){
+      if (m.minutes && m.note < 5.5){ coutMental(2.5, "ce match-là, devant ton père");
+        m.mvt.push({ k:'promesse', up:false, mot:"Il était dans les tribunes pour la première fois. Tu n'as pas fait le match qu'il fallait." }); }
+      else m.mvt.push({ k:'promesse', up:true, mot:"Il était là, et il t'a vu jouer." });
+    } else if (pr.k === 'rechute'){
+      if (Math.random() < .4){ S.etats.blessure = ri(3, 7);
+        m.blessure = S.etats.blessure; coutMental(2.2, "cette rechute que tu avais cherchée");
+        m.pourquoi = "Tu es revenu trop tôt, et c'est reparti au même endroit. Plus longtemps, cette fois.";
+        m.mvt.push({ k:'promesse', up:false, mot:"La rechute. Tu savais que c'était possible." }); }
+      else m.mvt.push({ k:'promesse', up:true, mot:"Tu as joué sur une jambe et demie, et ça a tenu." });
+    }
+  });
+  S.promesses = reste;
+}
 function apresMatch(){
   const d = S.dernier;
+  // les journées où tu portes le brassard s'écoulent, et la reprise se périme
+  if (S.brassard > 0) S.brassard--;
+  if (S.reprise > 0) S.reprise--;
   S.eqJour = null;                 // le groupe de samedi ne vaut que pour samedi
   vivreConcurrents(); vivreEquipe();
   S.equipe.forEach(j => { if (j.monte) j.niv = Math.min(j.niv + .35, S.club.force + 12); });
@@ -3002,7 +3336,10 @@ function apresMatch(){
   LIGNES.forEach(k => S.ligneRef[k] = S.ligneRef[k] * .82 + S.lignes[k] * .18);
   // ta forme de référence : ce que tu vaux d'habitude, pour que la note lise le creux
   S.formeRef = S.formeRef == null ? S.etats.forme : S.formeRef * .85 + S.etats.forme * .15;
-  if (S.etats.blessure > 0) S.etats.blessure--;
+  /* LA SORTIE D'INFIRMERIE OUVRE UNE FENÊTRE DE DEUX SEMAINES : c'est là que le
+     coach peut te demander de jouer avant l'heure, et c'est là que la famille
+     `retour` se déclenche. */
+  if (S.etats.blessure > 0){ S.etats.blessure--; if (!S.etats.blessure) S.reprise = 2; }
   if (S.etats.suspension > 0) S.etats.suspension--;
   if (d && d.blessure) S.etats.blessure = d.blessure;
   if (d && d.suspendu) S.etats.suspension = d.suspendu;
@@ -3023,7 +3360,8 @@ function apresMatch(){
   if (repare > 0 && S.moi.base.ment < plafondTete - .2)
     bougerAxe('ment', Math.min(repare, plafondTete - S.moi.base.ment));
   // le corps revient vers ce que l'âge permet : c'est ça qui empêche la spirale
-  S.etats.corps = clamp(S.etats.corps + (cibleCorps() - S.etats.corps) * .05, 0, 100);
+  // la piqûre a un prix, et c'est celui-là : le corps ne remonte plus cette saison
+  if (!S.piqure) S.etats.corps = clamp(S.etats.corps + (cibleCorps() - S.etats.corps) * .05, 0, 100);
   /* LE PHYSIQUE REND SA FRAÎCHEUR AU COURS DE L'ANNÉE (le propriétaire, 27/09/2026 :
      « le physique qui consomme beaucoup de fraîcheur, il faut qu'au cours de l'année
      on regagne de la fraîcheur grâce à lui, sur la vitesse de récupération » ;
@@ -3207,7 +3545,13 @@ function primesDeLaSaison(){
    semaine ; quand il n'y a plus personne, il s'installe. C'est le seul effet, et il
    passe par la seule porte du mental (`coutMental`, et la récupération hebdomadaire). */
 function proches(){ return S.vie ? S.vie.proches : 50; }
-function bougerProches(d){ if (S.vie) S.vie.proches = clamp(S.vie.proches + d); }
+/* LE PLANCHER DES TIENS. Aider sa famille au premier gros salaire ne s'oublie
+   pas : c'est la seule chose du jeu qui pose un plancher sur une jauge, et elle
+   tient toute la carrière. Le reste de l'usure joue normalement au-dessus. */
+function bougerProches(d){
+  if (!S.vie) return;
+  S.vie.proches = clamp(Math.max(S.vie.prochesPlancher || 0, S.vie.proches + d));
+}
 function direProches(){
   const v = proches(), t = [];
   t.push(v > 78 ? "Il y a du monde derrière toi, et ça se sent."
@@ -3768,6 +4112,13 @@ function demarrerSaison(club, reste){
     corps: clamp((S.etats.corps || 88) + (S.ete ? S.ete.corps : 0), 0, cibleCorps()),
   };
   S.stats = { matchs:0, titus:0, buts:0, passes:0, notes:[], minutes:0 };
+  S.promesses = []; S.brassard = 0; S.piqure = false; S.prolonge = false; S.reprise = 0;
+  /* UN COACH PEUT ÊTRE VIRÉ EN COURS DE SAISON, et c'est la seule chose qui remet
+     le classement de ton poste à zéro au milieu d'une année : elle peut sauver une
+     saison morte comme tuer une saison réussie. Une saison sur huit, et la journée
+     est tirée à l'avance pour que la famille puisse s'ouvrir à partir de là. */
+  S.nouveauCoachJ = Math.random() < .125 ? ri(6, 26) : 0;
+  S.nouveauCoachFait = false;
   /* L'EUROPE SE GAGNE SUR LE TERRAIN, ET DANS L'ÉLITE. On y va si on a fini sur le
      podium de la première division ou si on a gagné la coupe — un podium de Ligue 2
      ne l'ouvre pas, il ouvre la montée. */
@@ -4161,6 +4512,19 @@ function charger(){
         d.ecran = 'semaine';
       }
       d.v = 13;
+    }
+    /* MIGRATION 13 → 14 : les arrêts de la page de décisions. Presque rien à
+       reconstruire — les nouveaux états sont lus partout avec un défaut (`||`),
+       donc une sauvegarde v13 les prend à zéro sans broncher. La seule exception
+       est `vie.salaire0`, qui sert de repère au « premier gros salaire » : sans lui
+       la famille ne pourrait jamais se déclencher. On le pose au salaire **actuel**,
+       donc l'écran arrivera quand il aura doublé à partir d'aujourd'hui — plutôt
+       que de tomber tout de suite sur une carrière déjà avancée. */
+    if (d.v === 13){
+      d.promesses = []; d.brassard = 0; d.piqure = false; d.prolonge = false; d.reprise = 0;
+      d.nouveauCoachJ = 0; d.nouveauCoachFait = false;
+      if (d.vie){ d.vie.salaire0 = d.salaire || 0; d.vie.grosFait = false; d.vie.prochesPlancher = 0; }
+      d.v = 14;
     }
     /* La qualité et le défaut se découvrent désormais à la création : une carrière
        commencée avant ne les a peut-être pas encore vus, et plus rien ne les lui
