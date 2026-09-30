@@ -338,12 +338,10 @@ function nouvellePartie(c){
       histo: {} },
     club: { nom: club.nom, force: club.force }, concurrents, equipe,
     ligue, liens, lignes, ligneRef: { ...lignes },
-    /* `fond` est la réserve que construit le travail physique : on récupère plus
-       vite d'un match à l'autre, on se blesse moins, et on laisse moins de jambes
-       dans un match. Il s'use d'une journée sur l'autre : il faut l'entretenir.
-       Sans lui la séance physique était la plus chère sans aucune contrepartie,
-       et le banc d'essai la montrait dominée à tous les postes. */
-    etats: { fraicheur:100, forme:60, blessure:0, suspension:0, corps:88, fond:0 },
+    /* Ce que le travail physique rend — récupérer plus vite, se blesser moins,
+       encaisser une charge sans y laisser samedi — est porté par l'axe `phys`
+       lui-même (`chargePhys()`, `recupPhys()`), et non par une réserve à part. */
+    etats: { fraicheur:100, forme:60, blessure:0, suspension:0, corps:88 },
     journee: 0, arrets: 0, cartons: 0,
     coupe: { vivant:true, tour:0, hist:[], gagnee:false },
     euro: { engage:false, vivant:true, tour:0, pts:0, hist:[], gagnee:false },
@@ -945,7 +943,8 @@ function niveauJour(){
 /* ---------- la semaine ---------- */
 /* Chaque axe a **son** effet long terme, et ce n'est pas « du niveau » (retour du
    propriétaire, 27/09/2026). Court terme, tout coûte de la fraîcheur ; long terme :
-   - physique  → le fond : on récupère plus vite et on se blesse moins ;
+   - physique  → ton corps : on récupère plus vite, on se blesse moins, et une
+     charge coûte moins cher ;
    - technique → le geste : on réussit plus souvent les faits de match ;
    - au poste  → ta place : le coach te titularise ;
    - mental    → encaisser : les mauvais soirs et les coups durs t'abîment moins.
@@ -956,21 +955,44 @@ const SEMAINES = [
   { id:'tech', ico:'⚽', nom:"Rester après l'entraînement", sub:"Frappes, centres, gestes répétés.",
     axe:'tech', fit:-8, rende:1, dit:[{c:'risk',t:"🫁 samedi : lourd"},{c:'foot',t:"⚡ technique : les faits de match"},{c:'vie',t:"🏡 tu rentres tard"}] },
   { id:'phys', ico:'💪', nom:"La salle et les sprints", sub:"Le programme du préparateur. Violent.",
-    axe:'phys', fit:-11, fond:3.5, rende:1.15, dit:[{c:'risk',t:"🫁 samedi : fatigué"},{c:'foot',t:"💪 ton corps : tenir, récupérer"}] },
+    axe:'phys', fit:-11, rende:1.15, dit:[{c:'risk',t:"🫁 samedi : fatigué"},{c:'foot',t:"💪 récupérer vite, se blesser moins"}] },
   { id:'ment', ico:'🧠', nom:"La vidéo et le calme", sub:"Tes matchs revus, et du silence.",
     axe:'ment', fit:-7, rende:.85, dit:[{c:'foot',t:"🛡️ mental : encaisser"},{c:'vie',t:"🏡 du temps chez toi"}] },
   { id:'spec', ico:'🎯', nom:"Le travail de ton poste", sub:"Une heure seul avec l'adjoint.",
-    axe:'spec', fit:-8, fond:1, rende:1, dit:[{c:'foot',t:"🎽 ta place dans le onze"},{c:'risk',t:"🫁 une heure de plus"}] },
+    axe:'spec', fit:-8, rende:1, dit:[{c:'foot',t:"🎽 ta place dans le onze"},{c:'risk',t:"🫁 une heure de plus"}] },
   { id:'normale', ico:'🔁', nom:"La semaine normale", sub:"Ce que le coach demande, pas plus.",
     axe:null, fit:-2, dit:[{c:'neutre',t:"↔️ un peu de tout"}] },
   { id:'repos', ico:'🛌', nom:"Lever le pied", sub:"Le corps tire. Tu écoutes.",
     axe:null, fit:8, dit:[{c:'foot',t:"🫁 samedi : frais"},{c:'vie',t:"🏡 deux jours avec les tiens"}] },
 ];
+/* CE QUE LE PHYSIQUE FAIT, ET IL FAIT TROIS CHOSES (le propriétaire, 30/09/2026 :
+   « le physique joue sur la capacité à se blesser, et sur la **vitesse de
+   récupération** de la fraîcheur — il ne faut pas qu'un entraînement de physique
+   augmente la fraîcheur… Un physique à 30 sur 100 provoque des blessures
+   fréquentes ; un physique à 80, il se blesse très très peu, il enchaîne les
+   matchs, il peut jouer un match complet et faire un entraînement sans que ça tape
+   trop dans ses réserves pour le week-end. Plus il y a de physique, plus il peut
+   assumer de charge intensive, à l'entraînement et au match, sans avoir à se
+   reposer »).
+   Son modèle est **l'axe lui-même**, sur 0-100 — pas la réserve `fond` que j'avais
+   inventée à côté et qui faisait un cinquième chiffre à entretenir. `fond`
+   disparaît : les trois effets qu'il portait sont repris par `phys`, qui est déjà
+   ce que la séance physique entraîne et ce que le joueur lit à l'écran.
+   Et la règle qu'il pose est respectée à la lettre : **une séance physique coûte de
+   la fraîcheur comme les autres** (−11, la plus chère) ; ce qu'elle rend, c'est la
+   vitesse à laquelle on la récupère et la charge qu'on encaisse sans la perdre. */
+function physique(){ return clamp(S.moi.base.phys + S.moi.boost.phys, 0, 100); }
+/* Ce que coûte une charge — une séance, un match. À 80 on paie 82 % du prix, à 30
+   on en paie 112 %. C'est le « sans avoir à se reposer » de sa phrase. */
+function chargePhys(){ return clamp(1 - (physique() - 50) * .006, .62, 1.24); }
+/* Et la vitesse à laquelle la semaine te rend ce que samedi t'a pris. À 80 tu
+   récupères une fois et demie plus vite qu'à 50, à 30 deux tiers moins. */
+function recupPhys(){ return clamp(1 + (physique() - 50) * .016, .62, 1.5); }
 function choisirSemaine(id){
   const s = SEMAINES.find(x => x.id === id); if (!s) return;
   S.semaine = s.id;
-  S.etats.fraicheur = clamp(S.etats.fraicheur + s.fit);
-  if (s.fond) S.etats.fond = clamp(S.etats.fond + s.fond);
+  // un coût de fraîcheur est amorti par le physique ; un gain ne l'est pas
+  S.etats.fraicheur = clamp(S.etats.fraicheur + (s.fit < 0 ? s.fit * chargePhys() : s.fit));
   S.seance = null;
   if (s.axe){
     const a = s.axe, pl = plafondReel(a);
@@ -1696,7 +1718,6 @@ function finirAnnexe(info, m){
   }
   // mercredi coûte samedi : c'est tout l'intérêt
   S.etats.fraicheur = clamp(S.etats.fraicheur - (m.minutes ? 7 + m.minutes * .14 : 4));
-  S.etats.fond = clamp(S.etats.fond - 1);
   suiteAnnexe(info, m);
   return m;
 }
@@ -2591,7 +2612,7 @@ function finirMatch(){
        a bondi et la fraîcheur s'effondrait — « lever le pied » redevenait la
        meilleure politique partout, ce qui tue le choix de la semaine. */
     S.etats.fraicheur = clamp(S.etats.fraicheur
-      - (m.minutes / 90) * ri(10, 16) * (m.entree ? .7 : 1) * (1 - S.etats.fond * .0022));
+      - (m.minutes / 90) * ri(10, 16) * (m.entree ? .7 : 1) * chargePhys());
     /* L'USURE S'ACCUMULE, ET ELLE COÛTE PLUS CHER QUAND ON FINIT SUR LES JAMBES. */
     S.etats.corps = clamp(S.etats.corps - (m.minutes / 90) * .4 * (S.etats.fraicheur < 55 ? 1.6 : 1), 0, 100);
     let dCoach = clamp((m.note - 6.2) * 2.4, -4, 4);
@@ -2623,11 +2644,11 @@ function finirMatch(){
     if (m.rouge) coutMental(2.2, "ce carton rouge");
     /* UNE BLESSURE A UNE CAUSE, ET ELLE SE DIT (le propriétaire, 27/09/2026 :
        « je trouve que je me blesse sans explication »). Le tirage en avait déjà
-       trois — le fond qu'on s'est construit, les ischios quand c'est ton défaut,
+       trois — le physique qu'on s'est construit, les ischios quand c'est ton défaut,
        les jambes vides — mais l'écran n'en disait aucune : on sortait touché sans
        savoir pourquoi, donc sans rien pouvoir y faire. On garde la raison qui pesait
        le plus lourd dans le tirage, et on l'écrit. */
-    const risqueBase = Math.max(.012, .05 - S.etats.fond * .0006)
+    const risqueBase = Math.max(.012, .05 - (physique() - 50) * .0009)
       + Math.max(0, 88 - S.etats.corps) * .0008;
     const risqueIschios = S.moi.def.id === 'ischios' ? .04 : 0;
     /* Une semaine sur cinq à l'infirmerie, c'était déjà le cas avant l'usure du corps
@@ -2642,8 +2663,8 @@ function finirMatch(){
           ? "Tu as fini le match sur les jambes, et le corps a lâché là où il lâche toujours."
         : risqueIschios >= risqueBase
           ? "Encore cette gêne derrière la cuisse. Tu la connais par cœur."
-        : S.etats.fond < 25
-          ? "Tu n'as pas le fond pour encaisser ces rythmes-là. Ça finit par se payer."
+        : physique() < 42
+          ? "Tu n'as pas le corps pour encaisser ces rythmes-là. Ça finit par se payer."
         : "Un appui qui part de travers, personne autour. Ça arrive.";
     }
     m.jaunes = m.evs.filter(e => e.type === 'jaune' && e.moi).length + m.jaune;
@@ -2934,22 +2955,17 @@ function apresMatch(){
     bougerAxe('ment', Math.min(repare, plafondTete - S.moi.base.ment));
   // le corps revient vers ce que l'âge permet : c'est ça qui empêche la spirale
   S.etats.corps = clamp(S.etats.corps + (cibleCorps() - S.etats.corps) * .05, 0, 100);
-  S.etats.fond = clamp(S.etats.fond - 1.5);                 // le fond s'use si on ne l'entretient pas
   /* LE PHYSIQUE REND SA FRAÎCHEUR AU COURS DE L'ANNÉE (le propriétaire, 27/09/2026 :
      « le physique qui consomme beaucoup de fraîcheur, il faut qu'au cours de l'année
      on regagne de la fraîcheur grâce à lui, sur la vitesse de récupération » ;
-     30/09/2026 : « c'est la fraîcheur, la qualité au poste, et peut-être aussi le
-     physique et la technique qui fait jouer »). Son intention n'était pas tenue : à
-     `.05` le point de fond, mesuré à 200 saisons par ligne, « toujours le physique »
-     finissait avec **la fraîcheur la plus basse de toutes les séances** (34 à 43 %
-     contre 80 à 100 %) et était **la politique qui faisait le moins jouer aux trois
-     croisements**. La séance la plus chère n'était pas remboursée. À `.13`, un fond
-     de 65 rend 8,5 points par journée au lieu de 3,3 : le physique remonte à
-     **64-77 %** de fraîcheur et gagne deux matchs, sans prendre l'or des matchs à
-     personne. Le réglage est chirurgical — qui ne travaille jamais le physique a un
-     fond de zéro et ne voit aucune différence. */
+     30/09/2026 : « il faut que ça joue sur la vitesse de récupération de la
+     fraîcheur »). La récupération de base est la même pour tout le monde ; c'est
+     `recupPhys()` qui la multiplie, de .62 à 1,5 selon l'axe. À physique 80 on
+     récupère une fois et demie plus vite qu'à 50, et deux tiers moins vite à 30.
+     C'est la seule contrepartie de la séance la plus chère du jeu, et elle est
+     neutre à 50 : qui ne travaille jamais le physique ne voit aucune différence. */
   S.etats.fraicheur = clamp(S.etats.fraicheur
-    + ((S.etats.blessure ? 14 : 9.6) + S.etats.fond * .13)
+    + (S.etats.blessure ? 14 : 9.6) * recupPhys()
       * (1 - Math.max(0, 88 - S.etats.corps) * .002));
   S.journee++;
   if (S.journee >= JOURNEES) return finSaison();
@@ -3218,13 +3234,14 @@ const ETE = [
 function ouvrirEte(){ S.ecran = 'ete'; sauver(); rendre(); }
 function choisirEte(id){
   const e = ETE.find(x => x.id === id) || ETE[0];
-  S.ete = { id: e.id, nom: e.nom, fraicheur: 100, fond: 0, corps: 0, offres: 0, travail: 0 };
+  S.ete = { id: e.id, nom: e.nom, fraicheur: 100, corps: 0, offres: 0, travail: 0 };
   if (e.id === 'proches'){
     S.ete.corps = 3;
     // la tête se répare vraiment : on remonte au pic, ce que la saison n'offre jamais
     AXES.forEach(a => { if (a === 'ment' && S.moi.base.ment < S.moi.pic.ment) bougerAxe('ment', S.moi.pic.ment - S.moi.base.ment); });
   } else if (e.id === 'travail'){ S.ete.travail = 3.6; S.ete.corps = -3; S.ete.fraicheur = 78; }
-  else if (e.id === 'soin'){ S.ete.corps = 8; S.ete.fond = 26; }
+  // `soin` passe par le corps, qui porte déjà les blessures et la récupération
+  else if (e.id === 'soin'){ S.ete.corps = 16; }
   else if (e.id === 'montrer'){ S.ete.offres = 2;
     S.liens.agent = clamp(S.liens.agent + 14); S.liens.supporters = clamp(S.liens.supporters + 10); }
   jrn('ete', `L'été : ${e.nom.toLowerCase()}.`);
@@ -3523,7 +3540,7 @@ function choisirMercato(id){
     bougerAxe('spec', 2.2);
     S.liens.coach = clamp(S.liens.coach + 5);
     S.ete.fraicheur = clamp(S.ete.fraicheur - 12);
-    S.ete.fond = clamp((S.ete.fond || 0) + 8);
+    bougerAxe('phys', 1.2);         // dix jours de charge, et le corps s'en souvient
     suite = `Dix jours seul avec l'adjoint. Quand le groupe est rentré, tu étais déjà dedans — et il l'a vu. Tu commenceras la saison fatigué, mais devant.`;
   } else if (c.id === 'coach'){
     S.liens.coach = clamp(S.liens.coach + (dur ? 5 : 9));
@@ -3680,7 +3697,7 @@ function demarrerSaison(club, reste){
   S.ligneRef = { ...S.lignes };
   S.etats = { fraicheur: S.ete ? S.ete.fraicheur : 100, forme:60, blessure:0, suspension:0,
     corps: clamp((S.etats.corps || 88) + (S.ete ? S.ete.corps : 0), 0, cibleCorps()),
-    fond: S.ete ? S.ete.fond : 0 };
+  };
   S.stats = { matchs:0, titus:0, buts:0, passes:0, notes:[], minutes:0 };
   /* L'EUROPE SE GAGNE SUR LE TERRAIN, ET DANS L'ÉLITE. On y va si on a fini sur le
      podium de la première division ou si on a gagné la coupe — un podium de Ligue 2
@@ -3769,11 +3786,16 @@ function dire(lien){
    27/09/2026). Les axes ont déjà un nom sur l'écran de la semaine : technique,
    physique, mental. Le jeu s'en tient à ceux-là. Ici, ce que le corps sait
    faire — tenir un match et récupérer — s'appelle simplement ton corps. */
-function direFond(){ const v = S.etats.fond;
-  return v > 55 ? "Tu tiens tout le match, et tu récupères vite."
-    : v > 32 ? "Ton corps suit, et récupère entre deux matchs."
-    : v > 14 ? "Tu tiens, sans plus."
-    : "Tu lâches en fin de match, et tu récupères mal."; }
+/* La phrase dit une **capacité**, jamais l'état du moment : « Ton corps suit, et
+   récupère entre deux matchs » tombait à côté d'une fraîcheur à 9 % et les deux se
+   lisaient comme une contradiction. Ce qu'on décrit ici, c'est ce que ton corps sait
+   encaisser — la fraîcheur, juste au-dessus, dit où tu en es aujourd'hui. */
+function direFond(){ const v = physique();
+  return v > 68 ? "Tu encaisses tout : les matchs s'enchaînent et une séance ne te coûte presque rien."
+    : v > 56 ? "Tu récupères vite, et une séance de plus ne te fait pas peur."
+    : v > 44 ? "Tu récupères normalement. Une grosse semaine se sent le samedi."
+    : v > 34 ? "Tu récupères lentement, et chaque séance se paie plein tarif."
+    : "Ton corps ne suit pas : tu récupères mal, et tu te blesses souvent."; }
 /* LE MENTAL DIT DEUX CHOSES, ET IL FAUT LES DEUX (le propriétaire, 27/09/2026 :
    « malgré le fait que j'ai un bon mental, je suis toujours, depuis le début de
    ma carrière, dans un mental de “quand ça se tend, tu joues petit”. Du coup je ne

@@ -1481,6 +1481,73 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     qu'une sonde absente — elle donne une fausse confiance. Toute conclusion du banc porte
     désormais son **erreur-type** à côté du chiffre, et une différence plus petite qu'elle ne se
     raconte pas comme un résultat.
+- **LE PHYSIQUE EST LA RÉSERVE, IL N'EN A PAS UNE À CÔTÉ** (le propriétaire, 30/09/2026 : « le
+  physique, il joue sur deux choses. Il joue sur la capacité à se blesser… Et il faut que ça joue
+  sur la fraîcheur. **Il ne faut pas qu'un entraînement de physique augmente la fraîcheur. Il faut
+  qu'il augmente la vitesse de récupération de la fraîcheur.** Un physique à 30 sur 100 va provoquer
+  des blessures fréquentes… un physique à 80, il se blesse très très peu, en vitesse de récupération
+  il doit pouvoir enchaîner les matchs, jouer un match complet et faire un entraînement sans que ça
+  tape trop dans ses réserves pour le match du week-end. **Plus il y a de physique, plus il peut
+  assumer de charge intensive, à l'entraînement et au match, sans avoir à se reposer.** »)
+  - **`S.etats.fond` disparaît.** C'était une cinquième valeur à entretenir, inventée par moi à côté
+    de l'axe, qui portait exactement les trois effets qu'il vient de décrire — et qui se vidait de
+    son côté (−1,5 par journée) pendant que l'axe, lui, restait. Sa lecture est meilleure : ce qui
+    encaisse, c'est **le physique lui-même**, celui que la séance entraîne et que le joueur lit à
+    l'écran. Deux fonctions et trois branchements remplacent toute la réserve :
+    `chargePhys() = clamp(1 − (phys − 50) × .006, .62, 1.24)` sur **le coût** d'une séance et d'un
+    match, et `recupPhys() = clamp(1 + (phys − 50) × .016, .62, 1.5)` sur **la vitesse de
+    récupération** hebdomadaire. Le risque de blessure lit `(phys − 50) × .0009`. Les deux sont
+    **neutres à 50** : qui ne travaille jamais le physique ne voit aucune différence, exactement
+    comme avec l'ancien fond à zéro.
+  - **Sa règle est tenue à la lettre** : la séance physique reste **la plus chère du jeu** (−11 de
+    fraîcheur, contre −8 / −8 / −7). Elle n'en rend jamais ; elle rend la vitesse à laquelle on la
+    récupère et la charge qu'on encaisse sans la perdre. C'est pour ça que `fit` n'est amorti que
+    quand il est négatif : un coût est amorti par le physique, un gain (lever le pied, +8) ne l'est
+    pas.
+  - **Son exemple, mesuré tel qu'il l'a posé.** À physique forcé, en s'entraînant chaque semaine et
+    sans jamais lever le pied :
+    | physique | une blessure tous les | avec les ischios fragiles | fraîcheur |
+    |---|---|---|---|
+    | 30 | **9,8 matchs** | **5,9 matchs** | 41 % |
+    | 50 | 14,6 matchs | 8,7 matchs | 58 % |
+    | 80 | **21,7 matchs** | 14,5 matchs | **76 %** |
+    Un physique à 80 enchaîne donc les matchs en travaillant toutes les semaines, ce qui était le
+    cœur de sa phrase ; un physique à 30 se blesse deux fois plus souvent et ne tient pas le rythme.
+    *Une erreur de mesure au passage* : compté en **nombre** de blessures, le physique bas semblait
+    se blesser moins (0,8 contre 1,2) — parce qu'il joue beaucoup moins de matchs, donc tire beaucoup
+    moins souvent. Seul le **taux par match** dit quelque chose.
+  - **À l'échelle d'une carrière entière**, trois politiques :
+    | politique | matchs | matchs complets | une blessure tous les | fraîcheur |
+    |---|---|---|---|---|
+    | jamais le physique | 434 | 337 | 11,9 | 88 % |
+    | **le physique une semaine sur trois** | **452** | **361** | **14,1** | 71 % |
+    | toujours le physique | 453 | 315 | 12,3 | **43 %** |
+    Aucune ne domine : tout donner au physique coûte plus de fraîcheur qu'il n'en rend et fait perdre
+    des matchs complets ; ne jamais y toucher se blesse le plus. **Le compromis est le meilleur**, ce
+    qui est le comportement qu'on veut d'un axe.
+  - **Trois phrases d'écran remises d'aplomb.** `direFond()` disait « Ton corps suit, et récupère
+    entre deux matchs » à côté d'une fraîcheur de **9 %** : elle lisait une réserve et se lisait comme
+    un état. Elle décrit maintenant une **capacité**, jamais le moment (« Tu encaisses tout : les
+    matchs s'enchaînent et une séance ne te coûte presque rien. ») — la fraîcheur, juste au-dessus,
+    dit où on en est aujourd'hui. La pastille de la séance physique dit ce qu'elle fait (« 💪
+    récupérer vite, se blesser moins ») et la raison de blessure ne parle plus de fond (« Tu n'as pas
+    **le corps** pour encaisser ces rythmes-là »).
+  - **Deux morts trouvés en nettoyant** : l'été `soin` posait `fond: 26` (devenu `corps: 16`, qui
+    porte déjà les blessures et la récupération) et le choix de mercato « rentrer plus tôt » écrivait
+    `S.ete.fond += 8` que plus personne ne lisait (devenu `bougerAxe('phys', 1.2)` — dix jours de
+    charge, et le corps s'en souvient). `v2/labo.html` affichait encore une colonne `fond` qui serait
+    devenue `undefined` : elle montre le physique.
+  - **L'invariant de la semaine tient**, banc à **250 saisons par ligne** : aux trois croisements,
+    les matchs, les titularisations et la trace vont à **trois lignes différentes** (académie milieu :
+    matchs « le mental » 21,8, titularisations « deux séances » 8,9, trace « ton poste » +8,1 ;
+    quartier défenseur : 21,5 / 11,9 / +10,8 physique ; étranger attaquant : 20,3 / 6,5 / +10,0
+    technique). Et **« toujours lever le pied » ne prend les matchs nulle part**.
+  - **Vérifié** : les sept invariants du tableau des notes à **zéro écart sur 4 080 matchs**, score =
+    film **0 écart**, zéro doublon de nom, aucun entrant à zéro minute ; 24 carrières entières de 18
+    à 38 ans avec tous les écrans, zéro erreur ; les notes par tranche de carrière dans la même bande
+    (14,0 / 8,3 / 7,0 / 14,2 % sous 5,0) ; `tests/simulate.js` → `ERRORS: none` ; **aucune migration**
+    — une sauvegarde v13 porte un `etats.fond` que plus rien ne lit, et une vraie partie de la version
+    déployée reprend à la 17ᵉ journée, finit sa saison, passe la trêve et rejoue une saison entière.
 
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).
