@@ -180,9 +180,15 @@ function cNouvellePartie(c){
   S.ligneRef = { ...S.lignes };
   cLireEffectif();
   cPoserObjectif();
+  cPoserPlafond();
   poserSalaire(cSalaire());
+  S.vie.anVie = S.annee;
   jrn('debut', `${S.moi.nom}, entraîneur·euse de ${S.club.nom}. ${nomDivision()}, objectif ${S.objectif}ᵉ.`);
-  sauver(); return S;
+  /* LA PREMIÈRE SAISON A SON MERCATO AUSSI. Un entraîneur qui signe recrute — et
+     faire attendre trente-quatre journées avant de montrer ce qu'il appelle sa partie
+     préférée du mode serait le pire ordre possible. */
+  cOuvrirMercato(false);
+  return S;
 }
 
 /* ---------------- l'effectif, qui est celui du club ---------------- */
@@ -263,9 +269,28 @@ function cPoserObjectif(){
   S.objectif = clamp(Math.round(r - 2), 1, N - MONTEES);
   S.objPromis = S.objectif;
 }
+/* CE QU'ON PAIE UN BANC. Mesuré avant de toucher à la formule, une carrière entière :
+   un entraîneur gagnait **2 à 25 k€ par an**, et son compte finissait à 93 k€ après
+   vingt-cinq saisons. La cause est une réutilisation abusive : `salaireDe()` est la
+   courbe d'un **joueur**, convexe parce qu'un très bon joueur vaut dix fois un bon
+   (`((niv-45)/30)^2,6`), et on lui passait la **force d'un club** — or un club de
+   seconde division vaut 45, c'est-à-dire le pied de la courbe, c'est-à-dire rien.
+   Un banc ne se paie pas comme une star : il se paie au standing du club, plus ce
+   qu'on a déjà gagné. D'où une courbe à soi, en millions de 2015 : 0,22 en D2,
+   0,6 pour un milieu de Ligue 1, 2,7 pour un grand de France, 5,9 pour un grand
+   d'Europe. Le palmarès vaut jusqu'à 80 % de plus — c'est ce qui rend un vainqueur
+   cher, et c'est la seule chose du métier qui s'accumule. */
+const C_SAL_BASE = .22, C_SAL_PENTE = 10.5;
+function cSalaireDe(force, div, presse){
+  const era = typeof eraForYear === 'function' ? eraForYear(S.annee) : { marketSize:1 };
+  const c = S.carriere || { titres:0, coupes:0 };
+  const palmares = 1 + Math.min(.8, (c.titres || 0) * .12 + (c.coupes || 0) * .05);
+  return Math.round(C_SAL_BASE * Math.exp((force - 45) / C_SAL_PENTE)
+    * clamp(.65 + ((presse == null ? 50 : presse) - 50) * .006, .45, 1.15)
+    * ((div || 1) === 2 ? .45 : 1) * palmares * (era.marketSize || 1) * 1000) / 1000;
+}
 function cSalaire(){
-  const base = salaireDe(S.club.force, 40, S.club.force, S.division || 1);
-  return Math.round(base * clamp(.55 + (S.liens.president - 50) * .006, .4, 1.1) * 1000) / 1000;
+  return cSalaireDe(S.club.force, S.division || 1, S.liens.president);
 }
 /* La force de ton équipe un samedi. C'est la seule formule, et tout l'écran en
    découle : quatre contributions nommées, pour qu'aucun chiffre affiché n'existe
@@ -318,10 +343,17 @@ function cChoisirSemaine(id){
   if (s.axe){
     const marge = Math.max(0, cPlafondReel(s.axe) - S.moi.base[s.axe]) / 100;
     const tirage = pick([.4, 1, 1, 1.6]);
-    S.moi.boost[s.axe] = clamp(S.moi.boost[s.axe] + CBOOST * tirage * (cAxe(s.axe) / 100), 0, 14);
-    cBougerAxe(s.axe, CTRACE * tirage * marge * 4);
+    /* LA TÊTE AILLEURS. C'est le prix de la méthode qu'on écrit : la pastille le
+       promet (« tu as la tête ailleurs cette saison »), donc le moteur doit le
+       tenir — une promesse d'écran sans conséquence est le défaut que ce projet
+       traque depuis le début. La saison où tu écris, tes séances rendent 35 % de
+       moins ; `S.lectureDure` s'efface au bilan suivant. */
+    const tete = S.lectureDure ? .65 : 1;
+    S.moi.boost[s.axe] = clamp(S.moi.boost[s.axe] + CBOOST * tirage * tete * (cAxe(s.axe) / 100), 0, 14);
+    cBougerAxe(s.axe, CTRACE * tirage * tete * marge * 4);
     txt += ` ` + (tirage >= 1.6 ? `Tu as appris quelque chose cette semaine.`
       : tirage >= 1 ? `Du travail honnête.` : `Tu n'as rien tiré de cette séance.`);
+    if (S.lectureDure) txt += ` Ton livre te prend la tête, et tes séances en souffrent.`;
     if (marge < .08) txt += ` À ce niveau-là, tu ne progresses plus beaucoup là-dessus.`;
   }
   S.seance = { id:s.id, nom:s.nom, texte: txt.trim() };
@@ -761,6 +793,15 @@ function cApresMatch(){
   LIGNES.forEach(k => S.lignes[k] = clamp(S.lignes[k] * .99 + .5 + rnd(-1.8, 1.8)));
   S.ligneRef = S.ligneRef || { ...S.lignes };
   LIGNES.forEach(k => S.ligneRef[k] = S.ligneRef[k] * .82 + S.lignes[k] * .18);
+  /* LE RAPPEL DES TIENS, et une correction à ce que j'avais écrit plus haut dans ce
+     fichier : j'y affirmais que la jauge du coach n'en avait pas besoin, parce qu'elle
+     tenait une médiane de 64. C'était vrai **avant** que l'écran de la vie existe.
+     Mesuré après, 240 saisons : elle devient bimodale — 100 de médiane quand on
+     s'occupe des siens (la maison vaut +22, « faire vivre les tiens » +14 par an) et
+     **5** quand on ne le fait jamais. Les deux bouts sont faux, et un seul rappel les
+     ferme tous les deux : il relève le bas et il empêche le haut de se figer. C'est le
+     même correctif qu'on a dû faire au stade le 29/09 et aux proches du joueur·euse. */
+  if (S.vie) bougerProches((RAPPEL_PROCHES_VERS - S.vie.proches) * RAPPEL_PROCHES);
   autresMatchs();
   /* UN GROUPE VIDÉ SE BLESSE, et c'est la seule conséquence mécanique de la
      fraîcheur collective en dehors de la force du samedi. C'est la même règle que
@@ -786,8 +827,14 @@ function cApresMatch(){
   if ([9, 17, 24, 30].includes(S.journee) && cDoitPartir()) return cVirer();
   if (S.journee >= JOURNEES) return cFinSaison();
   S.arrets = 0; S.semaine = null; S.seance = null; S.match = null;
+  /* LE MERCATO D'HIVER, à la trêve. Le moteur le prévoyait déjà (budget au quart,
+     neuf dossiers, pas de centre de formation) : il n'avait pas de porte. C'est la
+     fenêtre où l'on répare une première moitié de saison — ou où l'on se grille. */
+  if (S.journee === J_HIVER && !S.hiverFait && eraHasWinterMercato(S.annee)){
+    S.hiverFait = true; return cOuvrirMercato(true); }
   S.ecran = 'csemaine'; sauver(); rendre();
 }
+const J_HIVER = 17;
 function cPlace(){ return classementTrie().findIndex(x => x.nom === S.club.nom) + 1; }
 const C_SEUIL_PORTE = 28;
 function cDoitPartir(){
@@ -843,8 +890,15 @@ const CARRETS = [
       { l:"Le faire jouer samedi", liens:{ president:6 }, formeSujet:2, ligne:-2.2,
         dits:[{c:'foot', t:"🏛️ il te laissera tranquille un mois"}, {c:'risk', t:"✊ le groupe sait pourquoi il joue"}] },
     ] },
+  /* UN SUJET EST UN NOM, PAS UN JOUEUR (défaut antérieur, trouvé le 01/10/2026 en
+     rendant tous les écrans sur 71 fenêtres de mercato). `visageDe()` rend l'objet,
+     et les cinq autres familles rendent une chaîne — donc celle-ci se lisait
+     « **[object Object]** est en train de se perdre » **et** `cAppliquer()`, qui
+     retrouve le joueur par `S.equipe.find(j => j.nom === sujet)`, n'en trouvait
+     jamais aucun : le `formeSujet` de la première option ne s'appliquait à personne. */
   { id:'capitaine', quand: () => S.journee >= 4 && ligneFaible() != null,
-    titre:"Le capitaine frappe à la porte", sujet: () => visageDe(ligneFaible()),
+    titre:"Le capitaine frappe à la porte",
+    sujet: () => { const j = visageDe(ligneFaible()); return j ? j.nom : "Ton joueur"; },
     texte: s => `« ${s} est en train de se perdre. Il faut que tu lui parles, toi. »`,
     options:[
       { l:"Lui donner une heure", fit:-3, ligne:2.8, axes:{ groupe:.7 },
@@ -1112,17 +1166,149 @@ function cJugerAmbition(pos, desc, mont){
       : desc ? { ok:false, t:"Bâtir une maison, et la laisser tomber d'un étage." }
       : { ok:null, t:"On ne bâtit pas une maison en une saison." };
   }
-  const j = S.equipe.filter(x => x.age <= 23 && (x.nb || 0) >= 10).length;
-  return j >= 3 ? { ok:true, t:`${j} joueurs de moins de 23 ans ont joué dix matchs ou plus. C'est ça, ton métier.` }
-    : j >= 1 ? { ok:null, t:`${j} jeune${j > 1 ? 's' : ''} a vraiment joué. C'est un début.` }
+  /* FAIRE ÉCLORE N'EST PAS AVOIR UN EFFECTIF JEUNE. Mesuré pour la première fois,
+     454 saisons : cette ambition était satisfaite **100 % du temps** — son test était
+     « trois joueurs de moins de 23 ans à dix matchs », et un effectif de vingt-deux en
+     compte **neuf** de médiane. Elle ne mesurait donc pas une décision mais la pyramide
+     des âges du club, qu'on ne choisit pas. Un jeune qui éclôt, c'est un jeune que tu
+     as **titularisé** et qui a **répondu** : moins de 23 ans, la moitié de la saison
+     jouée, et une moyenne au-dessus de 6,6. Mesuré sur 197 saisons : deux et plus dans
+     33 % des saisons, un dans 30 %, aucun dans 37 % — un arbitrage, enfin. */
+  const moy = x => (x.nb || 0) ? (x.sum || 0) / x.nb : 0;
+  const ecl = S.equipe.filter(x => x.age <= 22 && (x.nb || 0) >= 17 && moy(x) >= 6.6);
+  const j = ecl.length;
+  const noms = liste(ecl.slice(0, 2).map(x => x.nom));
+  return j >= 2 ? { ok:true, t:`${noms} ${j > 2 ? `et ${j - 2} autre${j > 3 ? 's' : ''} ` : ''}ont tenu une saison pleine à ton poste de confiance. C'est ça, ton métier.` }
+    : j === 1 ? { ok:null, t:`${noms} a tenu sa saison. Un seul, mais il existe maintenant.` }
     : { ok:false, t:"Aucun jeune n'a percé. Tu as géré, tu n'as pas formé." };
 }
 /* ---------------- la suite : on reste, on part, on cherche ---------------- */
 const C_FIN = 68;
+/* ================== L'ARGENT ET LA VIE DU COACH ==================
+   Mesuré avant d'écrire une ligne, 10 carrières de huit saisons : `S.argent` a une
+   **médiane de zéro et un maximum de zéro**. Il avait un salaire (`cSalaire()`, lu par
+   les offres) et **rien ne créditait jamais le compte** — donc rien à en faire, et pas
+   d'écran pour le faire. C'est le même trou que le mode joueur·euse avait avant le
+   27/09, et il se referme de la même façon.
+   Les tiens, eux, avaient besoin de quelque chose à faire : un seul arrêt les touchait,
+   et la jauge tenait une médiane de 64 sans rien demander à personne. Ils ont maintenant
+   un écran — et, mesuré après, un rappel, parce que cet écran les faisait saturer
+   (voir `cApresMatch`). */
+function cPrimes(){
+  const p = [], sal = S.salaire || 0;
+  if (S.bilan && S.bilan.pos === 1 && S.bilan.division === 1) p.push({ q: sal * .7, t:"le titre" });
+  if (S.coupe && S.coupe.gagnee) p.push({ q: sal * .35, t:"la coupe" });
+  if (S.euro && S.euro.gagnee) p.push({ q: sal * .55, t:"l'Europe" });
+  if (S.bilan && S.bilan.montee) p.push({ q: sal * .4, t:"la montée" });
+  /* Et la prime d'objectif, qui est la prime d'un entraîneur : il n'a pas de matchs
+     joués à faire valoir, il a une place promise en août. */
+  if (S.bilan && S.bilan.pos <= S.objectif) p.push({ q: sal * .25, t:"l'objectif tenu" });
+  return p;
+}
+function cEncaisserLaSaison(){
+  const primes = cPrimes();
+  const total = (S.salaire || 0) + primes.reduce((a, x) => a + x.q, 0);
+  S.argent = Math.round(((S.argent || 0) + total) * 1000) / 1000;
+  S.vie.gagneAvant = S.vie.gagne || 0;
+  S.vie.gagne = Math.round(total * 1000) / 1000;
+  S.vie.primes = primes.map(x => x.t);
+  S.vie.salaireMax = Math.max(S.vie.salaireMax || 0, S.salaire || 0);
+  // une affaire qui tourne rapporte chaque année, et peut couler
+  const co = (S.vie.chantiers || []).find(x => x.id === 'commerce' && !x.coule);
+  if (co){
+    if (Math.random() < .05){ co.coule = true; jrn('argent', `Ton affaire a coulé.`); }
+    else { S.argent = Math.round((S.argent + co.rend) * 1000) / 1000;
+      S.vie.gagne = Math.round((S.vie.gagne + co.rend) * 1000) / 1000; }
+  }
+  jrn('argent', `La saison a rapporté ${sous(S.vie.gagne)}.`);
+  S.lectureDure = false;   // le livre est sorti, la saison est passée
+  /* Le métier éloigne les tiens tout seul, et un entraîneur déménage plus qu'un
+     joueur. C'est la même usure que côté joueur·euse, pour la même raison. */
+  bougerProches(-2.4);
+}
+/* TROIS FAÇONS DE PASSER L'ANNÉE, et aucune n'est gratuite — la règle des arrêts du
+   30/09 vaut ici aussi. Ce sont celles du joueur·euse, dans les mots d'un coach : ce
+   qu'il met de côté, ce qu'il rend aux siens, ce qu'il dépense pour tenir. */
+const CVIE_CHOIX = [
+  { id:'cote', ico:'🏦', nom:"Mettre de côté",
+    sub:"Tu ne touches à rien. Le métier ne dure pas, et tu le sais.",
+    dit:[{c:'foot',t:"💰 tout reste pour plus tard"},{c:'risk',t:"🏡 personne chez toi n'en profite"}] },
+  { id:'tiens', ico:'🏡', nom:"Faire vivre les tiens",
+    sub:"Ils ont déménagé trois fois pour toi. Cette année, c'est pour eux.",
+    dit:[{c:'vie',t:"🏡 les tiens se rapprochent"},{c:'risk',t:"💰 ça part vite"}] },
+  { id:'staff', ico:'🧑‍🏫', nom:"Payer ton staff de ta poche",
+    sub:"Un analyste vidéo que le club ne voulait pas financer. Il reste tard avec toi.",
+    dit:[{c:'foot',t:"🧠 ton jeu et ton banc montent"},{c:'risk',t:"💰 c'est toi qui paies"},{c:'risk',t:"🏡 tu rentres encore plus tard"}] },
+];
+/* CE QUI SURVIT AU PARCOURS. Quatre chantiers, dans les mots d'un entraîneur : un
+   joueur laisse une école de foot, un entraîneur laisse **une méthode** et **un centre**.
+   Le prix se compte en années de ton meilleur salaire (`coutChantier`), comme pour le
+   joueur·euse — sinon un centre devient bon marché à soixante ans. */
+const CCHANTIERS = [
+  { id:'maison', ico:'🏠', nom:"La maison des tiens",
+    sub:"Celle où tu as grandi, rachetée et refaite. Ta mère n'a rien dit, elle a pleuré.",
+    cout: 3, trace:"Tu as sorti les tiens de là où tu es né.",
+    dit:[{c:'vie',t:"🏡 les tiens, pour toujours"},{c:'risk',t:"💰 trois ans de salaire"}] },
+  { id:'methode', ico:'📓', nom:"Écrire ta méthode",
+    sub:"Deux cents pages de séances, de principes et de ce que tu as compris trop tard.",
+    cout: 1.2, trace:"D'autres entraînent encore avec ce que tu as écrit.",
+    dit:[{c:'foot',t:"📰 on te lit, et on te cite"},{c:'risk',t:"🎯 tu as la tête ailleurs cette saison"}] },
+  { id:'centre', ico:'⚽', nom:"Un centre à ton nom",
+    sub:"Deux terrains, des éducateurs payés, et des gamins qui viennent de ton quartier.",
+    cout: 6.5, trace:"Des centaines de gamins ont appris à jouer là où tu as appris.",
+    dit:[{c:'foot',t:"📣 ton nom, partout"},{c:'vie',t:"🏡 les tiens en sont fiers"},{c:'risk',t:"💰 très cher"}] },
+  { id:'commerce', ico:'🏪', nom:"Monter une affaire",
+    sub:"Un restaurant près du stade. Ton beau-frère dit que c'est béton.",
+    cout: 4.5, trace:"Ton affaire tournait encore quand tu as raccroché.",
+    dit:[{c:'foot',t:"💰 ça rapporte chaque année"},{c:'risk',t:"🎲 un jour, peut-être, ça coulera"}] },
+];
+function cChantiersDispos(){
+  const faits = (S.vie.chantiers || []).map(x => x.id);
+  return CCHANTIERS.filter(c => !faits.includes(c.id) && coutChantier(c) <= (S.argent || 0));
+}
+function cChoisirVie(id){
+  const ch = CCHANTIERS.find(c => c.id === id);
+  let suite = '';
+  if (ch){
+    const q = coutChantier(ch);
+    S.argent = Math.round(((S.argent || 0) - q) * 1000) / 1000;
+    S.vie.chantiers = [...(S.vie.chantiers || []), { id:ch.id, nom:ch.nom, trace:ch.trace,
+      annee:S.annee, rend: ch.id === 'commerce' ? Math.round(q * .14 * 1000) / 1000 : 0 }];
+    if (ch.id === 'maison'){ bougerProches(22); suite = `${sous(q)}. Ta mère n'a rien dit.`; }
+    else if (ch.id === 'methode'){ S.liens.presse = clamp(S.liens.presse + 12); S.lectureDure = true;
+      suite = `${sous(q)}. On te lira — et cette saison, tu auras la tête ailleurs.`; }
+    else if (ch.id === 'centre'){ S.liens.supporters = clamp(S.liens.supporters + 20); bougerProches(12);
+      suite = `${sous(q)}. Les premiers gamins arrivent en septembre.`; }
+    else { suite = `${sous(q)}. On verra bien.`; }
+    jrn('vie', `${ch.nom}.`);
+  } else {
+    const c = CVIE_CHOIX.find(x => x.id === id) || CVIE_CHOIX[0];
+    if (c.id === 'tiens'){
+      const q = Math.min(S.argent || 0, (S.salaire || 0) * .45);
+      S.argent = Math.round(((S.argent || 0) - q) * 1000) / 1000;
+      bougerProches(14);
+      suite = `${sous(q)} pour eux. Ils ne t'ont rien demandé.`;
+    } else if (c.id === 'staff'){
+      const q = Math.min(S.argent || 0, (S.salaire || 0) * .3);
+      S.argent = Math.round(((S.argent || 0) - q) * 1000) / 1000;
+      cBougerAxe('jeu', 1.1); cBougerAxe('banc', 1.1); bougerProches(-5);
+      suite = `${sous(q)} de ta poche. Il sera là tous les matins avant toi.`;
+    } else suite = `Rien dépensé. Le compte monte.`;
+    jrn('vie', `${c.nom}.`);
+  }
+  S.vie.fait = { id, nom: (ch || CVIE_CHOIX.find(x => x.id === id) || {}).nom || '' };
+  S.vie.suite = suite;
+  sauver(); rendre();
+}
+function cFinirVie(){
+  S.vie.fait = null; S.vie.suite = '';
+  S.ecran = 'csemaine'; sauver(); rendre();
+}
 function cOuvrirEte(){
   /* L'ordre est celui du mode joueur·euse, et pour la même raison : on note les
      rangs, les divisions s'échangent, les deux championnats vieillissent, **puis**
      les offres — donc un club t'appelle avec la force qu'il a vraiment cet été. */
+  cEncaisserLaSaison();
   S.moi.age++;
   if (S.moi.age >= C_FIN) return cFinCarriere("l'âge");
   noterRangs();
@@ -1136,8 +1322,24 @@ function cOuvrirEte(){
 /* QUI T'APPELLE. Une proposition à la fois, comme pour le joueur·euse : refuser la
    fait disparaître, et la suivante peut être pire ou ne pas venir. Ta cote, c'est
    ce que tu as fait (le président, la presse) plus ton réseau. */
+/* CE QUE TU VAUX, HORS RÉSEAU — le réseau garde son terme à lui, puisque c'est son
+   rôle annoncé à l'écran (« c'est lui qui fait qu'un club t'appelle »). */
+function cNiveauCoach(){ return (cAxe('jeu') + cAxe('groupe') + cAxe('banc')) / 3; }
+/* LA COTE NE VOYAIT PAS LE COACH. Mesuré, 240 saisons sur neuf carrières entières :
+   les axes montent de 59 à 70 (leur plafond) entre la première saison et la dix-septième,
+   et la cote ne bouge **que de 49 à 54** — onze points de métier achetaient un point de
+   cote, par le seul `reseau` à .08. Donc la force du club d'arrivée stagnait à 48 de
+   médiane dans un monde dont le meilleur club vaut 67, 53 % des saisons se jouaient en
+   seconde division, et l'ambition « gagner » était hors de portée (0,0 titre par
+   carrière). C'est la boucle fermée de ce matin prise par l'autre bout : il fallait un
+   grand club pour bien paraître, et bien paraître pour avoir un grand club.
+   Ton niveau entre donc dans ta cote. Le club reste la base — un banc se juge d'abord
+   à ce qu'on t'a confié — mais vingt points de métier valent maintenant sept points de
+   cote, ce qui ouvre la moitié haute du tableau. */
+const C_COTE_NIV = .35;
 function cCote(){
   return clamp(S.club.force
+    + (cNiveauCoach() - 55) * C_COTE_NIV
     + (S.liens.presse - 50) * .10
     + (S.liens.president - 50) * .06
     + (cAxe('reseau') - 50) * .08
@@ -1171,7 +1373,7 @@ function cGenererOffres(){
     const rang = div.slice().sort((a, b) => b.force - a.force).findIndex(x => x.nom === e.nom) + 1;
     l.push({ nom:e.nom, force:e.force, division:d2, rang,
       objectif: clamp(rang - 2, 1, Math.max(1, div.length - MONTEES)),
-      salaire: Math.round(salaireDe(e.force, 40, e.force, d2) * clamp(.55 + (S.liens.presse - 50) * .006, .4, 1.1) * 1000) / 1000,
+      salaire: cSalaireDe(e.force, d2, S.liens.presse),
       ans: ri(1, 3) });
   }
   S.offres = l; S.offreIdx = 0; S.libre = libre; S.bonusOffres = 0;
@@ -1220,7 +1422,7 @@ function cDemarrerSaison(){
   S.grp = { fr: 100, plan: 0, athle: 0 };
   S.journee = 0; S.arrets = 0; S.semaine = null; S.seance = null; S.match = null;
   S.dernier = null; S.annexe = null; S.eqJour = null; S.vire = null;
-  S.serie = []; S.vuArrets = {}; S.recentArrets = []; S.recentMoments = [];
+  S.serie = []; S.vuArrets = {}; S.recentArrets = []; S.recentMoments = []; S.hiverFait = false;
   S.stats = { j:0, v:0, n:0, d:0, bp:0, bc:0, decisions:0 };
   S.moi.an0 = { ...S.moi.base };
   const podium = S.bilan && S.bilan.pos <= 3 && S.bilan.division === 1;
@@ -1229,10 +1431,305 @@ function cDemarrerSaison(){
   S.coupe = { vivant:true, tour:0, hist:[], gagnee:false };
   S.bilan = null;
   cPoserObjectif();
+  cPoserPlafond();
   jrn('saison', `${S.annee}-${S.annee + 1} à ${S.club.nom} : objectif ${S.objectif}ᵉ de ${nomDivision()}.`);
+  /* Et c'est ici que tu prends la main : le marché a tourné sans recruter pour toi,
+     il t'a peut-être pris des joueurs, et la fenêtre s'ouvre sur ce qu'il en reste. */
+  cOuvrirMercato(false);
+}
+
+
+/* ================== LE MERCATO, CÔTÉ ENTRAÎNEUR·EUSE ==================
+   Le propriétaire, 21/09/2026 : « le **mercato est ma partie préférée** du mode
+   entraîneur·euse » ; 01/10/2026 : « vas-y pour le mercato côté entraîneur ».
+   Le monde avait déjà un marché qui tourne entre trente-six clubs (`mercato()`) ;
+   ce qui manquait, c'est que tu y aies la main. Et il a fallu commencer par lui
+   retirer la tienne : le marché automatique traitait ton club comme les autres, donc
+   il recrutait à ta place. Il ne le fait plus — mais **il continue de te prendre des
+   joueurs**, ce qui est la moitié du mercato qu'un entraîneur ne contrôle pas.
+
+   TROIS MONNAIES, et c'est ce qui en fait une décision et non une liste de courses :
+   1. **l'argent** du club, qui est fini ;
+   2. **la masse salariale**, qui a un plafond — au-dessus, le président compte les
+      journées (et c'est lui qui te démet) ;
+   3. **le vestiaire** : une recrue dérange la ligne où elle arrive, et vendre un
+      titulaire la casse. Un groupe qu'on ne touche pas est un groupe qui se trouve.
+   Donc : recruter rend de la force et coûte les trois ; vendre rend de l'argent et
+   coûte la force **et** le vestiaire ; ne rien faire garde le groupe et te laisse
+   avec l'effectif que tu as. Aucune des trois n'est gratuite. */
+const C_CAP_EFFECTIF = 22;
+/* Ce qu'un joueur gagne chez toi : la même formule que la tienne, donc la même
+   échelle d'époque (francs avant 2002). */
+function cSalDe(j){ return salaireDe(j.niv, j.age, S.club.force, S.division || 1); }
+function cMasse(){ return (S.equipe || []).reduce((t, j) => t + cSalDe(j), 0); }
+/* LE PLAFOND SE POSE EN AOÛT, ET IL NE SUIT PAS TES DÉPENSES.
+   Première version : `salaireDe(force) × 22 × 1.12` — ce qu'un club de cette force
+   paierait pour vingt-deux joueurs **à son niveau moyen**. Mesuré sur 60 clubs, avant
+   d'y toucher : un effectif intact est à **89 % du plafond** en médiane (ce qui était
+   la promesse), mais l'étendue va de **45 % à 131 %** et **12 clubs sur 60 étaient
+   déjà au-dessus sans qu'on ait rien fait** — on te punissait pour un effectif dont tu
+   hérites. La cause est mécanique : `salaireDe` est **convexe en niveau**
+   (`((niv−45)/30)^2,6`), donc la somme de vingt-deux vrais salaires dépasse vingt-deux
+   fois le salaire du niveau moyen. Le plafond n'était pas calculé sur la même base que
+   la masse.
+   Il l'est maintenant : on prend le **plus grand** de ce qu'un club de cette force peut
+   payer et de ce qu'il paie déjà, plus douze pour cent. Un effectif cher ne te coûte
+   donc pas la place avant ton premier clic, et un effectif bon marché te laisse de quoi
+   dépenser. Et il est **figé pour la saison** (`S.plafondMasse`) : c'était le défaut
+   nommé de la 1.0 — « chaque recrue relevait le plafond, qui autorisait la suivante ». */
+function cPlafondBase(){
+  return salaireDe(S.club.force, 27, S.club.force, S.division || 1) * C_CAP_EFFECTIF * 1.12;
+}
+function cPoserPlafond(){
+  S.plafondMasse = Math.max(cPlafondBase(), cMasse() * 1.12);
+}
+function cPlafond(){ return S.plafondMasse || cPlafondBase(); }
+/* Ce que vaut un joueur sur le marché. Adossé au salaire pour hériter de l'échelle
+   d'époque sans la recalculer, avec la courbe des valeurs : un jeune se paie cher
+   parce qu'on achète ce qu'il sera, un trentenaire ne se paie presque plus. */
+function cValeur(niv, age){
+  const sal = salaireDe(niv, age, 62, 1);
+  const k = age <= 21 ? 7 : age <= 24 ? 6 : age <= 28 ? 4.5 : age <= 31 ? 2.6 : age <= 33 ? 1.3 : .6;
+  return Math.max(.002, sal * k);
+}
+/* L'enveloppe de l'été. Elle suit ce que le club pèse, et ce que ta saison a
+   rapporté : un président content ouvre le tiroir, un président qui doute le ferme.
+   L'hiver vaut le quart de l'été — de quoi réparer, pas de quoi reconstruire. */
+function cBudget(hiver){
+  const base = cPlafond() * .40;
+  const f = clamp(.45 + (S.liens.president - 50) * .011 + (S.liens.direction - 50) * .006, .25, 1.6);
+  return Math.round(base * f * (hiver ? .25 : 1) * 1000) / 1000;
+}
+
+/* ---------------- les dossiers ---------------- */
+/* QUI EST SUR LE MARCHÉ. Les trois quarts des dossiers sont de **vrais joueurs de
+   vrais clubs** — ceux qu'on lit au classement et dans les buts encaissés — et c'est
+   tout l'intérêt d'avoir un monde peuplé : le recruter le fait vraiment partir de
+   chez eux. On garde la règle du marché automatique sur qui se laisse prendre : un
+   remplaçant, un joueur d'un club plus petit, ou un trentenaire. */
+function cCibles(budget, hiver){
+  const pris = nomsPris();
+  const mien = monClub();
+  const l = [];
+  toutesLesEquipes().forEach(e => {
+    if (e === mien) return;
+    const d2 = (S.ligue.autre || []).some(x => x.nom === e.nom) ? (S.division === 1 ? 2 : 1) : (S.division || 1);
+    Object.keys(EFFECTIF).forEach(po => {
+      const ordre = e.sq.filter(j => j.p === po).sort((a, b) => b.v - a.v);
+      ordre.forEach((j, i) => {
+        const remplacant = i >= FORMATION[po];
+        const petit = e.force < S.club.force - 2;
+        const vieux = j.a >= 29;
+        if (!(remplacant || petit || vieux)) return;
+        /* Un club plus fort que le tien ne te lâche pas son titulaire : c'est ce qui
+           t'empêche de bâtir le meilleur onze du championnat en un été. */
+        if (!remplacant && e.force > S.club.force + 1) return;
+        l.push({ nom:j.n, poste:po, age:j.a, niv: Math.round(j.v), pot:j.t,
+          de:e.nom, div:d2, cle:'club',
+          prix: Math.round(cValeur(j.v, j.a) * (remplacant ? .85 : 1.15) * 1000) / 1000 });
+      });
+    });
+  });
+  /* De l'étranger : on en a besoin, sinon un championnat serré ne laisse rien à
+     acheter. Ils coûtent un peu plus cher — on ne les a pas vus jouer. */
+  for (let k = 0; k < 3; k++){
+    const niv = Math.round(clamp(S.club.force + rnd(-3, 7), 40, 84));
+    const age = ri(21, 30);
+    l.push({ nom: nomAdverse(pris), poste: pick(Object.keys(EFFECTIF)), age, niv,
+      pot: potDe(niv, age), de: null, cle:'etranger',
+      prix: Math.round(cValeur(niv, age) * 1.25 * 1000) / 1000 });
+  }
+  /* Et le centre de formation : gratuit, faible, et c'est la seule porte de
+     l'ambition « faire éclore ». */
+  if (!hiver) for (let k = 0; k < 2; k++){
+    const age = ri(18, 19);
+    const niv = Math.round(clamp(S.club.force - rnd(5, 15), 36, 70));
+    l.push({ nom: nomAdverse(pris), poste: pick(Object.keys(EFFECTIF)), age, niv,
+      pot: potDe(niv + rnd(4, 10), age), de: null, cle:'centre', prix: 0 });
+  }
+  l.forEach(x => { x.sal = Math.round(salaireDe(x.niv, x.age, S.club.force, S.division || 1) * 1000) / 1000; });
+  /* Faisable d'abord, hors de portée en dernier — c'est le tri de la 1.0, et c'est
+     celui qu'il avait validé : on ne veut pas feuilleter dix dossiers injouables.
+     **UN JEUNE NE SE JUGE PAS À CE QU'IL APPORTE SAMEDI** (mesuré le 01/10/2026 : sur
+     560 dossiers, `{"club":560}` — ni un joueur de l'étranger, ni un gamin du centre
+     n'arrivait jamais sur la table, parce que le tri par apport immédiat les coupait.
+     Le centre était donc la seule porte de l'ambition « faire éclore » et elle était
+     fermée.) Le mérite d'un dossier compte donc **la moitié de sa marge** quand il a
+     vingt-et-un ans ou moins : un gamin libre à qui il reste dix points de potentiel
+     vaut mieux qu'un trentenaire au niveau de ton onze. */
+  const place = x => cMonOnze(x.poste);
+  l.forEach(x => { const o = place(x);
+    const marge = Math.max(0, (x.pot || x.niv) - x.niv);
+    x.gain = x.niv - o;                     // ce qu'il ajoute à ton onze samedi
+    x.merite = x.gain + (x.age <= 21 ? marge * .5 : 0);
+    x.faisable = x.prix <= budget && cMasse() + x.sal <= cPlafond() * 1.14; });
+  l.sort((a, b) => (b.faisable ? 1 : 0) - (a.faisable ? 1 : 0)
+    || b.merite - a.merite || a.prix - b.prix);
+  /* Et les deux familles qui ne viennent pas d'un club gardent leur place sur la
+     table, quoi que dise le tri : une porte qu'on n'ouvre jamais n'existe pas. */
+  const n = hiver ? 9 : 14;
+  const garde = l.filter(x => x.cle !== 'club').slice(0, hiver ? 2 : 5);
+  const reste = l.filter(x => !garde.includes(x)).slice(0, Math.max(0, n - garde.length));
+  return garde.concat(reste).sort((a, b) => (b.faisable ? 1 : 0) - (a.faisable ? 1 : 0)
+    || b.merite - a.merite || a.prix - b.prix);
+}
+/* Le niveau du dernier titulaire à ce poste : l'étalon auquel on compare un dossier,
+   et il se dit en mots, jamais en chiffre. */
+function cMonOnze(po){
+  const l = (S.equipe || []).filter(j => j.poste === po).sort((a, b) => b.niv - a.niv);
+  const n = FORMATION[po] || 1;
+  return l.length >= n ? l[n - 1].niv : (l.length ? l[l.length - 1].niv : S.club.force - 8);
+}
+function cMotNiveau(x){
+  const d = x.niv - cMonOnze(x.poste);
+  return d >= 7 ? "Très au-dessus de ton onze : il le change tout de suite."
+    : d >= 3 ? "Au-dessus de ton onze à ce poste."
+    : d >= -1 ? "Au niveau de ton onze : un titulaire de plus."
+    : d >= -6 ? "Un cran sous tes titulaires : de la profondeur."
+    : "Bien en dessous. Il ne jouera pas cette saison.";
+}
+function cMotPotentiel(x){
+  const d = (x.pot || x.niv) - x.niv;
+  return x.age <= 21 && d >= 6 ? "Et il a de la marge — beaucoup."
+    : d >= 4 ? "Il peut encore progresser." : x.age >= 31 ? "Il ne progressera plus." : '';
+}
+
+/* ---------------- la fenêtre ---------------- */
+function cOuvrirMercato(hiver){
+  const b = cBudget(hiver);
+  S.marche = { hiver: !!hiver, budget: b, budget0: b, idx: 0,
+    deck: cCibles(b, hiver), in: [], out: [], fini: false };
   S.ecran = 'cmercato'; sauver(); rendre();
 }
-function cFinirMercato(){ S.ecran = 'csemaine'; sauver(); rendre(); }
+function cCibleCourante(){ const m = S.marche; return m && m.deck[m.idx] || null; }
+function cCibleSuivante(){ if (S.marche && S.marche.idx < S.marche.deck.length - 1){ S.marche.idx++; sauver(); rendre(); } }
+function cCiblePrecedente(){ if (S.marche && S.marche.idx > 0){ S.marche.idx--; sauver(); rendre(); } }
+/* CE QUI BLOQUE, DIT AVANT LE CLIC ET **AU CENTIME** — avec la vente qui suffirait.
+   C'est la seule chose que la coquille validée demandait et que le moteur ne faisait
+   pas : « ce qui bloque est écrit au centime avec la vente qui suffirait — c'est ton
+   reproche des 10 000 € manquants qu'on ne voyait pas » (`v2/coquilles.html`).
+   Dire « il coûte plus que ce qu'il te reste » ne sert à rien : ce qu'on veut savoir,
+   c'est **combien il manque** et **qui vendre** pour le trouver. */
+function cManque(x){
+  if (!x) return null;
+  const argent = Math.max(0, x.prix - S.marche.budget);
+  const sal = Math.max(0, (cMasse() + x.sal) - cPlafond() * 1.14);
+  const place = (S.equipe || []).length >= C_CAP_EFFECTIF;
+  return (argent || sal || place) ? { argent, sal, place } : null;
+}
+/* Qui vendre pour y arriver. On ne propose que des ventes **possibles** (on ne descend
+   jamais sous le onze à un poste) et on ne propose que celles qui **suffisent** : une
+   liste de ventes qui ne débloquent rien était le défaut de la 1.0. */
+function cVentesQuiSuffisent(x){
+  const m = cManque(x); if (!m) return [];
+  return (S.equipe || []).filter(j => !j.recrue
+      && (S.equipe || []).filter(y => y.poste === j.poste).length > FORMATION[j.poste])
+    .map(j => ({ j, prix: Math.round(cValeur(j.niv, j.age) * .9 * 1000) / 1000, sal: cSalDe(j) }))
+    .filter(v => v.prix >= m.argent && v.sal >= m.sal)
+    .sort((a, b) => a.j.niv - b.j.niv)
+    .slice(0, 3);
+}
+function cBlocages(x){
+  const m = cManque(x); if (!m) return [];
+  const b = [];
+  if (m.argent) b.push(`Il te manque ${sous(m.argent)} de budget de transfert.`);
+  if (m.sal) b.push(`Et ${sous(m.sal)} de masse salariale : le président la regarde.`);
+  if (m.place) b.push(`Ton effectif est au complet : il faut vendre quelqu'un d'abord.`);
+  return b;
+}
+function cRecruter(){
+  const m = S.marche, x = cCibleCourante();
+  if (!m || !x || cBlocages(x).length) return;
+  const pris = nomsPris();
+  // il part vraiment de chez eux, et ils comblent le trou
+  if (x.de){
+    const e = toutesLesEquipes().find(y => y.nom === x.de);
+    if (e){
+      const i = e.sq.findIndex(j => j.n === x.nom);
+      if (i >= 0) e.sq.splice(i, 1);
+      while (e.sq.filter(j => j.p === x.poste).length < EFFECTIF[x.poste])
+        e.sq.push(jeuneDuCentre(x.poste, e, pris));
+      e.force = forceEffectif(e.sq);
+    }
+  }
+  const j = { nom:x.nom, poste:x.poste, age:x.age, niv:x.niv, pot:x.pot,
+    forme:0, blesse:0, susp:0, prog:0, note:null, recrue:true };
+  S.equipe.push(j);
+  m.budget = Math.round((m.budget - x.prix) * 1000) / 1000;
+  m.in.push({ ...x });
+  m.deck.splice(m.idx, 1);
+  if (m.idx >= m.deck.length) m.idx = Math.max(0, m.deck.length - 1);
+  /* UNE RECRUE DÉRANGE LA LIGNE OÙ ELLE ARRIVE. C'est la troisième monnaie, et
+     c'est elle qui empêche de recruter cinq fois sans rien payer : plus on remue le
+     vestiaire en août, moins il se trouve en septembre. */
+  cBougerLigne(LIGNE_DU_POSTE[x.poste], -1.5 - m.in.length * .4);
+  S.liens.presse = clamp(S.liens.presse + 2.5);
+  S.liens.supporters = clamp(S.liens.supporters + (x.gain >= 4 ? 3 : 1));
+  cSyncEffectif();
+  jrn('mercato', `${x.nom} signe${x.de ? ` (de ${x.de})` : x.cle === 'centre' ? ' (du centre)' : " (de l'étranger)"}${x.prix ? ` pour ${sous(x.prix)}` : ', libre'}.`);
+  m.deck.forEach(y => { y.faisable = y.prix <= m.budget && cMasse() + y.sal <= cPlafond() * 1.14; });
+  sauver(); rendre();
+}
+function cVendre(nom){
+  const m = S.marche; if (!m) return;
+  const j = (S.equipe || []).find(x => x.nom === nom); if (!j) return;
+  if ((S.equipe || []).filter(x => x.poste === j.poste).length <= FORMATION[j.poste]) return;
+  const prix = Math.round(cValeur(j.niv, j.age) * .9 * 1000) / 1000;
+  /* Il va quelque part : un club qui a besoin de ce poste, sinon à l'étranger. Un
+     départ sans destination, c'est un joueur qui s'évapore. */
+  const pris = nomsPris();
+  const cand = toutesLesEquipes().filter(e => e.nom !== S.club.nom
+    && e.sq.filter(y => y.p === j.poste).length < EFFECTIF[j.poste] + 1
+    && j.niv > (e.sq.filter(y => y.p === j.poste).sort((a, b) => b.v - a.v)[FORMATION[j.poste] - 1] || { v:99 }).v);
+  const vers = cand.length ? pick(cand) : null;
+  if (vers){
+    vers.sq.push({ n:j.nom, p:j.poste, a:j.age, v:j.niv, t:j.pot || potDe(j.niv, j.age) });
+    vers.force = forceEffectif(vers.sq);
+  }
+  const titulaire = cMonOnze(j.poste) <= j.niv;
+  S.equipe.splice(S.equipe.indexOf(j), 1);
+  m.budget = Math.round((m.budget + prix) * 1000) / 1000;
+  m.out.push({ nom:j.nom, poste:j.poste, age:j.age, niv:j.niv, prix, vers: vers ? vers.nom : null, titulaire });
+  /* Vendre un titulaire casse la ligne : c'est le coût, et il est plus lourd que
+     celui d'une recrue. Vendre un remplaçant ne coûte presque rien — c'est
+     exactement ce qu'on veut qu'un coach apprenne. */
+  cBougerLigne(LIGNE_DU_POSTE[j.poste], titulaire ? -3.2 : -.8);
+  if (titulaire) S.liens.supporters = clamp(S.liens.supporters - 4);
+  cSyncEffectif();
+  jrn('mercato', `${j.nom} part${vers ? ` à ${vers.nom}` : " à l'étranger"} pour ${sous(prix)}.`);
+  m.deck.forEach(y => { y.faisable = y.prix <= m.budget && cMasse() + y.sal <= cPlafond() * 1.14; });
+  sauver(); rendre();
+}
+/* Ce que la fenêtre a produit, et ce qu'elle coûtera. */
+function cFermerMercato(){
+  const m = S.marche;
+  if (m){
+    S.surMasse = cMasse() > cPlafond();
+    if (S.surMasse){
+      S.liens.direction = clamp(S.liens.direction - 7);
+      jrn('mercato', `La masse salariale dépasse le plafond. Le président l'a vu.`);
+    }
+    /* NE RIEN FAIRE EST AUSSI UNE DÉCISION, et elle a son coût quand le groupe ne
+       tient pas : on te reprochera de ne pas avoir bougé. */
+    if (!m.in.length && !m.out.length && cRangEffectif() > S.ligue.equipes.length * .6){
+      S.liens.supporters = clamp(S.liens.supporters - 4);
+      S.liens.presse = clamp(S.liens.presse - 3);
+      jrn('mercato', `Aucun mouvement. Personne n'a aimé ça.`);
+    }
+    m.fini = true;
+  }
+  cSyncEffectif();
+  /* L'objectif ne se rejuge qu'en août : un président ne révise pas sa demande en
+     janvier parce que tu as recruté. */
+  if (!(m && m.hiver)) cPoserObjectif();
+  /* Et l'été finit sur le seul écran qui ne parle pas de football — jamais à l'hiver,
+     où l'on est au milieu d'une saison. */
+  if (!(m && m.hiver) && S.annee > (S.vie.anVie || 0)){
+    S.vie.anVie = S.annee; S.vie.fait = null; S.vie.suite = '';
+    S.ecran = 'cvie'; sauver(); rendre(); return;
+  }
+  S.ecran = 'csemaine'; sauver(); rendre();
+}
 
 /* ---------------- les mots, jamais les chiffres ---------------- */
 const CMOTS = {

@@ -719,6 +719,15 @@ function pousserDehors(e, po, mouv){
   e.nOut = (e.nOut || 0) + 1;
   mouv.push({ nom:sorti.n, poste:po, age:sorti.a, niv: Math.round(sorti.v), de:e.nom, vers:null });
 }
+/* EN MODE ENTRAÎNEUR·EUSE, LE MARCHÉ NE RECRUTE PAS À TA PLACE — MAIS IL TE PREND
+   ENCORE DES JOUEURS (le propriétaire, 21/09/2026 : « le mercato est ma partie
+   préférée du mode »). C'est la seule chose que le marché automatique avait besoin
+   d'apprendre : ton club cesse d'être un **acheteur** (c'est toi, sur l'écran du
+   mercato) et reste un **vendeur** comme les autres. Un entraîneur ne contrôle que
+   la moitié d'un mercato ; l'autre moitié, c'est un club qui vient chercher son
+   milieu et qu'il faut remplacer. En mode joueur·euse rien ne change : ton club
+   recrute tout seul et tu le lis sur l'écran. */
+function achetePasSeul(e){ return S.mode === 'coach' && e.nom === S.club.nom; }
 function mercato(){
   const eqs = toutesLesEquipes();
   if (eqs.length < 4) return [];
@@ -742,7 +751,7 @@ function mercato(){
     const j = vend.sq.filter(x => x.p === po && !x.moi).sort((a, b) => b.v - a.v)[0];
     if (!j) continue;
     // un club qui en a besoin à ce poste se sert avant l'étranger
-    const preneurs = eqs.filter(e => e !== vend && e.vise - e.force > .8 && e.nIn < MOUV_PAR_CLUB
+    const preneurs = eqs.filter(e => e !== vend && !achetePasSeul(e) && e.vise - e.force > .8 && e.nIn < MOUV_PAR_CLUB
       && j.v > (e.sq.filter(x => x.p === po).sort((a, b) => b.v - a.v)[FORMATION[po] - 1] || { v:99 }).v);
     const ach = preneurs.length ? tirerPoids(preneurs, e => Math.pow(e.vise - e.force, 1.3)) : null;
     vend.sq.splice(vend.sq.indexOf(j), 1);
@@ -758,7 +767,7 @@ function mercato(){
       de:vend.nom, vers: ach ? ach.nom : null });
   }
   for (let k = 0; k < MOUVEMENTS_ETE; k++){
-    const acheteurs = eqs.filter(e => e.vise - e.force > .8 && e.nIn < MOUV_PAR_CLUB);
+    const acheteurs = eqs.filter(e => !achetePasSeul(e) && e.vise - e.force > .8 && e.nIn < MOUV_PAR_CLUB);
     if (!acheteurs.length) break;
     const ach = tirerPoids(acheteurs, e => Math.pow(e.vise - e.force, 1.3));
     const po = posteFaible(ach);

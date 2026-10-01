@@ -10,7 +10,7 @@
 
 function cTopHTML(){
   const hors = { cbilan:"Le bilan", cvire:"La porte", coffres:"Les offres",
-    cmercato:"Mercato", ccarriere:"Fin du parcours" }[S.ecran];
+    cmercato:"Mercato", cvie:"La vie", ccarriere:"Fin du parcours" }[S.ecran];
   const pos = hors ? 0 : cPlace();
   return `<div class="top">
     <div><div class="who">${esc(S.moi.nom)}</div>
@@ -218,6 +218,9 @@ function ecranCBilan(){
         ves.reste.moy == null ? '' : `, ${virg(ves.reste.moy)} de moyenne`}.</p></div></div>` : ''}
     ${ves.part ? `<div class="bloc perdu"><span class="i">🚪</span><div><h4>Celui qui veut partir</h4>
       <p class="narr" style="margin:0">${esc(ves.part.nom)}, ${ves.part.age} ans, ${ves.part.nb} match${ves.part.nb > 1 ? 's' : ''}. Il n'attendra pas une saison de plus.</p></div></div>` : ''}
+    ${(S.vie && (S.vie.chantiers || []).length) ? `<div class="bloc"><span class="i">🏡</span><div>
+      <h4>En dehors du terrain</h4><p class="narr" style="margin:0">${(S.vie.chantiers || []).map(x =>
+        esc(x.nom) + (x.coule ? ' (a coulé)' : '')).join(' · ')}. <i>${esc(direProches())}</i></p></div></div>` : ''}
     ${cCarriereHTML()}
     <div class="btn-row"><button class="btn ghost" onclick="ouvrirJournal()">📓 Le journal</button>
       <button class="btn" onclick="cOuvrirEte()">L'été →</button></div>
@@ -307,27 +310,169 @@ function cMotEffectif(o){
 }
 
 /* ---------------- le mercato, vu du banc ---------------- */
+/* ================== LE MERCATO, L'ÉCRAN ==================
+   Sur la structure de la coquille validée (`v2/coquilles.html`, `V.coach.mercato`) :
+   la situation en haut, **un dossier à la fois**, ce qui bloque écrit au centime avec
+   la vente qui suffirait, et l'effectif complet sous la carte pour vendre.
+   UNE SEULE CHOSE CHANGE PAR RAPPORT À LA MAQUETTE, et c'est un verrou du 2.0 : la
+   coquille affichait « Niveau 6,4 », or aucune valeur de jauge n'arrive à l'écran ici.
+   Le niveau d'un dossier se lit donc **en mots**, comparé à ton onze (`cMotNiveau`) —
+   l'argent, l'âge et les moyennes de match restent chiffrés, comme partout. */
+function cSousTitreDossier(x){
+  const po = POSTES.find(p => p.id === x.poste);
+  const d = [po ? po.nom : x.poste, `${x.age} ans`];
+  if (x.de) d.push(`${x.de}${x.div && x.div !== (S.division || 1) ? ` (${abrDivision(x.div)})` : ''}`);
+  else if (x.cle === 'centre') d.push("ton centre de formation");
+  else d.push("de l'étranger");
+  return d.join(' · ');
+}
+function cDossierHTML(){
+  const m = S.marche, x = cCibleCourante();
+  if (!x) return `<p class="narr">Plus un dossier sur la table. Ce que tu as, tu le gardes.</p>`;
+  const blo = cBlocages(x);
+  const ventes = cVentesQuiSuffisent(x);
+  const apres = Math.round((m.budget - x.prix) * 1000) / 1000;
+  const miens = (S.equipe || []).filter(j => j.poste === x.poste).sort((a, b) => b.niv - a.niv)
+    .slice(0, 3).map(j => esc(j.nom)).join(' · ');
+  return `<div class="hdr" style="margin-top:16px"><div class="t">${esc(x.nom)}</div>
+      <div class="m">${esc(cSousTitreDossier(x))}</div></div>
+    <div class="pills"><i class="pill foot">${esc(cMotNiveau(x))}</i>${cMotPotentiel(x)
+      ? `<i class="pill neutre">${esc(cMotPotentiel(x))}</i>` : ''}${x.cle === 'centre'
+      ? `<i class="pill vie">Il sort de chez toi, et il est libre</i>` : ''}</div>
+    <div class="sheet">
+      <div><span class="l">Indemnité de transfert</span><span class="v money">${x.prix ? esc(sous(x.prix)) : 'libre'}</span></div>
+      <div><span class="l">Son salaire</span><span class="v money">${esc(sous(x.sal))} par an</span></div>
+      <div><span class="l">Ton budget après l'achat</span><span class="v money">${apres < 0 ? '− ' : ''}${esc(sous(Math.abs(apres)))}</span></div>
+      ${miens ? `<div><span class="l">À son poste, tu as</span><span class="v">${miens}</span></div>` : ''}
+    </div>
+    ${blo.length ? `<div class="lack">⛔ <b>${esc(blo[0])}</b>${blo.slice(1).map(b => ` ${esc(b)}`).join('')}
+      ${ventes.length ? `<br><span class="sub">Vendre ${ventes.map(v =>
+        `${esc(v.j.nom)} (+ ${esc(sous(v.prix))})`).join(' ou ')} suffirait.</span>`
+        : `<br><span class="sub">Aucune vente ne suffirait : ce dossier n'est pas pour cet été.</span>`}</div>` : ''}
+    <div class="row" style="margin-top:10px">
+      <button class="opt" style="flex:1" onclick="cCiblePrecedente()" ${m.idx ? '' : 'disabled'}><span class="ico">⬅️</span><span><b>Précédent</b></span></button>
+      <button class="opt" style="flex:1" onclick="cRecruter()" ${blo.length ? 'disabled' : ''}><span class="ico">✍️</span><span><b>Recruter</b></span></button>
+      <button class="opt" style="flex:1" onclick="cCibleSuivante()" ${m.idx < m.deck.length - 1 ? '' : 'disabled'}><span class="ico">➡️</span><span><b>Passer</b></span></button>
+    </div>`;
+}
+/* L'effectif complet, pour vendre. C'est là qu'il choisit qui part (demande du
+   propriétaire sur la 1.0 : « c'est là que je choisis qui vendre »). On ne propose le
+   bouton que quand la vente est **possible** — jamais descendre sous le onze. */
+function cVendreHTML(){
+  const l = effectifTrie();
+  return `<div class="card no-sticky"><h3>Ton effectif · vends ici pour libérer du budget ou de la place</h3>
+    <div class="scrollx"><table class="sq">
+      <thead><tr><th></th><th>Joueur</th><th>Âge</th><th class="r">Moy.</th><th class="r">Salaire</th><th class="r">Valeur</th><th></th></tr></thead>
+      <tbody>${l.map(x => {
+        const j = (S.equipe || []).find(y => y.nom === x.nom);
+        if (!j) return '';
+        const peut = (S.equipe || []).filter(y => y.poste === j.poste).length > FORMATION[j.poste];
+        return `<tr><td><span class="pos">${esc(j.poste)}</span></td>
+          <td>${esc(j.nom)}${j.recrue ? ' <i class="sub">recrue</i>' : ''}</td>
+          <td>${j.age}</td><td class="r">${x.moy == null ? '—' : virg(x.moy)}</td>
+          <td class="r money">${esc(sous(cSalDe(j)))}</td>
+          <td class="r money">${esc(sous(Math.round(cValeur(j.niv, j.age) * .9 * 1000) / 1000))}</td>
+          <td class="r">${peut ? `<button class="mini" onclick="cVendre('${j.nom.replace(/'/g, "\\'")}')">Vendre</button>`
+            : `<span class="sub">le onze</span>`}</td></tr>`;
+      }).join('')}</tbody>
+    </table></div>
+    <p class="sub">Les montants sont exacts : rien n'est arrondi. Vendre un titulaire casse sa ligne — pas un remplaçant.</p>
+  </div>`;
+}
 function ecranCMercato(){
-  const mien = (S.mercatoVu || []).filter(x => x.vers === S.club.nom || x.de === S.club.nom);
-  const ar = mien.filter(x => x.vers === S.club.nom), pa = mien.filter(x => x.de === S.club.nom);
+  const m = S.marche;
+  /* Une sauvegarde d'avant ce lot peut arriver ici sans fenêtre ouverte : on la lui
+     ouvre plutôt que de rendre un écran vide. */
+  if (!m){ cOuvrirMercato(false); return ''; }
+  const masse = cMasse(), plafond = cPlafond();
+  const part = Math.min(140, Math.round(masse / plafond * 100));
+  const reste = Math.round((plafond - masse) * 1000) / 1000;
+  const mien = (S.mercatoVu || []).filter(x => x.de === S.club.nom);
   return `<div class="card no-sticky">
-    <div class="step">${S.annee}-${S.annee + 1} · ${esc(S.club.nom)} · ${esc(nomDivision())}</div>
-    <div class="big-ico">🔁</div>
-    <h2>Ce que l'été a fait à ton groupe</h2>
-    <p class="narr">Objectif ${S.objectif}ᵉ. ${esc(cMotObjectif({ objectif: S.objectif }))}</p>
-    ${ar.length ? `<h3>Ils arrivent</h3><div class="notes">${ar.map(x => `<div>
-      <span class="p">${esc(x.poste || '?')}</span><span>${esc(x.nom)} <i>de ${esc(x.de)}</i></span>
-      <span class="n">${x.age || ''}</span></div>`).join('')}</div>` : ''}
-    ${pa.length ? `<h3>Ils partent</h3><div class="notes">${pa.map(x => `<div>
-      <span class="p">${esc(x.poste || '?')}</span><span>${esc(x.nom)} <i>à ${esc(x.vers)}</i></span>
-      <span class="n">${x.age || ''}</span></div>`).join('')}</div>` : ''}
-    ${!mien.length ? `<p class="narr">Rien. Ni entrée, ni sortie : tu commences la saison avec le groupe que tu avais.</p>` : ''}
-    <div class="btn-row"><button class="btn" onclick="cFinirMercato()">La première journée →</button></div>
+    <div class="step">Mercato ${m.hiver ? "d'hiver" : "d'été"} · ${esc(S.club.nom)}${m.deck.length
+      ? ` · dossier ${m.idx + 1} sur ${m.deck.length}` : ''}</div>
+    <div class="sheet" style="margin-top:0">
+      <div><span class="l">Budget de transfert</span><span class="v money">${esc(sous(m.budget))}</span></div>
+      <div><span class="l">Masse salariale</span><span class="v money">${esc(sous(masse))} / ${esc(sous(plafond))}</span></div>
+      <div><span class="l">Effectif</span><span class="v">${(S.equipe || []).length} joueurs / ${C_CAP_EFFECTIF}</span></div>
+    </div>
+    <div class="bar"><i class="${part > 100 ? 'hot' : ''}" style="width:${Math.min(100, part)}%"></i></div>
+    <p class="sub">${reste > 0
+      ? `Il te reste ${esc(sous(reste))} de masse salariale avant le plafond.`
+      : `Tu es au-dessus du plafond de ${esc(sous(-reste))}. Le président compte les journées.`}</p>
+    ${mien.length ? `<div class="lack"><b>On est venu te prendre ${mien.length === 1 ? 'un joueur' : `${mien.length} joueurs`}.</b>
+      <span class="sub">${mien.map(x => `${esc(x.nom)} → ${esc(x.vers || "l'étranger")}`).join(' · ')}</span></div>` : ''}
+    ${cDossierHTML()}
+    ${(m.in || []).length ? `<h3>Tes recrues</h3>${mvtHTML(m.in, 'in')}` : ''}
+    ${(m.out || []).length ? `<h3>Tes départs</h3>${mvtHTML(m.out.map(o => ({ ...o, de: S.club.nom })), 'out')}` : ''}
+    ${!(m.in || []).length && !(m.out || []).length
+      ? `<p class="sub">Tu n'as encore rien fait. Ne rien faire est une décision aussi — mais on te la reprochera si le groupe ne tient pas.</p>` : ''}
+    ${(S.mercatoVu || []).filter(x => x.de !== S.club.nom && x.vers !== S.club.nom).length
+      ? `<details class="fold"><summary>Le mercato des autres</summary><div class="mvts">${
+        (S.mercatoVu || []).filter(x => x.de !== S.club.nom && x.vers !== S.club.nom).slice(0, 25)
+        .map(x => `<div><span class="i">🔁</span><span><b>${esc(x.nom)}</b>
+          <i>${x.age} ans — ${esc(x.de)} → ${esc(x.vers || "l'étranger")}</i></span></div>`).join('')}</div></details>` : ''}
+    <div class="btn-row"><button class="btn" onclick="cFermerMercato()">Fermer le mercato →</button></div>
   </div>
-  ${effectifHTML()}${classementHTML()}`;
+  ${cVendreHTML()}${classementHTML()}`;
 }
 
 /* ---------------- la fin du parcours ---------------- */
+/* ---------------- la vie, et l'argent ---------------- */
+/* LE DERNIER TEMPS DE L'INTERSAISON, et le seul qui ne parle pas de football —
+   l'ordre est celui du mode joueur·euse : le bilan, l'été, les offres, le mercato,
+   **puis** toi. Jusqu'ici l'entraîneur·euse avait un salaire que personne ne lui
+   versait et des proches qu'un seul arrêt touchait : il gagne maintenant sa saison,
+   et il en fait quelque chose.
+   Les chiffres d'argent sont permis à l'écran — ce ne sont pas des jauges, et chacun
+   a sa conséquence : un chantier se paie, et un chantier laisse une trace. */
+function ecranCVie(){
+  const v = S.vie || { chantiers:[] };
+  const fait = !!v.fait;
+  const dispo = cChantiersDispos();
+  const primes = v.primes || [];
+  const traces = v.chantiers || [];
+  return `<div class="card no-sticky">
+    <div class="step">Été ${S.annee} · ${S.moi.age} ans · en dehors du terrain</div>
+    <div class="big-ico">${fait ? '🤝' : '🏡'}</div>
+    <h2>${fait ? esc(v.fait.nom) : "Ce que tu fais de tout ça"}</h2>
+    <p class="narr">${fait ? esc(v.suite)
+      : "Six semaines sans match, un compte qui a grossi, et des gens qui ont déménagé pour toi sans rien demander."}</p>
+    <div class="stats">
+      <div><div class="v">${esc(sous(v.gagne || 0))}</div><div class="k">cette saison</div></div>
+      <div><div class="v">${esc(sous(S.argent || 0))}</div><div class="k">de côté</div></div>
+      <div><div class="v">${traces.length}</div><div class="k">construit</div></div>
+    </div>
+    ${primes.length ? `<p class="sub">Dont les primes : ${esc(primes.join(', '))}.</p>` : ''}
+    <div class="sit">${celSit('🏡', "Les tiens", direProches(), 'proches',
+      "C'est ce qu'un vestiaire te coûte, et ce que personne ne te rend à ta place.")}</div>
+    ${traces.length ? `<h3>Ce que tu as déjà construit</h3>
+      <div class="mvts">${traces.map(c => `<div class="in"><span class="i">${
+        esc((CCHANTIERS.find(x => x.id === c.id) || {}).ico || '✅')}</span>
+        <span><b>${esc(c.nom)}</b> <i>${c.annee ? `depuis ${c.annee}` : ''}${c.coule ? ' — a coulé' : ''}</i></span></div>`).join('')}</div>` : ''}
+    ${fait ? `<div class="btn-row"><button class="btn ghost" onclick="ouvrirJournal()">📓 Le journal</button>
+        <button class="btn" onclick="cFinirVie()">La saison qui vient →</button></div>`
+      : `${dispo.length ? `<h3>Construire quelque chose</h3>
+          ${dispo.map(c => optHTML(c.ico, c.nom, `${c.sub} — ${esc(sous(coutChantier(c)))}`,
+            c.dit, `cChoisirVie('${c.id}')`)).join('')}` : ''}
+        <h3>Ou simplement cette année</h3>
+        ${CVIE_CHOIX.map(c => optHTML(c.ico, c.nom, c.sub, c.dit, `cChoisirVie('${c.id}')`)).join('')}`}
+  </div>`;
+}
+/* CE QU'IL RESTE QUAND LE BANC S'ARRÊTE : le même bloc que côté joueur·euse, parce
+   que c'est la même question — une carrière doit laisser une trace. */
+function cVieFinaleHTML(){
+  const v = S.vie || { chantiers:[] };
+  const traces = (v.chantiers || []).filter(x => !x.coule);
+  return `<div class="bloc ${traces.length ? 'gagne' : ''}"><span class="i">🏡</span><div>
+    <h4>Ce que tu laisses</h4>
+    ${traces.length ? `<div class="mvts" style="margin:0 0 6px">${traces.map(x => `<div class="in">
+      <span class="i">${esc((CCHANTIERS.find(y => y.id === x.id) || {}).ico || '✅')}</span>
+      <span><b>${esc(x.nom)}</b> <i>${esc(x.trace || '')}</i></span></div>`).join('')}</div>`
+      : `<p class="narr" style="margin:0 0 6px">Des feuilles de match, et c'est tout.</p>`}
+    <p class="sub" style="margin:0">${esc(sous(S.argent || 0))} de côté · ${esc(direProches())}</p>
+  </div></div>`;
+}
 function ecranCCarriere(){
   const c = S.carriere || { saisons:0, clubs:[], annees:[], titres:0, coupes:0, europes:0, montees:0, virages:0 };
   return `<div class="card no-sticky">
@@ -344,6 +489,7 @@ function ecranCCarriere(){
       <div><div class="v">${c.coupes}+${c.europes}</div><div class="k">coupes</div></div>
       <div><div class="v">${c.virages || 0}</div><div class="k">fois remercié</div></div>
     </div>
+    ${cVieFinaleHTML()}
     ${cCarriereHTML()}
     <p class="sub">Les clubs : ${esc(c.clubs.join(', ')) || '—'}.</p>
     <div class="btn-row"><button class="btn ghost" onclick="ouvrirJournal()">📓 Le journal</button>

@@ -1781,10 +1781,130 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     ne rabote pas une base acquise, et `prochesAvant` se pose au premier bilan. Vérifié
     en reprenant une vraie partie de la version déployée à la 17ᵉ journée : saison
     finie, trêve passée, **deuxième saison entière** jouée.
-- **Ce qui n'est pas encore là** : le **mercato côté entraîneur·euse** (il lit ce que le marché a
-  fait, il ne le fait pas), et l'écran de vie du coach. (Tout le reste du 2.0 est livré : les deux
-  modes, les trente et un faits de match, les vingt-neuf arrêts, la sélection, la trêve, les offres,
-  la progression d'une saison sur l'autre et l'usure.)
+- **LE MERCATO DU COACH, SA VIE, ET SON BANC D'ESSAI** (le propriétaire, 01/10/2026 : « Fait les
+  3 »). Les trois dernières pièces manquantes du 2.0, dans l'ordre où je les lui avais proposées.
+  Chacune a commencé par révéler un défaut plus ancien qu'elle, et c'est la mesure qui les a
+  trouvés — aucun ne se voit à la lecture.
+  - **1. LE MERCATO (sa partie préférée du mode, 21/09/2026).** Un dossier à la fois, comme en 1.0,
+    et il a fallu commencer par fusionner deux effectifs : `S.ligue.equipes` donnait à **ton** club
+    vingt-deux joueurs fantômes dont la force découlait, pendant que tes vrais joueurs étaient tirés
+    de cette force — deux populations pour un vestiaire, dont une que tu ne verrais jamais. Et on ne
+    transfère que des gens qui existent. `cOuvrirMercato()` (l'été **et** l'hiver, à la 17ᵉ journée
+    quand l'époque a un mercato d'hiver), `cCibles()` (la pile, triée du faisable au hors de
+    portée), `cRecruter()`, `cVendre()`, et surtout **`cManque()` + `cVentesQuiSuffisent()`** : ce
+    qui bloque est écrit au centime, avec la vente qui le débloquerait — c'était son reproche de la
+    1.0 (« les 10 000 € manquants qu'on ne voyait pas »).
+    - **Le plafond salarial était sur la mauvaise base.** `salaireDe()` est **convexe en niveau**,
+      donc la somme de vingt-deux vrais salaires dépasse vingt-deux fois le salaire du niveau moyen :
+      mesuré, **12 clubs sur 60 étaient déjà au-dessus du plafond avant la moindre action**, et une
+      fenêtre fermait à 159 %. `cPoserPlafond()` le fige par saison à
+      `max(plafond du club, masse héritée × 1,12)` — ce qui évite aussi le défaut inverse noté en 1.0,
+      où le plafond suivait tes propres dépenses. Mesuré après : **0 club sur 60** au-dessus à
+      l'ouverture, 115 % au pire à la fermeture.
+    - **Une mécanique morte dans la pile** : mesuré `{"club": 560}` — les dossiers de l'étranger et
+      du centre de formation n'arrivaient **jamais** sur la table, donc la seule porte vers l'ambition
+      « faire éclore » était fermée. Le tri lit maintenant `x.merite` (le potentiel compte pour
+      moitié à 21 ans et moins) et des places sont réservées : `{"club":360,"centre":80,"etranger":120}`.
+    - **Un `[object Object]` à l'écran, et personne pour le recevoir** : l'arrêt `capitaine` rendait
+      l'**objet** joueur là où les cinq autres familles rendent un nom — donc le texte imprimait
+      l'objet **et** `cAppliquer`'s `find(j => j.nom === sujet)` ne trouvait personne, si bien que
+      l'effet ne s'appliquait à personne. Défaut antérieur, trouvé en rendant tous les écrans sur
+      71 fenêtres de mercato.
+    - **Mesuré, 86 fenêtres sur 12 carrières** (dont 27 d'hiver) : 12,4 dossiers par fenêtre,
+      274 recrues et 333 départs, le marché automatique te prend 0,9 joueur par fenêtre, masse à la
+      fermeture **85 % de médiane**, effectif à 22, et **333 des 342 dossiers bloqués** avaient une
+      vente qui suffisait.
+  - **2. LA VIE ET L'ARGENT DU COACH.** Même trou que côté joueur·euse avant le 27/09 : mesuré,
+    `S.argent` avait une **médiane de zéro et un maximum de zéro** — il avait un salaire que
+    personne ne lui versait. `cEncaisserLaSaison()` crédite le compte, `cPrimes()` nomme ce que
+    l'année a rapporté (le titre, la coupe, l'Europe, la montée, **l'objectif tenu** — la prime d'un
+    entraîneur, qui n'a pas de matchs joués à faire valoir), et `ecranCVie()` est le dernier temps
+    de l'intersaison : bilan → l'été → les offres → le mercato → **toi**.
+    - **Trois façons de passer l'année** (mettre de côté, faire vivre les tiens, payer ton staff de
+      ta poche) et **quatre chantiers**, dans les mots d'un entraîneur : la maison des tiens,
+      **écrire ta méthode**, **un centre à ton nom**, monter une affaire. Chacun coûte un multiple de
+      ton **meilleur** salaire, et chacun laisse une trace que le bilan de carrière relit.
+    - **UN ENTRAÎNEUR GAGNAIT 2 À 25 k€ PAR AN.** `cSalaire()` passait la **force d'un club** à
+      `salaireDe()`, qui est la courbe d'un **joueur** — convexe, parce qu'un très bon joueur vaut dix
+      fois un bon. Un club de D2 vaut 45, c'est-à-dire le pied de la courbe, c'est-à-dire rien :
+      mesuré sur une carrière entière, **93 k€ sur le compte après vingt-cinq saisons**, et donc aucun
+      chantier possible. `cSalaireDe()` est une courbe à soi (0,22 M€ en D2, 0,6 pour un milieu de
+      Ligue 1, 2,7 pour un grand de France), avec le palmarès jusqu'à +80 %. Mesuré après : salaire
+      maximal **630 k€ à 1,6 M€**, compte à 3-22 M€, et **2,75 chantiers par carrière** quand on
+      bâtit contre 0 quand on garde tout.
+    - **LA COTE NE VOYAIT PAS LE COACH.** Mesuré, 240 saisons : ses axes montent de 59 à 70 (leur
+      plafond) entre la première saison et la dix-septième et sa cote **ne bougeait que de 49 à 54** —
+      onze points de métier achetaient un point de cote, par le seul `reseau` à .08. Donc la force du
+      club stagnait à 48 dans un monde dont le meilleur vaut 62-67, **53 % des saisons se jouaient en
+      D2**, et « gagner » était hors de portée. C'est la boucle fermée de ce matin prise par l'autre
+      bout : il fallait un grand club pour bien paraître, et bien paraître pour avoir un grand club.
+      `cNiveauCoach()` (les trois axes hors réseau, qui garde son terme propre) entre dans `cCote()` à
+      `.35`. Mesuré après : cote **47 → 63** sur la carrière, club max 65, **43 % de D2**.
+    - **LES TIENS SATURAIENT AUX DEUX BOUTS, et mon commentaire disait le contraire.** J'avais écrit
+      dans le code que la jauge du coach n'avait pas besoin d'un rappel (médiane 64 mesurée). C'était
+      vrai **avant** que l'écran de vie existe : mesuré après, elle devient **bimodale** — 100 de
+      médiane quand on s'occupe des siens (la maison vaut +22) et **5** quand on ne le fait jamais.
+      Le même rappel que le joueur·euse (2,2 % par journée vers 46) ferme **les deux bouts d'un
+      coup**. Mesuré : médiane **64 / 45 / 64** selon la politique, et 0 % de semaines à 100.
+    - **UNE PROMESSE D'ÉCRAN SANS CONSÉQUENCE** : la pastille de « écrire ta méthode » annonçait « tu
+      as la tête ailleurs cette saison » et `S.lectureDure` n'était **lu nulle part**. La saison où tu
+      écris, tes séances rendent 35 % de moins, et le compte rendu le dit.
+    - **L'ÉCRAN DE VIE S'OUVRAIT AVANT LA PREMIÈRE SAISON** : `anVie` partait à zéro, donc le mercato
+      d'ouverture y renvoyait avant d'avoir entraîné — il n'y a pas d'intersaison avant d'avoir
+      entraîné. Trouvé par le banc d'essai, qui cassait au deuxième écran.
+    - **FAIRE ÉCLORE N'EST PAS AVOIR UN EFFECTIF JEUNE.** Les trois ambitions du coach n'avaient
+      **jamais été mesurées**. Sur 454 saisons : « bâtir une maison » 50/39/11 (bien calibrée),
+      « gagner » 10/10/**80**, et « faire éclore » **satisfaite 100 % du temps** — son test était
+      « trois joueurs de moins de 23 ans à dix matchs », et un effectif de vingt-deux en compte
+      **neuf** de médiane. Elle mesurait la pyramide des âges du club, qu'on ne choisit pas. Un jeune
+      qui éclôt est un jeune que tu as **titularisé** et qui a **répondu** : 22 ans ou moins, la
+      moitié de la saison, une moyenne au-dessus de 6,6. Mesuré après, sur 149 saisons de carrières
+      entières : **24 % réussi · 32 % presque · 44 % raté** — un arbitrage, enfin.
+    - **Et le rapport de bug ne savait décrire ni le mercato ni la vie**, dans aucun des deux modes,
+      alors que c'est là qu'un chiffre d'argent peut mentir et que le rapport est l'outil avec lequel
+      il me le dit. `rapportDetail()` a maintenant les deux branches : le dossier sur la table, le
+      budget, la masse contre le plafond, ce qui bloque au centime ; et le compte, le salaire, les
+      chantiers construits, ceux qui sont à portée et le catalogue avec ses prix.
+  - **3. LE BANC D'ESSAI DU COACH, DANS `labo.html`.** Il vivait dans une sonde, donc le propriétaire
+    ne pouvait pas le lancer lui-même alors qu'il lance celui du joueur·euse. Neuf politiques de
+    semaine, et **chaque colonne qui décide porte son erreur-type** — y compris, désormais, celles
+    des deux bancs du joueur·euse : c'est la leçon de méthode du 29/09, qui ne vivait que dans les
+    sondes.
+    - **Deux fausses lectures fermées, les deux vues à l'écran avant de livrer.** (a) Le banc cassait
+      au premier écran (le mercato que le lot 1 ouvre en août) et annonçait les neuf politiques
+      « remercié 100 % ». (b) Une politique qui fait virer à chaque saison affichait une place moyenne
+      de **0** et **prenait l'or** : une case sans mesure vaut maintenant `null`, ne se peint pas et
+      s'écrit « — ».
+    - **Et l'invariant du coach n'était pas celui que j'avais écrit** : la **place** suit les points,
+      c'est le même signal vu par le président. Ce qui doit se séparer, c'est **le résultat et la
+      trace**. Mesuré à 20 saisons par ligne : le résultat à « vidéo, vestiaire, repos » (38,1±1,7
+      points, 13,0ᵉ±0,8), la trace à « toujours la vidéo » (+16,3±1,7), et « toujours du repos » à
+      36,0±2,7 — donc à égalité sur les points, ce que l'erreur-type dit et qu'une moyenne nue
+      cachait.
+  - **Vérifié** : les sept invariants du tableau des notes à zéro écart, **31 faits sur 31**,
+    score = film **0 écart** sur 5 541 faits, zéro doublon de nom, les incohérences de minutes à
+    zéro ; 24 carrières entières de joueur·euse avec tous les écrans, zéro erreur ;
+    `tests/simulate.js` → `ERRORS: none` ; le banc de la semaine à **150 saisons par ligne** tient
+    l'invariant aux trois croisements (académie·M matchs technique 22,0±0,61 / trace poste +6,8 ;
+    quartier·D matchs semaine normale 21,8±0,63 / trace physique +10,0 ; étranger·A matchs poste
+    19,9±0,65 / trace technique +9,1) et **« toujours lever le pied » ne prend les matchs nulle
+    part** ; le rapport ouvert et refermé sur **les dix-neuf écrans** des deux modes, zéro
+    `undefined`, zéro fenêtre qui reste ; **aucune migration** (`VERSION` ne bouge pas : `plafondMasse`
+    retombe sur son calcul, `anVie` manquant ouvre l'écran de vie au premier été) — vérifié sur une
+    vraie partie d'**entraîneur·euse** de la version déployée reprise à la 17ᵉ journée : remercié,
+    signature ailleurs, mercato d'été, écran de vie, **deux saisons entières**, 22 joueurs, zéro
+    doublon ; et sur une vraie partie de joueur·euse, deux saisons entières.
+  - **Ce qui reste à décider, et c'est à lui** : l'ambition « gagner » du coach punit **80 à 87 % des
+    saisons** (deux mesures de ~160 saisons), pour 0,33 titre et 0,72 coupe par carrière de 25
+    saisons. Sa règle est « une ambition qui punit neuf fois sur dix n'est plus une ambition » : on
+    n'y est pas, mais c'est deux fois plus dur que le « tout gagner » du joueur·euse (39 %). Si elle
+    doit s'adoucir, le levier est sa bande *presque* (aujourd'hui podium ou montée — une finale de
+    coupe n'y compte pas) ou le fait qu'un coach reste dans la moitié basse du tableau (force de club
+    médiane 49, 90ᵉ centile 54, maximum 64 dans un monde dont le meilleur vaut 62-67).
+- **Ce qui n'est pas encore là** : rien du 2.0. (Les deux modes, les trente et un faits de match, les
+  vingt-neuf arrêts, les quatorze familles et dix situations de match du coach, la sélection, les deux
+  mercatos, la vie et l'argent des deux côtés, la trêve, les offres, la progression d'une saison sur
+  l'autre, l'usure et les trois bancs d'essai sont livrés.)
 - **ON PEUT ÊTRE MAUVAIS UN SOIR OÙ L'ÉQUIPE GAGNE** (le propriétaire, 29/09/2026, en répondant
   au tableau par la seule ligne du milieu de carrière : « 3 % »). J'avais écrit que le levier des
   mauvais soirs au sommet était « le monde » et que c'était son arbitrage ; il a tranché en pointant

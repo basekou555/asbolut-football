@@ -28,6 +28,7 @@
   .ctl label{ font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--gold); font-weight:600; display:block; margin-bottom:6px; }
   .lire{ font-family:var(--narr); font-size:13px; color:#d9d4c3; border-left:3px solid var(--gold-dim);
     padding:2px 0 2px 12px; margin:12px 0 0; }
+  table.lab td .se{ color:var(--muted); font-size:11px; font-weight:400; }
   .legend{ display:grid; gap:4px; font-size:12px; color:var(--muted); margin:10px 0 0; }
   .legend b{ color:var(--cream); font-weight:600; }
 </style>
@@ -78,6 +79,20 @@
     <div id="out2"></div>
   </div>
 
+  <div class="card">
+    <div class="step">Banc n° 3</div>
+    <h2>Ce que valent les semaines de l'entraîneur·euse</h2>
+    <p class="narr">La même chose, mais du banc : une saison entière d'entraîneur·euse, avec neuf façons
+      de décider de la semaine. Ici la trace, c'est ce que tes quatre axes ont gagné — et les jambes
+      sont celles de vingt-deux personnes.</p>
+    <div class="ctl">
+      <div><label>Origine</label><div class="row" id="nCOrig"></div></div>
+    </div>
+    <div class="btn-row"><button class="btn" id="go3">Lancer</button></div>
+    <div class="prog" hidden id="pr3"><i></i></div>
+    <div id="out3"></div>
+  </div>
+
 </div>
 
 <script src="../eras.js"></script>
@@ -101,6 +116,7 @@ const POLITIQUES = [
 ];
 const ANNEES = [[1962,"60"],[1975,"70"],[1987,"80"],[1998,"90"],[2008,"2000"],[2018,"aujourd'hui"]];
 const REG = { n:10, annee:2018, orig:0, poste:'M' };
+const CREG = { orig:0 };   // déclaré ici : reglages() le lit, et il tourne avant le banc 3
 
 /* ---------- une saison jouée en accéléré ---------- */
 function uneSaison(iOrig, poste, polF){
@@ -124,13 +140,26 @@ function uneSaison(iOrig, poste, polF){
     fr:S.etats.fraicheur, phys:S.moi.base.phys, tete:S.moi.base.ment, faits:nFaits,
     reus: nFaits ? nReussis / nFaits * 100 : 0, g, zero: S.stats.matchs === 0 ? 1 : 0 };
 }
+/* L'ERREUR-TYPE, SUR LES COLONNES QUI DÉCIDENT. C'est la leçon de méthode du
+   29/09/2026 : une différence plus petite que l'erreur-type n'est pas un résultat,
+   c'est du bruit — et j'avais conclu deux fois sur du bruit faute de l'afficher.
+   Elle est écrite à côté des deux colonnes peintes, pour qu'on puisse en juger
+   d'un coup d'œil : si les deux ors se chevauchent, c'est une égalité. */
+function erreurType(v){
+  if (v.length < 2) return 0;
+  const m = v.reduce((a, x) => a + x, 0) / v.length;
+  return Math.sqrt(v.reduce((a, x) => a + (x - m) ** 2, 0) / (v.length - 1) / v.length);
+}
 function moyenner(lignes){
   const n = lignes.length, s = k => lignes.reduce((a, x) => a + x[k], 0) / n;
   const ga = {}; AXES.forEach(a => ga[a] = lignes.reduce((x, l) => x + l.g[a], 0) / n);
+  const traces = lignes.map(l => ['tech', 'phys', 'spec'].reduce((a, x) => a + l.g[x], 0));
   return { m:s('m'), t:s('t'), b:s('b'), pa:s('pa'), note:s('note'), pos:s('pos'),
-    fr:s('fr'), phys:s('phys'), tete:s('tete'), faits:s('faits'), reus:s('reus'), zero:s('zero') * 100, g:ga };
+    fr:s('fr'), phys:s('phys'), tete:s('tete'), faits:s('faits'), reus:s('reus'), zero:s('zero') * 100, g:ga,
+    se:{ m:erreurType(lignes.map(l => l.m)), tr:erreurType(traces) } };
 }
 const v1 = x => x.toFixed(1).replace('.', ',');
+const pm = e => e ? ` <span class="se">±${e.toFixed(1).replace('.', ',')}</span>` : '';
 const vd = x => (x > 0 ? '+' : x < 0 ? '−' : '') + Math.abs(x).toFixed(1).replace('.', ',');
 
 /* ---------- réglages ---------- */
@@ -147,6 +176,7 @@ function reglages(){
   chips('nAnnee', ANNEES.map(([a, l]) => [a, l]), () => REG.annee, v => REG.annee = v);
   chips('nOrig', ORIGINES.map((o, i) => [i, o.nom]), () => REG.orig, v => REG.orig = v);
   chips('nPoste', POSTES.map(p => [p.id, p.nom]), () => REG.poste, v => REG.poste = v);
+  chips('nCOrig', CORIGINES.map((o, i) => [i, o.nom]), () => CREG.orig, v => CREG.orig = v);
 }
 reglages();
 
@@ -164,16 +194,21 @@ function lancer(taches, barre, fini){
   requestAnimationFrame(pas);
 }
 function tableau(cols, lignes, marquees){
-  // marquees : les colonnes où l'on peint le meilleur en or et le pire en rouge
+  /* marquees : les colonnes où l'on peint le meilleur en or et le pire en rouge.
+     Une case à `null` est une case **sans mesure** (aucune saison finie, par exemple
+     une politique qui fait virer à chaque fois) : elle ne se peint pas et n'entre pas
+     dans les bornes. Sans cette règle, la ligne qui ne finit jamais une saison
+     affichait une place moyenne de 0 et **prenait l'or** — vu à l'écran, et c'est
+     précisément la fausse lecture que la leçon de méthode du 29/09 interdit. */
   const bornes = {};
-  (marquees || []).forEach(k => { const v = lignes.map(l => l.cells[k]);
-    bornes[k] = { hi:Math.max(...v), lo:Math.min(...v) }; });
+  (marquees || []).forEach(k => { const v = lignes.map(l => l.cells[k]).filter(x => x != null);
+    if (v.length) bornes[k] = { hi:Math.max(...v), lo:Math.min(...v) }; });
   return `<div class="scrollx"><table class="lab"><thead><tr>${
     cols.map(c => `<th>${c[1]}</th>`).join('')}</tr></thead><tbody>${
     lignes.map(l => `<tr>${cols.map(c => {
       const brut = l.cells[c[0]];
       let cl = ''; const bo = bornes[c[0]];
-      if (bo) cl = brut === bo.hi ? ' class="best"' : brut === bo.lo ? ' class="worst"' : '';
+      if (bo && brut != null) cl = brut === bo.hi ? ' class="best"' : brut === bo.lo ? ' class="worst"' : '';
       return `<td${cl}>${l.txt[c[0]]}</td>`;
     }).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
@@ -185,9 +220,9 @@ function ligne(nom, r){
   const tr = ['tech','phys','spec'].reduce((a, x) => a + r.g[x], 0);
   return { cells:{ nom:0, m:r.m, t:r.t, b:r.b, pa:r.pa, note:r.note, pos:-r.pos, fr:r.fr, phys:r.phys, tete:r.tete, reus:r.reus, tr,
       tech:r.g.tech, phys:r.g.phys, ment:r.g.ment, spec:r.g.spec },
-    txt:{ nom, m:v1(r.m), t:v1(r.t), b:v1(r.b), pa:v1(r.pa), note:v1(r.note),
+    txt:{ nom, m:v1(r.m) + pm(r.se && r.se.m), t:v1(r.t), b:v1(r.b), pa:v1(r.pa), note:v1(r.note),
       pos:v1(r.pos) + 'ᵉ', fr:Math.round(r.fr) + ' %', phys:Math.round(r.phys), tete:v1(r.tete),
-      reus:Math.round(r.reus) + ' %', tr:vd(tr),
+      reus:Math.round(r.reus) + ' %', tr:vd(tr) + pm(r.se && r.se.tr),
       tech:vd(r.g.tech), phys:vd(r.g.phys), ment:vd(r.g.ment), spec:vd(r.g.spec) } };
 }
 const LEGENDE = `<div class="legend">
@@ -203,6 +238,8 @@ const LEGENDE = `<div class="legend">
     pas, puisqu'il se dépense.</div>
   <div><b>techn. / phys. / mental / poste</b> — ce que la saison a ajouté à chaque axe, pour toujours.
     C'est la trace : ce que tu emportes dans la saison suivante.</div>
+  <div><b>±</b> — l'erreur-type de la moyenne. Deux lignes dont les valeurs se chevauchent à ±
+    sont <b>à égalité</b> : il faut plus de saisons pour les séparer, ou il n'y a rien à séparer.</div>
 </div>`;
 
 /* ---------- banc 1 : les origines ---------- */
@@ -246,6 +283,107 @@ document.getElementById('go2').onclick = () => {
         s'étalera sur plusieurs saisons.</p>`;
   });
 };
+
+/* ================== BANC 3 : LES SEMAINES DE L'ENTRAÎNEUR·EUSE ==================
+   Il vivait dans une sonde depuis le 01/10/2026, donc le propriétaire ne pouvait pas
+   le lancer lui-même alors qu'il lance celui du joueur·euse. C'est le même test, et
+   le même invariant, à une nuance que la mesure a imposée : la **place** suit les
+   points — c'est le même signal, vu par le président — donc ce qui doit se séparer,
+   c'est **le résultat et la trace**. Si une seule politique prend les deux, la
+   semaine du coach n'est pas une décision. */
+const CPOLITIQUES = [
+  { nom:"Au hasard",                    cyc:null },
+  { nom:"Toujours la vidéo",            cyc:['video'] },
+  { nom:"Toujours l'athlétique",        cyc:['athle'] },
+  { nom:"Toujours les individuels",     cyc:['indiv'] },
+  { nom:"Toujours le vestiaire",        cyc:['vestiaire'] },
+  { nom:"Toujours le bureau",           cyc:['bureau'] },
+  { nom:"Toujours du repos",            cyc:['repos'] },
+  { nom:"Vidéo, vestiaire, repos",      cyc:['video','vestiaire','repos'] },
+  { nom:"Vidéo, athlé, repos",          cyc:['video','athle','repos'] },
+];
+function uneSaisonCoach(iOrig, cyc){
+  const ids = CSEMAINES.map(s => s.id);
+  cNouvellePartie({ nom:"Essai", annee:REG.annee, origine:CORIGINES[iOrig], ambition:CAMBITIONS[0] });
+  const a0 = CAXES.reduce((t, a) => t + S.moi.base[a], 0);
+  let k = 0; const frS = [], blS = [];
+  for (let i = 0; i < 4000 && S.ecran !== 'cbilan'; i++){
+    const e = S.ecran;
+    if (e === 'csemaine'){
+      cChoisirSemaine(cyc ? cyc[k++ % cyc.length] : pick(ids));
+      frS.push(S.grp.fr); blS.push(S.equipe.filter(j => j.blesse > 0).length);
+    }
+    else if (e === 'carret') cChoisirArret(Math.floor(Math.random() * S.arret.options.length));
+    else if (e === 'cmoment') cChoisirMoment(Math.floor(Math.random() * S.match.moments[S.momentIdx].opts.length));
+    else if (e === 'cresultat') cApresMatch();
+    /* LE MERCATO OUVRE LA SAISON, et il la coupe en deux. Sans cette branche, le
+       banc cassait au premier écran et annonçait « remercié 100 % » sur les neuf
+       lignes — ce qui est exactement le genre de sonde muette que la leçon de
+       méthode du 29/09 interdit. Le banc ne recrute pas : il ferme la fenêtre, pour
+       mesurer la semaine et rien d'autre. */
+    else if (e === 'cmercato') cFermerMercato();
+    else break;   /* la porte : un coach démis ne finit pas sa saison */
+  }
+  const moy = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
+  const vire = S.ecran !== 'cbilan';
+  return { ok: vire ? 0 : 1, vire: vire ? 1 : 0,
+    fr: moy(frS), bl: moy(blS),
+    pts: vire ? 0 : S.ligue.classement[S.club.nom].pts,
+    pos: vire ? S.ligue.equipes.length : S.bilan.pos,
+    pres: S.liens.president, dec: S.stats.decisions,
+    tr: CAXES.reduce((t, a) => t + S.moi.base[a], 0) - a0 };
+}
+const CCOLS = [['nom',''],['pts','points'],['pos','place'],['pres','président'],['vire','remercié'],
+  ['fr','jambes'],['bl','absents'],['dec','décisions'],['tr','trace']];
+function ligneCoach(nom, bac){
+  const fin = bac.filter(x => x.ok);           /* les saisons finies : le classement n'existe que là */
+  const moy = (l, k) => l.length ? l.reduce((a, x) => a + x[k], 0) / l.length : 0;
+  const m = { pts:moy(fin, 'pts'), pos:moy(fin, 'pos'), pres:moy(bac, 'pres'),
+    vire:moy(bac, 'vire') * 100, fr:moy(bac, 'fr'), bl:moy(bac, 'bl'),
+    dec:moy(bac, 'dec'), tr:moy(bac, 'tr') };
+  const se = { pts:erreurType(fin.map(x => x.pts)), pos:erreurType(fin.map(x => x.pos)),
+    tr:erreurType(bac.map(x => x.tr)) };
+  const rien = !fin.length;   // aucune saison finie : il n'y a ni points ni place à lire
+  return { cells:{ nom:0, pts:rien ? null : m.pts, pos:rien ? null : -m.pos,
+      pres:m.pres, vire:-m.vire, fr:m.fr, bl:-m.bl, dec:m.dec, tr:m.tr },
+    txt:{ nom, pts:rien ? '—' : v1(m.pts) + pm(se.pts),
+      pos:rien ? '—' : v1(m.pos) + 'ᵉ' + pm(se.pos),
+      pres:Math.round(m.pres), vire:Math.round(m.vire) + ' %',
+      fr:Math.round(m.fr) + ' %', bl:v1(m.bl), dec:v1(m.dec), tr:vd(m.tr) + pm(se.tr) } };
+}
+const CLEGENDE = `<div class="legend">
+  <div><b>points</b> — les points pris au championnat, sur les saisons que tu as finies.</div>
+  <div><b>place</b> — où le club a fini. C'est elle que le président regarde.</div>
+  <div><b>président</b> — sa confiance en fin de saison. Sous 28, il te remercie en cours de route.</div>
+  <div><b>remercié</b> — la part des saisons où tu n'es pas allé au bout. C'est la porte.</div>
+  <div><b>jambes</b> — la fraîcheur moyenne du groupe sur la saison : vingt-deux personnes, pas toi.</div>
+  <div><b>absents</b> — le nombre moyen de blessés et suspendus par semaine.</div>
+  <div><b>trace</b> — ce que la saison a ajouté à tes quatre axes (le jeu, le vestiaire, le banc,
+    le réseau), pour toujours.</div>
+  <div><b>±</b> — l'erreur-type de la moyenne. Deux lignes qui se chevauchent sont <b>à égalité</b>.</div>
+</div>`;
+document.getElementById('go3').onclick = () => {
+  const res = [], taches = [];
+  CPOLITIQUES.forEach(pol => {
+    const bac = []; res.push({ nom:pol.nom, bac });
+    for (let k = 0; k < REG.n; k++) taches.push(() => bac.push(uneSaisonCoach(CREG.orig, pol.cyc)));
+  });
+  document.getElementById('out3').innerHTML = '';
+  lancer(taches, 'pr3', () => {
+    const lignes = res.map(r => ligneCoach(r.nom, r.bac));
+    const o = CORIGINES[CREG.orig];
+    document.getElementById('out3').innerHTML = tableau(CCOLS, lignes, ['pts', 'pos', 'tr']) + CLEGENDE
+      + `<p class="lire">${o.nom}, ${REG.n} saisons par ligne. Trois colonnes sont peintes :
+        <b>points</b>, <b>place</b> et <b>trace</b> — mais la place suit les points, c'est le même
+        signal vu par le président. Ce qu'on veut voir, c'est donc <b>l'or du résultat et l'or de la
+        trace sur deux lignes différentes</b> : si une seule politique prend les deux, la semaine du
+        coach n'est pas une décision et il faut recalibrer.
+        <br><br>La même limite que pour le joueur·euse : le banc ne joue qu'<b>une</b> saison, donc
+        tout ce qui se construit y est désavantagé. Et une saison interrompue par la porte ne compte
+        ni points ni place — c'est la colonne <b>remercié</b> qui la dit.</p>`;
+  });
+};
+
 </script>
 </body>
 </html>
