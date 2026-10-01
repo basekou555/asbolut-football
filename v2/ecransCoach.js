@@ -18,7 +18,8 @@ function cTopHTML(){
     <div class="meta">${S.annee}${hors ? '' : `-${S.annee + 1}`}<br>${hors
       ? esc(hors) : `${ordinal(Math.min(S.journee + 1, JOURNEES))} journée sur ${JOURNEES}`}
       <br>${hors ? (S.carriere ? `${S.carriere.saisons} saison${S.carriere.saisons > 1 ? 's' : ''}` : '')
-        : `${ordinal(pos)} · objectif ${S.objectif}ᵉ · ${abrDivision()}`}</div>
+        : `${ordinal(pos)} · objectif ${S.objectif}ᵉ · ${abrDivision()}`}
+      <br><button class="rap" onclick="ouvrirRapport()" title="Signaler un problème">⚠</button></div>
   </div>`;
 }
 

@@ -1589,6 +1589,33 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
   `tests/simulate.js` → `ERRORS: none` ; **aucune migration** — les textes sont résolus au tirage
   et non stockés comme fonctions, donc une sauvegarde prise en plein match se recharge telle
   quelle.
+- **SIGNALER UN PROBLÈME, DEPUIS LE JEU** (le propriétaire, 01/10/2026 : « ça serait bien un bouton
+  pour signaler les problèmes comme ça ça t'envoie le screen avec le prompt de correction »). Un ⚠
+  dans le bandeau, donc **sur les dix-sept écrans des deux modes**, ouvre une fenêtre où il écrit une
+  phrase ; le reste du message se fabrique tout seul.
+  - **Ce qui part** : sa phrase, l'écran et la date, la saison et le club, **le détail de l'écran en
+    cours** (le fait de match avec son identifiant, sa minute, son texte et ses options ; l'arrêt ;
+    le match avec le film, les changements et les notes ; l'offre ; le bilan), **son état** (axes,
+    plafonds, liens, lignes, fraîcheur, blessure), **le texte réellement affiché** et les **dix
+    dernières lignes du journal**. Un bouton à part copie la sauvegarde, pour rejouer la scène.
+  - **Le jeu est statique : il n'y a personne à qui envoyer.** Le bouton passe donc le message à son
+    téléphone (`navigator.share`), sinon au presse-papiers, sinon il l'affiche sélectionné — trois
+    chemins, parce que le presse-papiers est refusé dans la moitié des contextes mobiles.
+  - **Pas de capture d'image, et c'est un choix.** La prendre demanderait une bibliothèque extérieure
+    (`html2canvas`) à un jeu qui n'a aucune dépendance et marche hors ligne. Le rapport emporte le
+    **texte** de l'écran, qui est ce qui sert vraiment : c'est avec ça qu'on a trouvé les 578
+    incohérences de minutes. Il peut toujours joindre sa propre capture à côté.
+  - **Les chiffres sont permis dans le rapport** : ce n'est pas le jeu, c'est l'outil qui sert à le
+    réparer — la même exception que `labo.html`.
+  - **Rien n'est sauvegardé** : `RAP` vit le temps de la fenêtre, et la fenêtre se pose sur le corps
+    de la page, donc l'écran qui pose problème reste intact derrière. Le texte est capturé **avant**
+    l'ouverture, sinon on rapporterait l'écran du rapport.
+  - **Vérifié** : le rapport ouvert et refermé sur les **dix-sept écrans** des deux modes au fil de
+    deux saisons, **zéro `undefined`, zéro `[object Object]`, zéro fenêtre qui reste** ; quatre champs
+    remis d'aplomb à la mesure (l'adversaire est un objet en championnat et une chaîne le mercredi,
+    un fait d'entraîneur·euse porte `titre`/`texte` là où un fait de joueur·euse porte `q`/`opts.p`,
+    `m.mvt` est une liste d'objets, une offre porte `ans` et non `duree`) ; l'écran capturé est coupé
+    à 1 400 caractères et le dit. Le reste du moteur n'est pas touché.
 - **Ce qui n'est pas encore là** : le **mercato côté entraîneur·euse** (il lit ce que le marché a
   fait, il ne le fait pas), et l'écran de vie du coach. (Tout le reste du 2.0 est livré : les deux
   modes, les trente et un faits de match, les vingt-neuf arrêts, la sélection, la trêve, les offres,

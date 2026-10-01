@@ -207,10 +207,197 @@ function topHTML(){
     <div class="meta">${S.annee}${hors ? '' : `-${S.annee + 1}`}<br>${hors
       ? esc(hors) : `${ordinal(Math.min(S.journee + 1, JOURNEES))} journée sur ${JOURNEES}`}
       <br>${hors ? (S.carriere ? `${S.carriere.saisons} saison${S.carriere.saisons > 1 ? 's' : ''}` : '')
-        : `${esc(S.club.nom)} ${ordinal(pos)} · ${abrDivision()}`}</div>
+        : `${esc(S.club.nom)} ${ordinal(pos)} · ${abrDivision()}`}
+      <br><button class="rap" onclick="ouvrirRapport()" title="Signaler un problème">⚠</button></div>
   </div>`;
 }
 function maPlace(){ return classementTrie().findIndex(x => x.nom === S.club.nom) + 1; }
+
+/* ====================== SIGNALER UN PROBLÈME ======================
+   Le propriétaire, 01/10/2026 : « ça serait bien un bouton pour signaler les
+   problèmes comme ça ça t'envoie le screen avec le prompt de correction ».
+   Le jeu est statique — pas de serveur à qui envoyer quoi que ce soit — donc le
+   bouton **fabrique le message** et le passe à son téléphone (`navigator.share`)
+   ou au presse-papiers. Il n'y a pas de capture d'image sans ajouter une
+   bibliothèque extérieure à un jeu qui n'en a aucune ; à la place le rapport
+   emporte **le texte réellement affiché**, qui est ce qui me sert vraiment :
+   c'est avec ça qu'on a trouvé les 578 incohérences de minutes.
+   Rien n'est sauvegardé : `RAP` vit le temps de la fenêtre. */
+let RAP = null;
+
+function ouvrirRapport(){
+  /* On capture AVANT d'ouvrir la fenêtre : c'est l'écran sur lequel il était qui
+     pose problème, pas celui du rapport. */
+  const el = app();
+  /* Un écran de semaine déplié fait trois mille caractères : on garde le haut, qui
+     est là où est presque toujours le problème, et on dit qu'on a coupé. */
+  const brut = el ? (el.innerText || '').trim() : '';
+  RAP = { vu: brut.length > 1400 ? brut.slice(0, 1400) + "\n[… écran coupé ici]" : brut, note:'' };
+  const f = document.createElement('div');
+  f.className = 'modal'; f.id = 'modalRap';
+  f.innerHTML = `<div class="card no-sticky">
+    <h2>Signaler un problème</h2>
+    <p class="sub">Ce que tu écris part avec l'écran que tu avais sous les yeux et l'état exact
+      de la partie. Rien n'est envoyé tout seul : tu choisis où ça va.</p>
+    <textarea id="rapNote" class="txt rapNote" rows="3"
+      placeholder="Qu'est-ce qui cloche ? (une phrase suffit)"></textarea>
+    <div class="btn-row">
+      <button class="btn" onclick="envoyerRapport()">${navigator.share ? 'Partager' : 'Copier'}</button>
+      <button class="btn ghost" onclick="fermerRapport()">Annuler</button>
+    </div>
+    <p class="sub" id="rapEtat"></p>
+    <details class="fold" style="margin-top:12px"><summary>Ce qui part avec</summary>
+      <pre class="rapVu" id="rapApercu">${esc(rapportTexte(''))}</pre>
+      <div class="btn-row"><button class="btn ghost" onclick="copierSauvegarde()">Copier la sauvegarde (${rapPoids()})</button></div>
+      <p class="sub">La sauvegarde permet de rejouer la scène exacte. Elle est longue : à ne
+        joindre que si on te la demande.</p>
+    </details>
+  </div>`;
+  // un clic à côté de la fiche ferme, comme partout ailleurs sur un téléphone
+  f.addEventListener('click', e => { if (e.target === f) fermerRapport(); });
+  document.body.appendChild(f);
+  const t = document.getElementById('rapNote'); if (t) t.focus();
+}
+function fermerRapport(){
+  const f = document.getElementById('modalRap'); if (f) f.remove();
+  RAP = null;
+}
+function rapPoids(){
+  try { const s = localStorage.getItem('ac2') || ''; return Math.round(s.length / 1024) + ' Ko'; }
+  catch(e){ return '?' }
+}
+async function envoyerRapport(){
+  const t = document.getElementById('rapNote');
+  const txt = rapportTexte(t ? t.value : '');
+  const dit = m => { const e = document.getElementById('rapEtat'); if (e) e.textContent = m; };
+  try {
+    if (navigator.share){ await navigator.share({ title:"Absolut Coach — un problème", text: txt }); dit("Envoyé."); return; }
+  } catch(e){ /* partage annulé : on retombe sur le presse-papiers */ }
+  try { await navigator.clipboard.writeText(txt); dit("Copié. Colle-le dans la conversation."); }
+  catch(e){
+    /* Dernier recours : on le met à l'écran, sélectionné, et il copie à la main. */
+    const a = document.getElementById('rapApercu');
+    if (a){ a.textContent = txt; const r = document.createRange(); r.selectNodeContents(a);
+      const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+      const d = a.closest('details'); if (d) d.open = true; }
+    dit("Impossible de copier tout seul : le texte est sélectionné ci-dessous.");
+  }
+}
+async function copierSauvegarde(){
+  const dit = m => { const e = document.getElementById('rapEtat'); if (e) e.textContent = m; };
+  try { await navigator.clipboard.writeText(localStorage.getItem('ac2') || ''); dit("Sauvegarde copiée."); }
+  catch(e){ dit("Impossible de copier la sauvegarde."); }
+}
+
+/* Le rapport lui-même. Les chiffres sont permis ici : ce n'est pas le jeu, c'est
+   l'outil qui sert à le réparer — la même exception que `labo.html`. */
+function rapportTexte(note){
+  const l = [];
+  const d = new Date();
+  const h = n => String(n).padStart(2, '0');
+  l.push("PROBLÈME — ABSOLUT COACH 2");
+  l.push(note ? "\n« " + note.trim() + " »" : "\n(rien d'écrit)");
+  l.push("\n— OÙ —");
+  l.push(`écran ${S ? S.ecran : 'création'} · mode ${S ? S.mode : '—'} · sauvegarde v${S ? S.v || VERSION : VERSION}`
+    + ` · ${d.getFullYear()}-${h(d.getMonth() + 1)}-${h(d.getDate())} ${h(d.getHours())}:${h(d.getMinutes())}`);
+  if (S) l.push(`${S.annee}-${S.annee + 1} · ${S.journee + 1}ᵉ journée sur ${JOURNEES} · ${S.club.nom}`
+    + ` (force ${Math.round(S.club.force)}, ${abrDivision()})`);
+  const det = S ? rapportDetail() : [];
+  if (det.length){ l.push("\n— LE DÉTAIL —"); det.forEach(x => l.push(x)); }
+  if (S) { l.push("\n— TOI —"); rapportToi().forEach(x => l.push(x)); }
+  if (RAP && RAP.vu){ l.push("\n— CE QUI ÉTAIT À L'ÉCRAN —"); l.push(RAP.vu); }
+  if (S && S.journal && S.journal.length){
+    l.push("\n— LES DIX DERNIÈRES LIGNES DU JOURNAL —");
+    S.journal.slice(-10).forEach(j => l.push(`· ${j.txt || ''}`));
+  }
+  return l.join('\n');
+}
+function rapportToi(){
+  const l = [];
+  if (S.mode === 'coach'){
+    l.push(`Entraîneur·euse, ${S.moi.age} ans · objectif ${S.objectif}ᵉ`);
+    l.push(`axes : ${CAXES.map(a => `${a} ${Math.round(S.moi.base[a])}`).join(' · ')}`);
+    l.push(`groupe : jambes ${Math.round(S.grp.fr)} · plan ${Math.round(S.grp.plan || 0)} · condition ${Math.round(S.grp.athle || 0)}`);
+    l.push(`liens : ${CLIENS_VUS.map(k => `${k} ${Math.round(S.liens[k])}`).join(' · ')}`);
+  } else {
+    l.push(`${S.moi.posteNom}, ${S.moi.age} ans · fraîcheur ${Math.round(S.etats.fraicheur)} %`
+      + ` · blessure ${S.etats.blessure} · suspension ${S.etats.suspension} · corps ${Math.round(S.etats.corps)}`);
+    l.push(`axes : ${AXES.map(a => `${a} ${Math.round(S.moi.base[a])}${S.moi.boost[a] > .2 ? `(+${S.moi.boost[a].toFixed(1)})` : ''}`).join(' · ')}`
+      + ` · pic ment ${Math.round(S.moi.pic.ment)} · plafonds ${AXES.map(a => Math.round(S.moi.plafond[a])).join('/')}`);
+    l.push(`liens : ${Object.entries(S.liens).map(([k, v]) => `${k} ${Math.round(v)}`).join(' · ')}`);
+    l.push(`lignes : ${LIGNES.map(k => `${k} ${Math.round(S.lignes[k])}`).join(' · ')}`);
+  }
+  return l;
+}
+/* Ce qu'il faut savoir de l'écran en cours — c'est la partie qui m'évite de
+   deviner, et elle est écrite écran par écran parce qu'un fait de match et une
+   offre de contrat n'ont rien à me dire de commun. */
+function rapportDetail(){
+  const l = [], m = S.match || S.dernier;
+  /* Un fait d'entraîneur·euse n'a pas la forme d'un fait de joueur·euse : son texte
+     est une fonction du contexte, déjà résolue dans `f.dit`, et il porte un titre. */
+  const faitDit = f => {
+    if (!f) return;
+    const txt = f.q || f.dit || (typeof f.texte === 'string' ? f.texte : '');
+    l.push(`fait : ${f.id}${f.titre ? ' — ' + f.titre : ''} · ${f.min}ᵉ minute`
+      + `${f.axe ? ' · axe ' + f.axe : ''}${f.chaud ? ' · CHAUD' : ''}`);
+    if (txt) l.push(`  « ${txt} »`);
+    (f.opts || []).forEach((o, i) => l.push(`  [${i}] « ${o.l} »${o.p != null ? ` (p ${o.p})` : ''}`));
+    if (f.choix) l.push(`  choisi : « ${f.choix} » → ${f.reussi ? 'réussi' : 'raté'} : « ${f.txt} »`);
+  };
+  const matchDit = () => {
+    if (!m) return;
+    l.push(`match : ${m.comp ? m.comp + ' tour ' + m.tour : 'championnat'}`
+      + ` · ${m.adv && m.adv.nom ? m.adv.nom : m.adv} · ${m.bn}-${m.be}`
+      + `${m.prolong ? ' a.p.' : ''}${m.tab ? ' t.a.b.' : ''}`);
+    if (S.mode !== 'coach') l.push(`  toi : ${m.statut} · entré ${m.entree || 0}ᵉ · ${m.minutes} minutes`
+      + `${m.sorti ? ` · sorti ${m.sorti}ᵉ` : ''}${m.note != null ? ` · note ${m.note}` : ''}`
+      + ` · ${m.buts || 0} but(s), ${m.passes || 0} passe(s)`);
+    if (m.chg && m.chg.length) l.push(`  changements : ${m.chg.map(c =>
+      `${c.min}' ${c.sortant ? c.sortant.nom : '?'}>${c.entrant ? c.entrant.nom : '?'}`).join(' · ')}`);
+    if (m.evs && m.evs.length) l.push(`  film : ${m.evs.map(e =>
+      `${e.min}' ${e.type}${e.nous === false ? '(eux)' : ''}${e.qui ? ' ' + e.qui : ''}${e.moi ? ' [MOI]' : ''}`).join(' · ')}`);
+    if (m.notes && m.notes.length) l.push(`  notes : ${m.notes.map(n =>
+      `${n.nom} ${n.note}${n.min != null ? '/' + n.min + "'" : ''}`).join(' · ')}`);
+  };
+  if (S.ecran === 'moment' || S.ecran === 'cmoment'){
+    faitDit(m && m.moments ? m.moments[S.momentIdx] : null);
+    if (S.faitAnnexe) l.push("  (fait de mercredi : coupe ou Europe)");
+    matchDit();
+  }
+  else if (S.ecran === 'resultat' || S.ecran === 'cresultat'){
+    matchDit();
+    (m && m.moments || []).forEach(faitDit);
+    if (m && m.mvt && m.mvt.length) l.push(`  ce que ça change : ${m.mvt.map(x =>
+      `${x.k || ''} ${x.up ? '↗' : '↘'} ${x.mot || ''}`).join(' · ')}`);
+  }
+  else if (S.ecran === 'arret' || S.ecran === 'carret'){
+    const a = S.arret;
+    if (a){
+      l.push(`arrêt : ${a.id} — « ${a.titre} »`);
+      l.push(`  « ${typeof a.texte === 'string' ? a.texte : (a.dit || '')} »`);
+      (a.options || a.opts || []).forEach((o, i) => l.push(`  [${i}] « ${o.l} »`));
+    }
+  }
+  else if (S.ecran === 'semaine' || S.ecran === 'csemaine'){
+    const an = typeof matchAnnexe === 'function' ? matchAnnexe(S.journee) : null;
+    l.push(`la semaine : ${an ? 'un match de ' + an.c + ' mercredi' : 'pas de match en semaine'}`
+      + `${S.eqJour ? ` · le coach t'a annoncé : ${S.eqJour.statut}` : ''}`);
+    if (S.semaineArret) l.push(`  la semaine d'avant : « ${S.semaineArret.titre} » → « ${S.semaineArret.choix} »`);
+  }
+  else if (S.ecran === 'offres' || S.ecran === 'coffres'){
+    const o = S.mode === 'coach' ? cOffreCourante() : offreCourante();
+    if (o) l.push(`offre : ${o.nom} · force ${Math.round(o.force)} · D${o.div || 1}`
+      + ` · ${o.ans} an(s) · salaire ${o.salaire}`
+      + `${o.objectif ? ` · objectif ${o.objectif}ᵉ` : ''} · ${S.libre ? 'tu es libre' : 'ton club prolonge'}`);
+  }
+  else if (S.ecran === 'bilan' || S.ecran === 'cbilan'){
+    const b = S.bilan || {};
+    l.push(`bilan : ${b.place || '?'}ᵉ · ${b.matchs || 0} matchs · note ${b.note == null ? '—' : b.note}`);
+  }
+  return l;
+}
+
 
 /* « Ta situation » en cases, pas en lignes. Le propriétaire, 27/09/2026 :
    « l'écran il est quand même très long… sur la page situation, si on a les bons
