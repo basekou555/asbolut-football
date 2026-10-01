@@ -1386,11 +1386,79 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     migration nécessaire** (`m.ecartForce` manque à une sauvegarde v13 prise en plein match et vaut
     alors zéro, soit un duel neutre) — vérifié en reprenant une vraie partie de la version déployée,
     saison finie, trêve passée, saison entière rejouée.
-- **Ce qui n'est pas encore là** : le **sous-système** de la sélection (la jauge vit et se lit, la
-  convocation reste à faire), le mode entraîneur·euse en 2.0, et les **arrêts** — dix-sept familles
-  réécrites sur la page de décisions, pas encore codées. (Les trente et un faits de match, la trêve,
-  les offres, la progression d'une saison sur l'autre et l'usure sont livrés.) Les `ARRETS` en place
-  restent des marqueurs de forme, pas le contenu final.
+- **LA SÉLECTION, ET UN COÛT QUI N'EXISTAIT PAS** (le propriétaire, 30/09/2026 : « on enchaîne »).
+  Le dernier morceau de la page de décisions : la jauge vivait et ouvrait des clubs depuis le
+  29/09, mais la convocation, les deux matchs de milieu de semaine et le calendrier international
+  n'existaient pas. Ils existent — et la mesure a démenti ce que j'attendais du reste.
+  - **Cinq fenêtres par saison** (`J_SELEC` = 5, 12, 18, 23, 30, toutes hors coupe et Europe), deux
+    matchs d'un bloc, joués **avant** que le coach pose le groupe du week-end, comme le mercredi de
+    coupe : la semaine garde ses trois clics, le mercredi se lit. **La convocation ne se re-décide
+    pas** : le premier appel est l'arrêt `selection`, ensuite tu y es et tu y restes tant qu'on te
+    garde — sinon ce serait un clic de plus toutes les cinq journées.
+  - **Ta place là-haut n'est pas celle de ton club** (`statutSelec()`) : au-dessus de 75 tu es
+    titulaire, au-dessus de 58 trois fois sur cinq, en dessous tu regardes beaucoup. Ce que tu y
+    fais décide si on te rappelle (`(note − 6,2) × 7` sur la jauge), ce que le pays retient de toi
+    (supporters, agent) et, sous 38, **on ne te rappelle plus** — la sortie du sous-système, sans
+    laquelle une sélection obtenue une fois serait acquise à vie.
+  - **On ne voyage pas depuis l'infirmerie.** Sans cette porte, la fenêtre jouait deux matchs à un
+    joueur que l'écran de la semaine annonce blessé ou suspendu. Mesuré : **717 fenêtres sur 3 168**
+    sont perdues comme ça, et ça coûte trois points de jauge — un autre a tenu la place, et il peut
+    la garder.
+  - **Deux corrections d'échelle, les deux trouvées à l'écran avant de livrer.** (1) Les nations
+    étaient étalées comme un championnat (50 à 78) alors que l'espérance de buts est une
+    exponentielle de l'écart divisé par 19, calibrée sur des écarts de club : d'où « l'Irlande 7–1 »
+    et « le Mexique 6–1 ». Seize points du haut en bas (68 à 84) suffisent — entre nations, le
+    dernier tient le match contre le premier. (2) `nous` valait « le meilleur club du pays + 4 »,
+    donc **la force de la France dépendait de la division où tu jouais** : mesuré, elle perdait
+    **64 %** de ses matchs et encaissait 2,18 buts. `FRANCE_FORCE` = 80, un grand sans être le plus
+    grand. Mesuré après, 814 matchs : **1,63 but marqué, 1,24 encaissé, 46 % de victoires, 23 % de
+    nuls**, et 3 % de matchs à sept buts ou plus.
+  - **Mesuré, 260 carrières entières, 5 084 saisons, 3 168 fenêtres** : **177 carrières sur 260**
+    (68 %) sont appelées au moins une fois, **premier appel à 25 ans** (médiane), **22 % des
+    saisons** passées dans le groupe, **40 sélections** par carrière appelée (max 96), et **143
+    fois** on ne rappelle plus. La note en sélection est de **6,18** contre 6,96 en club : une
+    première sélection est dure, et ça se voit enfin dans un chiffre.
+  - **CE QUE LA TRÊVE COÛTE, ET CE QU'ELLE NE COÛTE PAS — mesuré, et ça contredit ce que j'avais
+    posé.** Elle prend 27 points de fraîcheur sur la semaine (35 au coup d'envoi de samedi contre 63
+    une semaine ordinaire) et **rien d'autre** : à l'intérieur des mêmes saisons, le samedi d'après
+    est le même : **97,4 % de titularisations contre 97,5 ; 83,8 minutes contre 83,9 ; 1,6 % de
+    blessures contre 1,3 %** (n=2 208 contre 106 646 — le dernier écart vaut une erreur-type, donc
+    ce n'est pas un résultat). La cause n'est pas la fenêtre, c'est la forme du vestiaire : quand on
+    est appelé, on est **24 points au-dessus du dernier titulaire de son poste** (marge médiane,
+    mesurée sur 10 828 semaines), et sur 3 168 fenêtres **une seule** est tombée une semaine où la
+    place se jouait. J'avais ajouté une pénalité de « retour de sélection » sur le choix du onze et
+    sur la minute du changement : mesurée, elle ne pouvait pas se déclencher. **Retirée** — une
+    mécanique qui ne se déclenche jamais n'est pas un coût, c'est de la décoration, et c'est
+    exactement la règle du projet prise à l'envers. Donc, dit franchement : **la trêve coûte des
+    jambes et des blessures de dette, pas ton samedi.**
+  - **Ce qui reste à décider, et c'est à lui** : si une semaine internationale doit coûter plus que
+    des jambes, le levier n'est pas dans la sélection — c'est le poids de la fraîcheur sur le temps
+    de jeu d'un titulaire indiscutable, compressé par construction (−6 minutes du frais au cuit
+    après 21 ans, mesuré sur le code déployé). Et une correction à une affirmation de moi : le
+    tableau « 71,3 → 52,5 minutes » du 30/09 était mesuré sur **la première saison seulement** (la
+    sonde s'arrêtait au premier bilan) ; sur une carrière entière l'écart est de **−6 à −12
+    minutes** selon l'âge, et c'est chez le jeune qu'il est fort.
+  - **À l'écran** : un bloc « La sélection » sur l'écran de résultat (les deux scores, tes minutes,
+    tes notes, et la ligne qui dit qu'on ne te rappelle plus), une case dans le bilan de saison, les
+    sélections et les buts dans le bilan de carrière, l'annonce avant le choix de la séance
+    (`direMercredi()`), et `pourquoiLien('selection')` qui dit enfin ce que la jauge fait des deux
+    côtés : ta place dans la liste **et** les clubs qu'elle ouvre.
+  - **Vérifié** : 31 faits sur 31 tirés, **score = film 0 écart** sur 11 332 faits, zéro doublon de
+    nom ; 24 carrières entières de 18 à 38 ans avec tous les écrans, zéro erreur ;
+    `tests/simulate.js` → `ERRORS: none` ; les notes restent dans leur bande (carrière entière
+    moyenne **6,96**, sous 5,0 8,7 % ; saisons 1 à 3 : 17,1 %) et la moyenne reste au-dessus du
+    pivot de 6,2 que lit la confiance du coach ; le banc d'essai à **250 saisons par ligne** tient
+    l'invariant aux trois croisements (académie·M : matchs technique 22,5±0,44, trace poste +7,2 ;
+    quartier·D : matchs mental 21,0±0,45, trace physique +9,9 ; étranger·A : les trois premiers sur
+    les matchs sont dans une erreur-type, donc une égalité, et la trace va à la technique +9,2) ;
+    les trois variantes de l'écran relues à l'écran (joué, banc, pas parti) sans un `undefined` ;
+    **migration 14 → 15** sur une vraie sauvegarde de la version déployée (17ᵉ journée) — on n'y met
+    personne d'office, le groupe se gagne par l'arrêt comme pour une carrière neuve — saison finie,
+    trêve passée et **deuxième saison entière** jouée, et une sauvegarde prise **pendant** une
+    fenêtre internationale se recharge sans erreur.
+- **Ce qui n'est pas encore là** : le mode entraîneur·euse en 2.0. (Les trente et un faits de match,
+  les vingt-neuf arrêts, le sous-système de la sélection, la trêve, les offres, la progression d'une
+  saison sur l'autre et l'usure sont livrés.)
 - **ON PEUT ÊTRE MAUVAIS UN SOIR OÙ L'ÉQUIPE GAGNE** (le propriétaire, 29/09/2026, en répondant
   au tableau par la seule ligne du milieu de carrière : « 3 % »). J'avais écrit que le levier des
   mauvais soirs au sommet était « le monde » et que c'était son arbitrage ; il a tranché en pointant
