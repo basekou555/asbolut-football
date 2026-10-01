@@ -45,7 +45,8 @@ function rendre(){
        est appelé par eux. */
     csemaine:ecranCSemaine, carret:ecranCArret, cmoment:ecranCMoment,
     cresultat:ecranCResultat, cbilan:ecranCBilan, cvire:ecranCVire,
-    coffres:ecranCOffres, cmercato:ecranCMercato, ccarriere:ecranCCarriere }[S.ecran];
+    coffres:ecranCOffres, cmercato:ecranCMercato, cvie:ecranCVie,
+    ccarriere:ecranCCarriere }[S.ecran];
   el.innerHTML = (S.ecran === 'tirage' ? '' : S.mode === 'coach' ? cTopHTML() : topHTML())
     + (f ? f() : `<div class="card"><h2>Écran inconnu</h2><p class="sub">${esc(S.ecran)}</p></div>`);
   window.scrollTo(0, 0);
@@ -402,6 +403,35 @@ function rapportDetail(){
   else if (S.ecran === 'bilan' || S.ecran === 'cbilan'){
     const b = S.bilan || {};
     l.push(`bilan : ${b.place || '?'}ᵉ · ${b.matchs || 0} matchs · note ${b.note == null ? '—' : b.note}`);
+  }
+  /* LES DEUX ÉCRANS DE L'INTERSAISON QUE LE RAPPORT NE SAVAIT PAS DÉCRIRE. Il n'y
+     avait rien pour le mercato ni pour la vie, dans aucun des deux modes — or c'est
+     exactement là qu'un chiffre d'argent peut mentir, et le rapport est l'outil avec
+     lequel il me le dit. */
+  else if (S.ecran === 'mercato' || S.ecran === 'cmercato'){
+    const m = S.marche;
+    if (S.mode === 'coach' && m){
+      l.push(`mercato ${m.hiver ? "d'hiver" : "d'été"} : ${m.deck.length} dossiers · dossier ${(m.idx || 0) + 1}`
+        + ` · budget ${m.budget} · masse ${Math.round(cMasse() * 1000) / 1000} / plafond ${Math.round(cPlafond() * 1000) / 1000}`
+        + ` · effectif ${(S.equipe || []).length}`);
+      const x = cCibleCourante();
+      if (x) l.push(`  cible : ${x.nom} (${x.cle}) ${x.poste} ${x.age} ans · niv ${Math.round(x.niv)}`
+        + ` · prix ${x.prix} · salaire ${x.sal}${x.faisable ? '' : ' · PAS FAISABLE'}`);
+      const mq = x ? cManque(x) : null;
+      if (mq) l.push(`  ce qui bloque : argent ${mq.argent} · masse ${mq.sal} · place ${mq.place ? 'oui' : 'non'}`);
+      l.push(`  fenêtre : ${(m.in || []).length} arrivée(s), ${(m.out || []).length} départ(s)`);
+    } else l.push(`mercato : ${(S.mercatoVu || []).length} mouvement(s) dans le monde`);
+  }
+  else if (S.ecran === 'vie' || S.ecran === 'cvie'){
+    const v = S.vie || {};
+    const ch = S.mode === 'coach' ? CCHANTIERS : CHANTIERS;
+    const dispo = S.mode === 'coach' ? cChantiersDispos() : chantiersDispos();
+    l.push(`la vie : gagné ${v.gagne} cette saison${(v.primes || []).length ? ` (primes : ${v.primes.join(', ')})` : ''}`
+      + ` · compte ${S.argent} · salaire ${S.salaire} (max ${v.salaireMax}) · proches ${Math.round(proches())}`);
+    l.push(`  construit : ${(v.chantiers || []).map(x => x.id + (x.coule ? ' (coulé)' : '')).join(', ') || 'rien'}`);
+    l.push(`  possible : ${dispo.map(c => `${c.id} ${coutChantier(c)}`).join(', ') || 'rien'}`
+      + ` · au catalogue : ${(ch || []).map(c => `${c.id} ${coutChantier(c)}`).join(', ')}`);
+    if (v.fait) l.push(`  choisi : ${v.fait.id} → « ${v.suite} »`);
   }
   return l;
 }
