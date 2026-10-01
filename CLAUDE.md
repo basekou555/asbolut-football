@@ -96,8 +96,11 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
   (5-7) le journal (`S.journal`) est la seule mémoire, tout y passe.
 - **Fichiers** : `v2/moteur.js` (état, ligue, axes, semaine, arrêts, match, journal, sauvegarde
   `localStorage` clé `ac2` avec garde de version), `v2/ecrans.js` (tous les écrans, `rendre()`
-  dispatche sur `S.ecran`), `v2/style.css` (repris des coquilles validées), `v2/coquilles.html`
-  (les maquettes, gardées comme référence).
+  dispatche sur `S.ecran`), **`v2/coach.js`** et **`v2/ecransCoach.js`** (le mode entraîneur·euse,
+  qui réutilise la ligue, le marché, la coupe, l'Europe, le film et les notes de `moteur.js` et
+  n'écrit que ce qui change), `v2/style.css` (repris des coquilles validées), `v2/coquilles.html`
+  (les maquettes, gardées comme référence). `S.mode` (`'joueur'` ou `'coach'`) est choisi à la
+  première étape de la création et décide de tout le reste.
 - **Trois couches par axe** : `base` (la trace), `boost` (l'acquis récent, divisé par deux à chaque
   match), `plafond` (jamais lu par le joueur). `plafondReel(a) = min(plafond natif, moyenne des
   autres axes + 25)` : on n'a pas un physique à 10 avec un mental à 1.
@@ -1456,9 +1459,104 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     personne d'office, le groupe se gagne par l'arrêt comme pour une carrière neuve — saison finie,
     trêve passée et **deuxième saison entière** jouée, et une sauvegarde prise **pendant** une
     fenêtre internationale se recharge sans erreur.
-- **Ce qui n'est pas encore là** : le mode entraîneur·euse en 2.0. (Les trente et un faits de match,
-  les vingt-neuf arrêts, le sous-système de la sélection, la trêve, les offres, la progression d'une
-  saison sur l'autre et l'usure sont livrés.)
+- **LE MODE ENTRAÎNEUR·EUSE EN 2.0** (le propriétaire, 01/10/2026 : « vas-y pour le mode entraîneur
+  en 2.0 »). La dernière pièce du 2.0, et la moins coûteuse à écrire pour la plus grosse surface :
+  **le monde était déjà là.** `moteur.js` porte deux divisions de dix-huit clubs à vingt-deux
+  joueurs nommés, un marché qui les échange, des montées et des descentes, la coupe, l'Europe, le
+  film d'un match et les notes de tout le monde. Un entraîneur·euse n'a pas besoin d'un autre
+  monde : il a besoin d'une autre place dedans. `v2/coach.js` et `v2/ecransCoach.js` ne refont donc
+  ni la ligue, ni le marché, ni les notes — ils refont **la semaine, le match vu du banc, les
+  arrêts, le président et le bilan**. En une phrase : le joueur·euse se bat pour sa place dans un
+  onze, l'entraîneur·euse se bat pour **garder son poste**.
+  - **UN SEUL `if` DANS LE CODE PARTAGÉ, et c'est ce qui rend le lot possible.** `equipeDuJour()`
+    ajoutait une ligne « moi » à la liste du groupe ; en mode entraîneur·euse **personne ne s'appelle
+    moi**, et c'est tout ce que le choix du onze a besoin de savoir. Le groupe de dix-huit, les
+    changements, les notes, la réserve, les sept invariants du tableau : tout marche ensuite sans une
+    ligne de plus (`notesEquipe()` saute déjà `x.moi`, et `S.concurrents` est vide). Deuxième et
+    dernier point de contact : `effectifTrie()`, qui poussait une ligne « toi ».
+  - **Quatre axes, un effet mécanique chacun** — c'est la correction du défaut que la cartographie
+    du 26/09 avait trouvé en 1.0, où `management` n'était lu nulle part : **le jeu** entre dans la
+    force de l'équipe à chaque match (±1,65 quand l'avantage du terrain vaut 2,40), **le vestiaire**
+    fait monter les trois ententes plus vite et les retient quand elles tombent (et amortit ce qu'une
+    mauvaise série coûte au président), **le banc** décide de la réussite de tes décisions en cours
+    de match, **le réseau** de ce que la direction te laisse faire et de qui t'appelle en juin.
+  - **La semaine : six cartes, et ce sont les jambes de vingt-deux personnes qu'elle coûte.** La
+    vidéo (un plan pour samedi), la semaine athlétique, les individuels (trois joueurs **nommés**),
+    le vestiaire, le bureau, deux jours de repos. Chacune a un coût et un gain, aucune n'a les deux.
+  - **L'écran de mi-temps était mort en 1.0** (`HALFTIME_CHOICES` injouables, relevé par la
+    cartographie) : il revient, et il n'est plus seul. **Dix situations de match** — la mi-temps
+    menés, la mi-temps devant, à dix, un cadre qui sort, un penalty, 0-0 à la 70ᵉ, un but d'avance à
+    la 83ᵉ, le stade qui s'en prend à un des tiens, ton meilleur joueur qui marche, la décision de
+    l'arbitre. Règle dure, la même que pour les trente et un faits du joueur·euse : **une issue ne
+    touche jamais le score, elle crée un événement** — donc le film, le score, les pastilles et les
+    notes viennent de la même source et ne peuvent pas se contredire. La réussite lit `banc` et
+    l'entente de la ligne concernée.
+  - **Quatorze familles d'arrêts** : la presse, le président, le capitaine, l'agent, le gamin,
+    l'infirmerie, les supporters, le directeur sportif, chez toi, l'adversaire, le déplacement, la
+    série, le carton qui pend, un autre club qui appelle.
+  - **LA PORTE, et c'est le « ne pas jouer » de l'entraîneur·euse** : la confiance du président se
+    juge par quart de saison (journées 9, 17, 24, 30) et sous 28 on est démis. La saison se joue
+    alors sans toi, puis l'été arrive comme pour tout le monde.
+  - **Mesuré, 24 carrières, 653 saisons, zéro erreur** : **40 décisions par saison** (16,9 arrêts +
+    23,2 décisions de match) — dans la bande « 30 à 40 » qu'il avait nommée le 22/09 ; **14 familles
+    sur 14** et **10 sur 10** tirées, **aucune option jamais prise** sur quarante-huit, la plus
+    fréquente à 10,1 % ; objectif atteint **56 %** ; **1,25 renvoi par carrière** de 27 saisons ;
+    2,6 titres et 2,1 coupes par carrière ; 9,3 clubs traversés ; 58 montées et 43 descentes.
+  - **QUATRE DÉFAUTS TROUVÉS À LA MESURE, dont deux que je n'aurais pas vus à la lecture.**
+    1. **Les jambes du groupe étaient collées à zéro** de la vingtième journée à la fin : à 9,6 de
+       récupération pour 11 de coût par match, le net hebdomadaire était négatif **quelle que soit**
+       la semaine choisie — il n'y avait donc plus rien à dépenser, et la décision ne coûtait plus
+       rien. À 10,5, une semaine de repos sur trois tient la fraîcheur à plat ; tout le reste la
+       creuse. Mesuré après : 10ᵉ centile 0, médiane 38, 90ᵉ 86 selon la politique.
+    2. **Le président saturait à 100** (médiane 97,9 en fin de saison) et ne renvoyait donc
+       **personne** : 0,15 fois par carrière de vingt-trois saisons. Un mode entraîneur·euse sans
+       porte n'a pas de tension. Trois corrections : une victoire rapporte moins qu'une défaite ne
+       coûte, le seuil de renvoi passe à 28, et surtout **sa confiance s'oublie — mais seulement vers
+       le bas** (`si > 48`), parce qu'un rappel symétrique pardonnait tout seul une mauvaise série.
+       C'est l'asymétrie validée le 22/09 : seuls les gains s'usent.
+    3. **« Toujours l'athlétique » était dominée partout** (29,2 points et 15,8ᵉ place contre 37,7 et
+       12,8, pour une trace de 0,7), et la cause était mécanique : `bougerForme()` est borné à ±5,
+       donc la forme de tout le groupe **saturait au bout de cinq semaines** et les vingt-neuf
+       suivantes étaient du coût pur. Ce qu'elle construit maintenant, c'est **la condition du
+       groupe** — exactement la formulation qu'il avait donnée pour le physique du joueur·euse le
+       30/09 (« il ne faut pas que ça augmente la fraîcheur, il faut que ça augmente la vitesse de
+       récupération ») : on récupère plus vite entre deux journées, on se blesse moins, et ça s'en va
+       si on ne l'entretient pas.
+    4. **Deux options annonçaient un effet qui n'existait pas** : « les laisser venir et frapper dans
+       le dos » écrivait `S.grp.ouvert` que rien ne lisait (il entre maintenant dans l'espérance de
+       buts encaissés), et « le bureau » ne coûtait presque rien — 78 % de jambes **et** la deuxième
+       trace du banc d'essai. Son coût sur les lignes passe de 1,6 à 2,6 : mesuré après, il garde sa
+       trace (15,0) et finit **16ᵉ avec un président à 13**. C'est un arbitrage, pas un cadeau.
+  - **LE BANC D'ESSAI DE L'ENTRAÎNEUR·EUSE** (neuf politiques, 60 saisons par ligne, erreurs-types) :
+    **les trois ors vont à trois lignes différentes** — les points à « vidéo, athlé, repos »
+    (34,9±1,5), la place à « vidéo, vestiaire, repos » (14,0±0,4), la trace à « toujours la vidéo »
+    (+17,6±1,2). Les trois premiers sur les points sont dans une erreur-type les uns des autres :
+    c'est une égalité, pas une victoire, et c'est exactement ce qu'on veut. « Toujours du repos »
+    tient 99 % de fraîcheur, finit 14,4ᵉ et ne laisse **rien** (+1,3) — le même visage que « lever le
+    pied » côté joueur·euse.
+  - **Vérifié côté joueur·euse, parce que c'est là qu'était le risque** : les sept invariants du
+    tableau des notes à zéro écart, 31 faits sur 31, **score = film 0 écart** sur 7 764 faits ;
+    24 carrières entières de 18 à 38 ans avec tous les écrans, zéro erreur ; le banc d'essai du
+    joueur·euse inchangé aux trois croisements (académie·M matchs « deux séances » 22,7 / trace
+    « ton poste » +7,3 ; quartier·D 21,6 / physique +10,4 ; étranger·A « le mental » 21,1 /
+    technique +9,6) ; `tests/simulate.js` → `ERRORS: none`.
+  - **Vérifié côté entraîneur·euse** : les neuf écrans rendus sans un `undefined` (y compris le
+    journal depuis chacun, le renvoi forcé et la fin de parcours) ; une partie sauvegardée à la 17ᵉ
+    journée se recharge avec ses vingt-deux joueurs, **sans inventer de « moi » dans l'effectif du
+    club**, et rejoue deux saisons entières. **Aucune migration** : `S.mode` existe depuis toujours
+    dans la sauvegarde, et une vraie partie de joueur·euse de la version déployée (v15, 17ᵉ journée)
+    finit sa saison, passe la trêve et rejoue une saison entière. Un défaut fermé au passage :
+    `demarrer()` appliquait le chemin joueur·euse à toute sauvegarde — `syncClubSq()` inventait un
+    joueur et `niveau()` rendait NaN.
+  - **Ce qui n'est pas là, et ce sera le lot suivant** : **le mercato côté entraîneur·euse**. Le
+    marché tourne et tu en lis le résultat sur un écran, mais tu ne choisis pas tes recrues — or
+    c'est sa partie préférée du mode (21/09/2026). Manquent aussi l'écran de vie et l'argent du
+    coach (la jauge `proches` existe et un arrêt la touche, il n'y a pas d'écran), et le banc
+    d'essai de l'entraîneur·euse n'est pas encore une page de `labo.html` : il vit dans une sonde.
+- **Ce qui n'est pas encore là** : le **mercato côté entraîneur·euse** (il lit ce que le marché a
+  fait, il ne le fait pas), et l'écran de vie du coach. (Tout le reste du 2.0 est livré : les deux
+  modes, les trente et un faits de match, les vingt-neuf arrêts, la sélection, la trêve, les offres,
+  la progression d'une saison sur l'autre et l'usure.)
 - **ON PEUT ÊTRE MAUVAIS UN SOIR OÙ L'ÉQUIPE GAGNE** (le propriétaire, 29/09/2026, en répondant
   au tableau par la seule ligne du milieu de carrière : « 3 % »). J'avais écrit que le levier des
   mauvais soirs au sommet était « le monde » et que c'était son arbitrage ; il a tranché en pointant

@@ -2,6 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "echo 'Site statique : aucune installation'",
-  "buildCommand": "mkdir -p dist/v2 && cp index.html styles.css profile.js players.js eras.js content.js core.js match.js coach.js player.js ui.js dist/ && cp v2/index.html v2/labo.html v2/style.css v2/moteur.js v2/ecrans.js dist/v2/",
+  "buildCommand": "mkdir -p dist/v2 && cp index.html styles.css profile.js players.js eras.js content.js core.js match.js coach.js player.js ui.js dist/ && cp v2/index.html v2/labo.html v2/style.css v2/moteur.js v2/coach.js v2/ecrans.js v2/ecransCoach.js dist/v2/",
   "outputDirectory": "dist"
 }

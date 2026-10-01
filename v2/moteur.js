@@ -1793,9 +1793,16 @@ function equipeDuJour(rot){
      ne se parlaient pas. Désormais **une seule liste** : tu y entres avec ta
      valeur aux yeux du coach, et tout le reste en découle — une blessure chez un
      milieu fait remonter tout le monde d'un cran, toi compris. */
-  const moi = { moi:true, nom:S.moi.nom, poste:S.moi.poste, niv:valeurAuPoste(),
+  /* EN MODE ENTRAÎNEUR·EUSE, PERSONNE NE S'APPELLE « MOI », et c'est la seule
+     chose que le choix du onze a besoin de savoir. Tout le reste de ce fichier —
+     le groupe de dix-huit, les changements, les notes, la réserve — marche
+     ensuite sans modification : il n'y a simplement pas de ligne `moi` dans la
+     liste. C'est ce qui permet au mode entraîneur·euse de réutiliser le monde
+     entier au lieu de s'en fabriquer un deuxième. */
+  const coach = S.mode === 'coach';
+  const moi = coach ? null : { moi:true, nom:S.moi.nom, poste:S.moi.poste, niv:valeurAuPoste(),
     dispo: S.etats.blessure <= 0 && S.etats.suspension <= 0, ref:{} };
-  const tout = [...g, moi];
+  const tout = coach ? [...g] : [...g, moi];
   // le choix du coach : le niveau du jour, un peu de rotation, moins la rancune
   const R = rot == null ? ROTATION : rot;
   tout.forEach(x => x.choix = x.niv + rnd(-R, R) - (x.ref.rancune || 0));
@@ -1841,7 +1848,8 @@ function equipeDuJour(rot){
     onze.push(...reste.slice(0, t.n));
   });
   const banc = conv.filter(x => !onze.includes(x));
-  const statut = S.etats.blessure > 0 ? 'blesse' : S.etats.suspension > 0 ? 'suspendu'
+  const statut = coach ? 'coach'
+    : S.etats.blessure > 0 ? 'blesse' : S.etats.suspension > 0 ? 'suspendu'
     : onze.includes(moi) ? 'titulaire' : banc.includes(moi) ? 'banc' : 'hors';
   return { onze, banc, reserve, absents, ecart: perte / 11, statut, moi };
 }
@@ -3426,12 +3434,14 @@ function effectifTrie(){
     moy: moyDe(j), res: moyReserve(j), nbR: j.nbR || 0,
     cle: LIGNE_DU_POSTE[j.poste], monte: !!j.monte,
     blesse: j.blesse > 0, susp: j.susp > 0, boude: (j.rancune || 0) > 1.5 }));
-  S.concurrents.forEach(c => l.push({ nom:c.nom, poste:S.moi.poste, age:c.age, nb:c.nb || 0,
-    moy: moyDe(c), res: moyReserve(c), nbR: c.nbR || 0,
-    cle: LIGNE_DU_POSTE[S.moi.poste], rival:true, blesse: c.blesse > 0 }));
-  l.push({ nom:S.moi.nom, poste:S.moi.poste, age:S.moi.age, nb:S.stats.notes.length,
-    cle: LIGNE_DU_POSTE[S.moi.poste],
-    moy: S.stats.notes.length ? moyenneNotes() : null, moi:true });
+  if (S.mode !== 'coach'){
+    S.concurrents.forEach(c => l.push({ nom:c.nom, poste:S.moi.poste, age:c.age, nb:c.nb || 0,
+      moy: moyDe(c), res: moyReserve(c), nbR: c.nbR || 0,
+      cle: LIGNE_DU_POSTE[S.moi.poste], rival:true, blesse: c.blesse > 0 }));
+    l.push({ nom:S.moi.nom, poste:S.moi.poste, age:S.moi.age, nb:S.stats.notes.length,
+      cle: LIGNE_DU_POSTE[S.moi.poste],
+      moy: S.stats.notes.length ? moyenneNotes() : null, moi:true });
+  }
   return l.sort((a, b) => (b.moy == null ? -1 : b.moy) - (a.moy == null ? -1 : a.moy));
 }
 function autresMatchs(){
