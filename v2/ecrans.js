@@ -248,9 +248,9 @@ function ouvrirRapport(){
     <p class="sub" id="rapEtat"></p>
     <details class="fold" style="margin-top:12px"><summary>Ce qui part avec</summary>
       <pre class="rapVu" id="rapApercu">${esc(rapportTexte(''))}</pre>
-      <div class="btn-row"><button class="btn ghost" onclick="copierSauvegarde()">Copier la sauvegarde (${rapPoids()})</button></div>
-      <p class="sub">La sauvegarde permet de rejouer la scène exacte. Elle est longue : à ne
-        joindre que si on te la demande.</p>
+      <div class="btn-row"><button class="btn ghost" onclick="copierSauvegarde()">Copier avec la sauvegarde (${rapPoids()})</button></div>
+      <p class="sub">Ton message part en tête, la sauvegarde à la suite : elle permet de rejouer
+        la scène exacte. Elle est longue — à ne joindre que si on te la demande.</p>
     </details>
   </div>`;
   // un clic à côté de la fiche ferme, comme partout ailleurs sur un téléphone
@@ -283,10 +283,18 @@ async function envoyerRapport(){
     dit("Impossible de copier tout seul : le texte est sélectionné ci-dessous.");
   }
 }
+/* LA SAUVEGARDE PART AVEC LE MESSAGE (le propriétaire, 01/10/2026 : « c'est pas
+   pratique de devoir copier le texte, vaut mieux intégrer le message dans le
+   copier »). Ce bouton ne copiait que le JSON : il fallait coller la sauvegarde,
+   puis écrire le problème à côté, et les deux arrivaient séparés. Il copie
+   désormais **le rapport entier** — la phrase en tête — **puis** la sauvegarde. */
 async function copierSauvegarde(){
   const dit = m => { const e = document.getElementById('rapEtat'); if (e) e.textContent = m; };
-  try { await navigator.clipboard.writeText(localStorage.getItem('ac2') || ''); dit("Sauvegarde copiée."); }
-  catch(e){ dit("Impossible de copier la sauvegarde."); }
+  const t = document.getElementById('rapNote');
+  const txt = rapportTexte(t ? t.value : '')
+    + "\n\n— LA SAUVEGARDE —\n" + (localStorage.getItem('ac2') || '');
+  try { await navigator.clipboard.writeText(txt); dit("Copié, avec la sauvegarde."); }
+  catch(e){ dit("Impossible de copier."); }
 }
 
 /* Le rapport lui-même. Les chiffres sont permis ici : ce n'est pas le jeu, c'est
@@ -686,9 +694,10 @@ function filmHTML(m){
   m.evs.forEach(e => {
     const eux = !e.nous, qui = e.qui || (eux ? `un joueur de ${m.adv.nom}` : "un coéquipier");
     if (e.type === 'but') lignes.push({ min:e.min, moi:!!(e.moi || e.passeMoi), ico:'⚽',
-      t: e.moi ? `<b>Ton but</b>` : e.passeMoi ? `But de ${esc(qui)}, <b>sur ta passe</b>`
+      t: (e.moi ? `<b>Ton but</b>` : e.passeMoi ? `But de ${esc(qui)}, <b>sur ta passe</b>`
         : eux ? `But de ${esc(qui)} <i>(${esc(m.adv.nom)})</i>`
-        : e.passe ? `But de ${esc(qui)}, servi par ${esc(e.passe)}` : `But de ${esc(qui)}` });
+        : e.passe ? `But de ${esc(qui)}, servi par ${esc(e.passe)}` : `But de ${esc(qui)}`)
+        + (e.pen ? ` <i>sur penalty</i>` : '') });
     if (e.type === 'jaune') lignes.push({ min:e.min, moi:!!e.moi, ico:'🟨', t: `${esc(e.moi ? S.moi.nom : qui)} averti` });
     if (e.type === 'rouge') lignes.push({ min:e.min, moi:!!e.moi, ico:'🟥', t: `${esc(e.moi ? S.moi.nom : qui)} exclu` });
     if (e.type === 'penalty') lignes.push({ min:e.min, moi:!!e.arrete, ico:'🎪',

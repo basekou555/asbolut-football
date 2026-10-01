@@ -2333,7 +2333,6 @@ function lancerMatch(){
   let evs = [];
   for (let i = 0; i < bn; i++) evs.push({ min: mins.pop(), type:'but', nous:true });
   for (let i = 0; i < be; i++) evs.push({ min: mins.pop(), type:'but', nous:false });
-  if (Math.random() < .14) evs.push({ min: mins.pop(), type:'penalty', nous: Math.random() < .5 });
   if (Math.random() < .5) evs.push({ min: mins.pop(), type:'jaune', nous: Math.random() < .5 });
   if (Math.random() < .09) evs.push({ min: mins.pop(), type:'rouge', nous: Math.random() < .5 });
   if (Math.random() < .12) evs.push({ min: mins.pop(), type:'blessure', nous: Math.random() < .5 });
@@ -2438,6 +2437,27 @@ function lancerMatch(){
   /* Le buteur d'en face a un nom : c'est le premier bénéfice visible de leur
      donner un effectif. Un attaquant marque plus souvent qu'un défenseur. */
   evs.filter(e => e.type === 'but' && !e.nous).forEach(e => e.qui = buteurAdverse(adv) || adv.nom);
+  /* UN PENALTY DOIT FINIR QUELQUE PART (le propriétaire, 01/10/2026 : « le penalty
+     n'est pas dans les stats »). Il était tiré à 14 % et ne produisait **rien** : ni
+     but au score, ni arrêt, ni raté, et personne ne le tirait — le film affichait
+     « Penalty pour Stade Rennais » à la 81ᵉ et c'était tout. Même règle que les faits
+     de match : il s'accroche à un **but réel** de ce camp-là (le film dit alors
+     « sur penalty » et la note le compte déjà), ou il est **manqué**, et il porte un
+     nom. Il n'est jamais le tien : ton penalty à toi est une décision (`penA`,
+     `pen`), pas un tirage, et il coûterait sur ta note sans que tu aies choisi. */
+  if (Math.random() < .14){
+    const pourNous = Math.random() < .5;
+    // un penalty n'a pas de passeur : on ne l'accroche qu'à un but qui n'en a pas
+    const buts = evs.filter(e => e.type === 'but' && e.nous === pourNous
+      && !e.pen && !e.passe && !e.passeMoi);
+    if (buts.length) pick(buts).pen = true;
+    else {
+      const min = mins.pop();
+      evs.push({ type:'penratee', nous: pourNous, min,
+        qui: pourNous ? surLeBanc(m, min, 'but') : (buteurAdverse(adv) || adv.nom) });
+      evs.sort((a, b) => a.min - b.min);
+    }
+  }
   // faits de match : zéro à deux, seulement si je suis sur le terrain
   if (m.minutes){
     tirerMoments(m, entree, sortie);
@@ -2660,11 +2680,11 @@ A: [
   { id:'penA', q:"Penalty pour vous. Le tireur habituel te regarde et attend.", axe:'ment',
     opts:[
       { l:"Le tirer", p:.76,
-        ok:{ t:"Tu l'envoies à l'opposé.", n:0, ev:['but'], e:{ ment:1.5, supporters:3 } },
-        ko:{ t:"Manqué, et le stade s'en souvient.", n:-1.2, ev:['manque'], e:{ ment:-2.2, vestiaire:-4 } } },
+        ok:{ t:"Tu l'envoies au fond du cadre.", n:0, ev:['but'], e:{ ment:1.5, supporters:3 } },
+        ko:{ t:"Tu l'envoies à côté, et le stade s'en souvient.", n:-1.2, ev:['manque'], e:{ ment:-2.2, vestiaire:-4 } } },
       { l:"Le laisser au tireur habituel", p:.78,
-        ok:{ t:"Un but pour l'équipe, rien pour toi.", n:-.2, ev:['equipe'], e:{ ligne:2 } },
-        ko:{ t:"Il le manque.", n:-.2, ev:['manque'], e:{ ment:-.5 } } } ] },
+        ok:{ t:"Il l'envoie au fond : un but pour l'équipe, rien pour toi.", n:-.2, ev:['equipe'], e:{ ligne:2 } },
+        ko:{ t:"Il l'envoie à côté.", n:-.2, ev:['manque'], e:{ ment:-.5 } } } ] },
   { id:'hjA', q:"Le ballon part derrière la défense. Tu es sur la limite.", axe:'spec',
     opts:[
       { l:"Partir", p:.45,
@@ -3405,11 +3425,13 @@ function notesEquipe(m){
      cartons des coéquipiers y entrent maintenant, avec le même rendement
      décroissant que pour toi. */
   const faits = {};
-  const compte = (nom, k) => { if (!nom) return; faits[nom] = faits[nom] || { b:0, p:0, j:0, r:0 }; faits[nom][k]++; };
+  const compte = (nom, k) => { if (!nom) return; faits[nom] = faits[nom] || { b:0, p:0, j:0, r:0, pm:0 }; faits[nom][k]++; };
   (m.evs || []).filter(e => e.nous).forEach(e => {
     if (e.type === 'but'){ compte(e.qui, 'b'); compte(e.passe, 'p'); }
     if (e.type === 'jaune') compte(e.qui, 'j');
     if (e.type === 'rouge') compte(e.qui, 'r');
+    // un penalty manqué par un des tiens se lit à côté de sa note, comme le tien
+    if (e.type === 'penratee' && !e.moi) compte(e.qui, 'pm');
   });
   const noter = (x, minutes) => {
     if (x.moi || !x.ref) return;
@@ -3418,10 +3440,10 @@ function notesEquipe(m){
        ni un 3, sa note colle à la moyenne. C'est aussi ce qui fait que la note
        d'un remplaçant ne pèse pas comme celle d'un titulaire. */
     const a = minutes >= 70 ? 1 : minutes >= 30 ? .72 : .45;
-    const f = faits[x.nom] || { b:0, p:0, j:0, r:0 };
+    const f = faits[x.nom] || { b:0, p:0, j:0, r:0, pm:0 };
     const n = 6.1 + (bonus + (x.niv - S.club.force) * .05 + rnd(-.95, .95)
       + (derriere ? (m.be === 0 ? .7 : m.be >= 4 ? -.7 : 0) : 0)) * a
-      + cumul(f.b, POIDS_BUT_AUTRE) + f.p * .55 - f.j * .25 - f.r * 1.3;
+      + cumul(f.b, POIDS_BUT_AUTRE) + f.p * .55 - f.j * .25 - f.r * 1.3 - (f.pm || 0) * 1.1;
     x.ref.note = Math.round(clamp(n, 3, 10) * 10) / 10;
     x.ref.sum = (x.ref.sum || 0) + x.ref.note; x.ref.nb = (x.ref.nb || 0) + 1;
     // une bonne note, c'est une place la semaine prochaine
@@ -3432,7 +3454,7 @@ function notesEquipe(m){
        comme on avait fait avant »). Les mêmes faits que ceux qui nourrissent la
        note, donc le film et la note ne peuvent pas se contredire. */
     joueurs.push({ nom:x.nom, poste:x.poste, note:x.ref.note, rival: !!x.rival, min: minutes,
-      f: { b:f.b, p:f.p, j:f.j, r:f.r, bl: blesses.has(x.nom) ? 1 : 0 } });
+      f: { b:f.b, p:f.p, j:f.j, r:f.r, pm:f.pm || 0, bl: blesses.has(x.nom) ? 1 : 0 } });
   };
   (m.onze || []).forEach(x => noter(x,
     expulse.has(x.nom) ? expulse.get(x.nom) : sorti.has(x) ? sorti.get(x) : 90));
