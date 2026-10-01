@@ -2695,11 +2695,20 @@ const MOMENTS_TOUS = [
     opts:[
       { l:"Lui dire, tout de suite, sur le terrain", p:.5,
         ok:{ t:"Il te cherche la fois d'après.", n:.3, e:{ ligne:3 } },
-        ko:{ t:"Il se braque, et tu ne le vois plus de la mi-temps.", n:-.3, e:{ ligne:-3 } } },
+        ko:{ t:"Il se braque, et tu ne reçois plus un ballon propre de lui.", n:-.3, e:{ ligne:-3 } } },
       { l:"Ne rien dire, repartir", p:.7,
         ok:{ t:"Il s'excuse tout seul à la pause.", n:.2, e:{ ligne:2 } },
         ko:{ t:"Il recommence deux fois, tu finis le match sans un ballon propre.", n:-.4, e:{ ment:-.8 } } } ] },
-  { id:'adix', q:"Rouge pour un des tiens. Il reste vingt-cinq minutes et vous êtes un de moins. Personne ne dit rien, et tout le monde te regarde.", axe:'ment',
+  /* UN FAIT QUI AFFIRME UN ÉVÉNEMENT DU MATCH S'ACCROCHE À L'ÉVÉNEMENT RÉEL. Celui-ci
+     annonçait un rouge que le film ne montrait pas, et un temps restant écrit en dur
+     (« il reste vingt-cinq minutes ») démenti par la minute du fait. */
+  { id:'adix', q:"Rouge pour un des tiens. Vous êtes un de moins. Personne ne dit rien, et tout le monde te regarde.", axe:'ment', prio:true,
+    ancre:(m, bas, haut) => {
+      const l = (m.expulses || []).filter(x => x.nom !== S.moi.nom && x.min + 1 >= bas && x.min + 1 <= haut);
+      if (!l.length) return null;
+      const x = pick(l), mn = x.min + 1;
+      return { min:mn, q:`Rouge pour ${x.nom}. Il reste ${90 - mn} minutes et vous êtes un de moins. Personne ne dit rien, et tout le monde te regarde.` };
+    },
     gk:{ 0:{ ok:{ ligne:6 }, ko:{ ligne:-4 } } },
     opts:[
       { l:"Reculer tout le monde et tenir", p:.65,
@@ -2708,7 +2717,22 @@ const MOMENTS_TOUS = [
       { l:"Continuer à jouer haut", p:.4,
         ok:{ t:"Vous marquez à dix, le stade se lève.", n:0, ev:['equipe'], e:{ vestiaire:6, supporters:4 } },
         ko:{ t:"Ils vous prennent dans le dos.", n:0, ev:['encaisse'], e:{ ligne:-3 } } } ] },
-  { id:'jeune', q:"Il entre à la 72ᵉ pour son premier match. Il a les jambes qui tremblent, et il se place à côté de toi.", axe:'ment',
+  /* « Il entre à la 72ᵉ » était écrit en dur, quand le fait se tirait entre la 10ᵉ et la
+     88ᵉ : le propriétaire l'a vu à la 25ᵉ. Et personne n'entrait vraiment. Le jeune est
+     désormais un entrant réel du film, il a son nom et sa minute. */
+  { id:'jeune', q:"Il entre pour son premier match. Il a les jambes qui tremblent, et il se place à côté de toi.", axe:'ment',
+    ancre:(m, bas, haut) => {
+      /* L'âge est sur `ref` : les listes du onze et du banc sont des enveloppes, pas
+         les joueurs eux-mêmes. À le lire sur l'enveloppe, le fait ne sortait plus
+         jamais — 173 tirages devenus zéro, et la sonde l'a dit tout de suite. */
+      const age = c => (c.entrant.ref && c.entrant.ref.age) || 30;
+      const l = (m.chg || []).filter(c => c.entrant && !c.entrant.moi && age(c) <= 24
+        && c.min >= bas && c.min <= haut);
+      if (!l.length) return null;
+      const c = l.sort((a, b) => age(a) - age(b))[0];
+      const quoi = age(c) <= 21 ? "pour son premier match" : "pour l'un de ses premiers matchs";
+      return { min:c.min, q:`${c.entrant.nom} entre à la ${c.min}ᵉ ${quoi}. Il a les jambes qui tremblent, et il se place à côté de toi.` };
+    },
     gk:{ 0:{ ok:{ vestiaire:7 } }, 1:{ ko:{ coach:-3, vestiaire:-4 } } },
     opts:[
       { l:"Jouer facile avec lui, le mettre dedans", p:.7,
@@ -2739,11 +2763,11 @@ const MOMENTS_TOUS = [
    matchs de coupe et Europe »). Un seul par match de mercredi, jamais deux : la
    semaine ne gonfle que les semaines où il y a vraiment un match en plus. */
 const MOMENTS_CE = [
-  { id:'petit', q:"Terrain gras, trois mille personnes collées au bord, et une équipe qui n'a rien à perdre.", axe:'ment', ou:'coupe', tour:2,
+  { id:'petit', q:"Terrain gras, trois mille personnes collées au bord, et une équipe qui n'a rien à perdre.", axe:'ment', ou:'coupe', tour:2, titu:true,
     opts:[
       { l:"Jouer sérieux dès la première minute", p:.8,
-        ok:{ t:"Vous pliez le match avant la mi-temps, tu sors à l'heure de jeu.", n:.5, e:{ fit:-4 } },
-        ko:{ t:"Ils s'accrochent, tu joues les quatre-vingt-dix.", n:.2, e:{ fit:-12 } } },
+        ok:{ t:"Vous pliez le match avant la mi-temps, tu sors à l'heure de jeu.", n:.5, mins:60, e:{ fit:-4 } },
+        ko:{ t:"Ils s'accrochent, tu joues les quatre-vingt-dix.", n:.2, mins:90, e:{ fit:-12 } } },
       { l:"Économiser tes jambes pour samedi", p:.55,
         ok:{ t:"Vous passez sans forcer.", n:.2, e:{ fit:-5 } },
         ko:{ t:"Éliminés par un club de division inférieure.", n:-.6, e:{ vestiaire:-6, supporters:-8 } } } ] },
@@ -2771,11 +2795,11 @@ const MOMENTS_CE = [
       { l:"Partir au feeling, et les regarder dans les yeux", p:.25, aide:'ment',
         ok:{ t:"Tu en sors deux. Personne ne t'avait rien dit : c'est toi, tout seul.", n:1.8, ev:['arretTab'], e:{ ment:3, vestiaire:8 } },
         ko:{ t:"Tu plonges trois fois avant la frappe : ils t'ont lu.", n:-.6, e:{ ment:-2, ligne:-2 } } } ] },
-  { id:'depl', q:"Trois mille kilomètres, un stade plein et hostile, et samedi dans trois jours.", axe:'phys', ou:'euro', dehors:true,
+  { id:'depl', q:"Trois mille kilomètres, un stade plein et hostile, et samedi dans trois jours.", axe:'phys', ou:'euro', dehors:true, titu:true,
     opts:[
       { l:"Tout donner", p:.6,
-        ok:{ t:"Tu tiens les quatre-vingt-dix et vous ramenez un résultat.", n:.7, e:{ agent:6 } },
-        ko:{ t:"Tu es cuit à l'heure de jeu, tu sors.", n:-.3, e:{ fit:-14 } } },
+        ok:{ t:"Tu tiens les quatre-vingt-dix et vous ramenez un résultat.", n:.7, mins:90, e:{ agent:6 } },
+        ko:{ t:"Tu es cuit à l'heure de jeu, tu sors.", n:-.3, mins:60, e:{ fit:-14 } } },
       { l:"Gérer", p:.8,
         ok:{ t:"Tu fais le match qu'il fallait, sans éclat.", n:.2, e:{ fit:-6 } },
         ko:{ t:"Le coach voit que tu as gardé tes jambes.", n:-.2, e:{ coach:-4 } } } ] },
@@ -2798,6 +2822,15 @@ const MOMENTS_CE = [
 ];
 function suiteMatch(){
   const m = S.match;
+  /* TU NE JOUES PAS UN FAIT APRÈS ÊTRE SORTI. Les faits sont tirés dans ta fenêtre,
+     mais un fait peut la refermer en cours de route (la cuisse qui lâche, un rouge) :
+     mesuré, 24 faits sur 1 985 se jouaient après ta sortie. Ceux-là n'ont pas eu lieu. */
+  const e0 = m.entree || 0, fin = e0 + (m.minutes || 0);
+  while (S.momentIdx < m.moments.length){
+    const f = m.moments[S.momentIdx];
+    if (f.min >= e0 && f.min <= fin) break;
+    m.moments.splice(S.momentIdx, 1);
+  }
   if (S.momentIdx < m.moments.length){ S.ecran = 'moment'; sauver(); return rendre(); }
   finirMatch();
 }
@@ -2906,14 +2939,38 @@ function tirerMoments(m, entree, sortie){
      triplé de faits de faire un 10 ; ce qu'il rend, c'est le relief. */
   const t = Math.random();
   const n = t < .35 ? 0 : t < .77 ? 1 : t < .94 ? 2 : 3;
-  for (let i = 0; i < n; i++){
-    const f = pick(sac);
+  /* UN ROUGE DANS TON CAMP EST LE MOMENT DU MATCH. Une fois le fait ancré sur une
+     vraie expulsion, il lui fallait l'événement **et** le tirage : mesuré, 3 sorties
+     sur 1 878 faits, autant dire une famille morte. Quand l'événement a vraiment eu
+     lieu, le fait qui en parle passe donc devant le tirage. */
+  if (n) for (const f of sac){
+    if (!f.prio) continue;
+    const a = f.ancre(m, bas, haut);
+    if (!a || Math.random() >= .6) continue;
+    const mo = { ...f, min:a.min, q:a.q }; delete mo.ancre; m.moments.push(mo); break;
+  }
+  for (let i = m.moments.length; i < n; i++){
+    /* Une ancre qui ne trouve pas son événement ne doit pas coûter le fait : on retire
+       une fois dans le sac. Sans ça, les deux familles ancrées mangeaient 10 % des faits. */
+    let f = pick(sac);
+    if (f.ancre && !f.ancre(m, bas, haut)) f = pick(sac);
     if (m.moments.some(x => x.id === f.id)) continue;
     // la cuisse ne tire qu'en seconde période, la montée qu'en fin de match serré
-    let mn = ri(bas, haut);
+    let mn = ri(bas, haut), q = f.q;
     if (f.tard) mn = ri(Math.max(bas, 55), haut);
     if (f.chaudSeul){ if (m.bn >= m.be || haut < 70) continue; mn = ri(Math.max(bas, 70), haut); }
-    m.moments.push({ ...f, min:mn });
+    /* Un fait qui affirme un événement du match (une entrée, un rouge) s'accroche à
+       l'événement réel : il prend sa minute et le nom de celui qu'il concerne, et il ne
+       se tire pas du tout quand l'événement n'a pas eu lieu. Le texte est résolu ici,
+       jamais stocké comme fonction : `m.moments` passe par la sauvegarde. */
+    if (f.ancre){
+      const a = f.ancre(m, bas, haut);
+      if (!a) continue;
+      mn = a.min; q = a.q;
+    }
+    const mo = { ...f, min:mn, q };
+    delete mo.ancre;
+    m.moments.push(mo);
   }
   m.moments.sort((a, b) => a.min - b.min);
 }
@@ -2922,15 +2979,26 @@ function tirerMoments(m, entree, sortie){
    le petit club, la pelouse, les tirs au but, le déplacement, le grand d'Europe. */
 function momentSemaine(info, m){
   const ou = info.c, gard = S.moi.poste === 'G';
+  /* LE FAIT DU MERCREDI TOMBAIT N'IMPORTE QUAND (`ri(20, 85)`), y compris avant
+     l'entrée d'un remplaçant ou après la sortie d'un titulaire : mesuré, 58 faits
+     sur 192 hors du temps de jeu. Il se tire désormais dans ta fenêtre, et deux
+     familles qui parlent de toute la soirée (`titu`) ou de la fin (`fin`, les tirs
+     au but) ne se tirent que quand c'est vrai. */
+  const titu = m && m.statut === 'titulaire';
+  const mins = (m && m.minutes) || 0;
+  const ent = titu ? 0 : 90 - mins, sor = titu ? mins : 90;
+  const bas = Math.max(ent + 2, 12), haut = Math.min(sor - 2, 85);
+  if (haut <= bas) return null;
   const sac = MOMENTS_CE.filter(f =>
     (!f.ou || f.ou === ou) && !(f.pasG && gard) && !(f.gOnly && !gard)
     && !(f.tour && (info.t == null || info.t >= f.tour))
     && !(f.dehors && info.dom) && !(f.finale && !info.finale)
+    && !(f.titu && !titu) && !(f.tab && sor < 90)
     // les tirs au but ne se tirent que s'il y a vraiment une séance de tirs au but
     && !(f.tab && !(m && m.tab)));
   if (!sac.length) return null;
   const f = pick(sac);
-  return { ...f, min: f.tab ? 90 : ri(20, 85) };
+  return { ...f, min: f.tab ? 90 : ri(bas, haut) };
 }
 
 /* ---------- le deuxième effet ---------- */
@@ -2973,13 +3041,17 @@ function choisirMoment(i){
     + (S.etats.fraicheur - 80) * .001 - pression;
   const reussi = Math.random() < clamp(o.p + bonus, .05, .95);
   const r = reussi ? o.ok : o.ko;
+  /* « Tu sors à l'heure de jeu » et « tu joues les quatre-vingt-dix » étaient des
+     phrases : le compteur de minutes du mercredi, tiré avant le fait, disait souvent
+     l'inverse. L'issue l'écrit maintenant, donc la note et la fraîcheur suivent. */
+  if (r.mins != null && m.comp && m.minutes) m.minutes = Math.max(f.min, Math.min(90, r.mins));
   f.choix = o.l; f.reussi = reussi; f.txt = r.t;
   f.choixMoi = i === 0;
   /* Et quand ça casse dans un moment chaud, on sort du match. Ça porte un nom,
      ça s'écrit dans le film, et ça coûte. Le mental décide si ça arrive. */
   if (!reussi && f.chaud && !m.perduLeFil && Math.random() < .5 - encaisse() * .42){
     m.perduLeFil = f.min;
-    jrn('moment', `${f.min}ᵉ — Tu as perdu le fil. Vingt minutes à côté de la partie.`);
+    jrn('moment', `${f.min}ᵉ — Tu as perdu le fil. ${90 - f.min >= 20 ? "Vingt minutes à côté de la partie." : "Tu finis le match à côté de la partie."}`);
     coutMental(2, "tu es sorti du match après cette action");
   }
   if (reussi && f.chaud) f.tenu = true;
