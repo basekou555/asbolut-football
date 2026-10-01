@@ -14,7 +14,7 @@
    - tout ce qui arrive est écrit dans `S.journal`, seule mémoire du jeu.
    ============================================================ */
 
-const VERSION = 14;  // les dix-sept arrêts réécrits et les douze familles nouvelles
+const VERSION = 15;  // le sous-système de la sélection : convocation, deux matchs, compteurs
 /* MIGRATION 10 → 11 : deux choses à construire, et une partie en cours les reprend
    sans rien perdre — le propriétaire joue la version déployée.
    1. **L'échelon inférieur** (`S.ligue.autre`) n'existait pas : on le fabrique avec
@@ -345,6 +345,10 @@ function nouvellePartie(c){
        suivant, une fois, et elles se disent. `brassard` : les journées qu'il te
        reste à le porter. `piqure` : le corps ne remonte plus cette saison. */
     promesses: [], brassard: 0, piqure: false, prolonge: false, reprise: 0,
+    /* La sélection : `dedans` dit si tu es dans le groupe du sélectionneur. Le
+       premier appel passe par l'arrêt `selection` ; ensuite les fenêtres se jouent
+       d'elles-mêmes, et on peut ne plus être rappelé. */
+    selec: { dedans:false, caps:0, buts:0, passes:0, notes:[] }, selecVue: null,
     vie: { proches: 58, chantiers: [], gagne: 0, gagneAvant: 0, salaire0: 0, grosFait: false, prochesPlancher: 0 },
     moi: { nom: c.nom, poste: poste.id, posteNom: poste.nom, specNom: poste.spec,
       age: 18, base, boost: { tech:0, phys:0, ment:0, spec:0 }, plafond, socle,
@@ -1092,6 +1096,9 @@ function choisirSemaine(id){
      pose le groupe du week-end : ses minutes et sa fatigue entrent donc dans le
      choix du onze de samedi, ce qui est exactement le coût qu'on veut. */
   S.annexe = matchAnnexe(S.journee) ? jouerAnnexe(matchAnnexe(S.journee)) : null;
+  /* La fenêtre internationale, au même endroit et pour la même raison : ses jambes
+     doivent entrer dans le choix du onze de samedi. */
+  S.selecVue = (S.selec && S.selec.dedans && J_SELEC.includes(S.journee)) ? jouerSelection() : null;
   /* Un fait de mercredi prend la main : l'écran du moment s'ouvre, et la semaine
      reprend où elle en était une fois le choix fait. */
   if (S.faitAnnexe) return;
@@ -1514,11 +1521,12 @@ const ARRETS = [
      tes semaines. Ici c'est la décision, pas le sous-système — les deux matchs ne
      se jouent pas, ils se lisent, et leur prix est dans les jambes de samedi. */
   { id:'selection',
-    quand: () => S.journee >= 8 && S.liens.selection >= 55 && !(S.vuArrets || {}).selection,
+    quand: () => S.journee >= 8 && S.liens.selection >= 55
+      && !(S.selec || {}).dedans && !(S.vuArrets || {}).selection,
     titre:"La sélection",
     texte:"Une lettre, pas un coup de fil. Deux matchs, en pleine semaine, à trois mille kilomètres.",
     options:[
-      { l:"Y aller", liens:{ supporters:8, agent:10 }, fit:-12, corps:-3,
+      { l:"Y aller", liens:{ supporters:8, agent:10 }, fit:-12, corps:-3, selec:true,
         dit:[{c:'foot',t:"📣 le pays te regarde"},{c:'foot',t:"🤝 ta cote monte pour juin"},{c:'risk',t:"🫁 tu joueras samedi sur les jambes"}] },
       { l:"Te faire porter pâle", liens:{ club:6, coach:4, selection:-15, supporters:-5 },
         dit:[{c:'foot',t:"🏟️ le club approuve"},{c:'foot',t:"🎽 il n'a jamais aimé les trêves"},{c:'risk',t:"🇫🇷 ils ne rappellent pas deux fois"}] },
@@ -1627,6 +1635,10 @@ function appliquer(o){
      du jeu qui pose un plancher sur une jauge, et il est mérité. */
   if (o.prochesPlancher) S.vie.prochesPlancher = Math.max(S.vie.prochesPlancher || 0, o.prochesPlancher);
   if (o.grosFait) S.vie.grosFait = true;
+  /* Dire oui au sélectionneur te met dans le groupe : les fenêtres suivantes se
+     jouent sans qu'on te redemande, jusqu'à ce qu'il ne te rappelle plus. */
+  if (o.selec){ S.selec.dedans = true;
+    suite = `Tu es dans le groupe. Les prochaines trêves, tu pars sans qu'on te le demande.`; }
   return suite;
 }
 const POSTE_A = { G:'dans les buts', D:'en défense', M:'au milieu', A:'devant' };
@@ -2110,9 +2122,160 @@ function suiteAnnexe(info, m){
     jrn('euro', `Europe : éliminés ${TOURS_EURO[info.t]}, ${m.bn}-${m.be} contre ${m.adv}.`);
   }
 }
+/* ================== LA SÉLECTION ==================
+   LE SOUS-SYSTÈME (le propriétaire, 29/09/2026, en le remettant au lot d'après :
+   « la convocation, les deux matchs en pleine semaine, les jambes que ça coûte »).
+   La jauge vivait depuis le 29/09 et la décision d'y aller depuis le 30 ; il
+   manquait ce qui se passe quand on dit oui.
+   **Elle obéit aux mêmes verrous que la coupe** : on ne l'opère pas, on la lit, et
+   elle ne rallonge pas la semaine — elle la coûte. Mais elle coûte plus cher que
+   tout le reste, et c'est le sujet : **deux matchs en une semaine, à trois mille
+   kilomètres**, et samedi tombe quand même. C'est la seule chose du jeu qui fait de
+   la fatigue une conséquence de la réussite : plus tu es bon, plus on te prend tes
+   semaines.
+   La convocation ne se re-décide pas chaque fois — ce serait un clic de plus toutes
+   les cinq journées. Le premier appel est l'arrêt `selection` ; ensuite tu es dans
+   le groupe, et tu y restes tant que le sélectionneur te garde. */
+const J_SELEC = [5, 12, 18, 23, 30];   // cinq fenêtres, toutes hors coupe et Europe
+/* Les adversaires sont des nations, pas des clubs : une sélection ne joue pas
+   contre Lens. L'échelle est celle du jeu, pour que `nous − force` reste lisible
+   par le même moteur — mais **resserrée**, et c'est une correction trouvée à
+   l'écran avant de livrer. Première version étalée comme un championnat
+   (50 à 78) : l'espérance de buts est une exponentielle de l'écart divisé par 19,
+   calibrée sur des écarts de club (0 à 15 points), donc un écart de trente points
+   donnait des scores de handball — vu tel quel, « l'Irlande 7–1 » et « le Mexique
+   6–1 ». Entre nations l'écart réel est petit : le dernier du tableau tient le
+   match contre le premier. Seize points du haut en bas, et la France (le meilleur
+   club du pays + 4, soit 82 en 2018) est dans le peloton de tête. */
+/* La France : un grand, pas le plus grand. C'est aussi l'étalon de la note d'un
+   match de sélection — à 80, un joueur à 70 joue dix points au-dessus de lui-même,
+   et c'est pour ça qu'une première sélection est dure. */
+const FRANCE_FORCE = 80;
+const NATIONS = [
+  ['le Brésil', 84], ['l\'Argentine', 83], ['l\'Allemagne', 83], ['l\'Italie', 82],
+  ['l\'Espagne', 82], ['l\'Angleterre', 82], ['les Pays-Bas', 81], ['le Portugal', 81],
+  ['la Belgique', 79], ['la Croatie', 78], ['l\'Uruguay', 78], ['le Danemark', 77],
+  ['la Suisse', 77], ['la Suède', 76], ['le Mexique', 75], ['la Pologne', 75],
+  ['le Japon', 75], ['le Sénégal', 75], ['le Maroc', 75], ['la Serbie', 74],
+  ['l\'Autriche', 74], ['la Norvège', 73], ['la Grèce', 73], ['l\'Écosse', 71],
+  ['la Hongrie', 70], ['l\'Irlande', 70], ['la Finlande', 69], ['l\'Islande', 68],
+];
+/* Ta place en sélection n'est pas celle de ton club : le sélectionneur a ses
+   propres hommes, et c'est la jauge qui dit où tu en es dans sa tête. Au-dessus de
+   75 tu es titulaire, en dessous de 50 tu regardes. */
+function statutSelec(){
+  const v = S.liens.selection || 0;
+  if (v >= 75) return 'titulaire';
+  if (v >= 58) return Math.random() < .62 ? 'titulaire' : 'banc';
+  return Math.random() < .3 ? 'titulaire' : 'banc';
+}
+/* Les deux matchs de la fenêtre. Ils se jouent d'un bloc, on les lit après, et
+   leur prix est dans les jambes de samedi. */
+function jouerSelection(){
+  /* ON NE VOYAGE PAS DEPUIS L'INFIRMERIE. Sans cette porte, la fenêtre jouerait
+     deux matchs à un joueur que l'écran de la semaine annonce blessé ou suspendu —
+     exactement le genre de contradiction qu'il a déjà relevée deux fois. Ça ne
+     coûte rien aux jambes (elles sont déjà à l'arrêt) mais la place se perd un peu :
+     le sélectionneur en essaie un autre, et cet autre peut rester. */
+  if (S.etats.blessure > 0 || S.etats.suspension > 0){
+    const quoi = S.etats.blessure > 0 ? "blessé" : "suspendu";
+    S.liens.selection = clamp((S.liens.selection || 0) - 3);
+    jrn('selection', `Tu as dû renoncer à la trêve : ${quoi}. Un autre a joué à ta place.`);
+    const f = { caps:0, buts:0, passes:0, notes:[], matchs:[], mins:0, absent:quoi };
+    if ((S.liens.selection || 0) < 38){
+      S.selec.dedans = false; f.sorti = true;
+      jrn('selection', `La liste est sortie sans toi. Ils ne t'ont pas rappelé.`);
+    }
+    return f;
+  }
+  /* LA FRANCE N'EST PAS UNE FONCTION DE TON CLUB. Première version : le meilleur
+     club du pays + 4 — mesuré, elle perdait **64 % de ses matchs** et encaissait
+     2,18 buts, parce que la force dépendait de la division où *tu* jouais (en
+     deuxième division le meilleur club tombe à 60, soit huit points sous
+     l'Islande). Une sélection nationale ne vaut pas ce que vaut ton employeur :
+     c'est une valeur du pays, posée sur l'échelle des nations, un cran sous le
+     Brésil. */
+  const nous = FRANCE_FORCE;
+  const tirage = NATIONS.slice().sort(() => Math.random() - .5).slice(0, 2);
+  const f = { caps:0, buts:0, passes:0, notes:[], matchs:[], mins:0 };
+  tirage.forEach(([nom, force], k) => {
+    const statut = statutSelec();
+    const mins = statut === 'titulaire' ? ri(70, 90) : (Math.random() < .55 ? ri(12, 35) : 0);
+    const dom = k === 0;
+    const diff = nous - force + (dom ? 2.4 : -2.4);
+    const bn = poisson(tameXG(1.35 * Math.exp(diff / 19)));
+    const be = poisson(tameXG(1.35 * Math.exp(-diff / 19)));
+    const res = bn > be ? 'V' : bn === be ? 'N' : 'D';
+    const m = { adv:nom, dom, bn, be, res, statut, minutes:mins, buts:0, passes:0, note:null };
+    if (mins){
+      f.caps++; f.mins += mins;
+      const chance = { G:0, D:.055, M:.155, A:.28 }[S.moi.poste]
+        * clamp(1 + (S.moi.base.spec - 50) * .006, .7, 1.3) * (mins / 90);
+      for (let i = 0; i < bn; i++){
+        if (Math.random() < chance) m.buts++;
+        else if (Math.random() < { G:0, D:.10, M:.24, A:.18 }[S.moi.poste] * (mins / 90)) m.passes++;
+      }
+      const derriere = S.moi.poste === 'G' || S.moi.poste === 'D';
+      /* Une sélection se joue au-dessus de ton niveau de club : `niveauJour()` se
+         compare au niveau de la nation, pas à celui de ton club — c'est pour ça
+         qu'une première sélection est dure. */
+      m.note = Math.round(clamp(6.1 + poidsResultat(res, bn, be, derriere, nous - force)
+        + cumul(m.buts, POIDS_BUT) + m.passes * .4
+        + (derriere ? (be === 0 ? .8 : be >= 4 ? -.7 : 0) : 0)
+        + (niveauJour() - nous) * .05 + poidsEtat() + aleaNote(), 3, 10) * 10) / 10;
+      f.notes.push(m.note); f.buts += m.buts; f.passes += m.passes;
+    }
+    f.matchs.push(m);
+  });
+  /* CE QUE ÇA COÛTE, et c'est le cœur du sujet : deux matchs, le voyage, et samedi
+     dans trois jours. Le prix est volontairement plus lourd qu'un mercredi de
+     coupe (7 + minutes × .14) : il y a deux rencontres et six mille kilomètres. */
+  S.etats.fraicheur = clampFr(S.etats.fraicheur - (10 + f.mins * .16));
+  S.etats.corps = clamp(S.etats.corps - 2, 0, 100);
+  /* CE QUE LA TRÊVE COÛTE, ET CE QU'ELLE NE COÛTE PAS — mesuré, et ça contredit ce
+     que j'attendais. Elle prend 27 points de fraîcheur sur la semaine (35 au coup
+     d'envoi de samedi contre 63 une semaine ordinaire) et c'est tout : à
+     l'intérieur des mêmes saisons, le samedi d'après est le même — 97,4 % de
+     titularisations contre 97,5, 83,8 minutes contre 83,9, 1,6 % de blessures
+     contre 1,3 % (n=2 208 contre 106 646, et le dernier écart vaut une
+     erreur-type). La cause n'est pas la fenêtre, c'est la forme du vestiaire :
+     quand on est appelé, on est **24 points au-dessus du dernier titulaire de son
+     poste** (marge médiane sur 10 828 semaines), et sur 3 168 fenêtres **une
+     seule** est tombée une semaine où la place se jouait. J'avais ajouté ici une
+     pénalité de « retour de sélection » sur le choix du onze : mesurée, elle ne
+     pouvait pas se déclencher. Retirée — une mécanique qui ne se déclenche jamais
+     n'est pas un coût, c'est de la décoration. Ce qui reste à décider est au
+     propriétaire : si une semaine internationale doit coûter plus que des jambes,
+     le levier n'est pas ici mais dans le poids de la fraîcheur sur le temps de jeu
+     d'un titulaire indiscutable. */
+  // ce que tu y as fait décide si on te rappelle, et ce que le pays retient de toi
+  const moy = f.notes.length ? f.notes.reduce((a, b) => a + b, 0) / f.notes.length : null;
+  if (moy != null){
+    S.liens.selection = clamp((S.liens.selection || 0) + (moy - 6.2) * 7);
+    S.liens.supporters = clamp(S.liens.supporters + (moy >= 6.5 ? 4 : moy < 5.6 ? -2 : 1));
+    S.liens.agent = clamp(S.liens.agent + (moy >= 6.5 ? 5 : 1));
+    if (moy < 5.6) coutMental(1.4, "ces deux matchs en sélection");
+  } else S.liens.selection = clamp((S.liens.selection || 0) - 6);  // rester sur le banc se paie
+  S.selec.caps += f.caps; S.selec.buts += f.buts; S.selec.passes += f.passes;
+  f.notes.forEach(n => S.selec.notes.push(n));
+  const c = S.carriere; if (c){ c.caps = (c.caps || 0) + f.caps; c.butsSelec = (c.butsSelec || 0) + f.buts; }
+  jrn('selection', `Sélection : ${f.matchs.map(m => `${m.adv} ${m.bn}-${m.be}`).join(', ')}` +
+    (f.caps ? ` — ${f.caps} sélection${f.caps > 1 ? 's' : ''}${f.buts ? `, ${f.buts} but${f.buts > 1 ? 's' : ''}` : ''}.` : ` — tu n'as pas joué.`));
+  /* ET ON PEUT NE PLUS ÊTRE RAPPELÉ. C'est la sortie du sous-système, et elle doit
+     exister : sinon une sélection obtenue une fois serait acquise à vie, ce qui est
+     exactement le défaut qu'il avait relevé sur la jauge en 1.0. */
+  if ((S.liens.selection || 0) < 38){
+    S.selec.dedans = false;
+    jrn('selection', `La liste est sortie sans toi. Ils ne t'ont pas rappelé.`);
+    f.sorti = true;
+  }
+  return f;
+}
 /* Ce qu'on dit du mercredi qui vient, sur l'écran de la semaine : la décision
    d'entraînement doit le savoir. */
 function direMercredi(){
+  if (S.selec && S.selec.dedans && J_SELEC.includes(S.journee))
+    return `Cette semaine, **deux matchs en sélection**, à trois mille kilomètres. Samedi tombe quand même.`;
   const info = matchAnnexe(S.journee);
   if (!info) return null;
   return info.c === 'coupe'
@@ -2289,6 +2452,9 @@ function lancerMatch(){
   m.entree = entree;
   m.arret = S.semaineArret || null; S.semaineArret = null;
   m.annexe = S.annexe || null; S.annexe = null;
+  /* La fenêtre internationale se lit sur l'écran de résultat, comme le mercredi :
+     `apresMatch()` remet l'état de la semaine à zéro, donc elle doit voyager sur `m`. */
+  m.selec = S.selecVue || null; S.selecVue = null;
   S.match = m; S.momentIdx = 0;
   suiteMatch();
 }
@@ -3762,7 +3928,7 @@ function vieillir(){
   /* L'année qui passe use, et de plus en plus vite. C'est ce qui fait qu'une carrière
      finit par se terminer dans le corps avant de se terminer dans les chiffres. */
   if (S.moi.age >= 29) S.etats.corps = clamp(S.etats.corps - (S.moi.age - 28) * .3);
-  S.carriere = S.carriere || { saisons:0, matchs:0, titus:0, buts:0, passes:0,
+  S.carriere = S.carriere || { saisons:0, matchs:0, titus:0, buts:0, passes:0, caps:0, butsSelec:0,
     sum:0, nbNotes:0, titres:0, clubs:[], annees:[], gagne:0 };
   const c = S.carriere;
   c.saisons++; c.matchs += S.stats.matchs; c.titus += S.stats.titus;
@@ -4113,6 +4279,8 @@ function demarrerSaison(club, reste){
   };
   S.stats = { matchs:0, titus:0, buts:0, passes:0, notes:[], minutes:0 };
   S.promesses = []; S.brassard = 0; S.piqure = false; S.prolonge = false; S.reprise = 0;
+  S.selecVue = null;
+  S.selec = S.selec || { dedans:false, caps:0, buts:0, passes:0, notes:[] };
   /* UN COACH PEUT ÊTRE VIRÉ EN COURS DE SAISON, et c'est la seule chose qui remet
      le classement de ton poste à zéro au milieu d'une année : elle peut sauver une
      saison morte comme tuer une saison réussie. Une saison sur huit, et la journée
@@ -4192,9 +4360,20 @@ function pourquoiLien(lien){
       : v >= 44 ? "À domicile, ça ne pèse presque rien."
       : "À domicile, le stade vous pèse plus qu'il ne vous porte.";
   }
-  if (lien === 'selection') return (S.liens.selection || 0) >= 45
-    ? "Ça t'ouvre des clubs qui ne t'appelaient pas."
-    : "Trop peu, encore, pour qu'un club s'en serve.";
+  /* Depuis que la convocation existe, la jauge fait deux choses : elle ouvre des
+     clubs, et elle décide de ta place dans la liste. Les seuils sont ceux de
+     `statutSelec()` et de la sortie du groupe (38), pas des seuils d'écriture. */
+  if (lien === 'selection'){
+    const v = S.liens.selection || 0, dans = (S.selec || {}).dedans;
+    const caps = (S.selec || {}).caps || 0;
+    if (dans) return (v >= 75 ? "Tu es titulaire en sélection" : v >= 58 ? "Tu joues souvent en sélection" : "Tu y vas, mais tu regardes beaucoup")
+      + `${caps ? ` (${caps} sélection${caps > 1 ? 's' : ''})` : ''}. `
+      + (v < 45 ? "Sous ce niveau-là, la liste finira par sortir sans toi."
+         : "Les trêves coûtent deux matchs et le voyage, et samedi arrive quand même.");
+    return v >= 55 ? "Assez haut pour qu'ils appellent. Les trêves te prendront des jambes."
+      : v >= 45 ? "Ça t'ouvre des clubs qui ne t'appelaient pas, pas encore la liste."
+      : "Trop peu, encore, pour qu'un club s'en serve.";
+  }
   return null;
 }
 function dire(lien){
@@ -4525,6 +4704,17 @@ function charger(){
       d.nouveauCoachJ = 0; d.nouveauCoachFait = false;
       if (d.vie){ d.vie.salaire0 = d.salaire || 0; d.vie.grosFait = false; d.vie.prochesPlancher = 0; }
       d.v = 14;
+    }
+    /* MIGRATION 14 → 15 : la sélection devient un sous-système. La jauge existait
+       déjà (elle convergeait et ouvrait des clubs) ; ce qui manque à une sauvegarde
+       v14, c'est le groupe et les compteurs. On n'y met personne d'office : être
+       dans la liste se décide par l'arrêt `selection`, qui s'ouvrira comme pour
+       une carrière neuve. */
+    if (d.v === 14){
+      d.selec = { dedans:false, caps:0, buts:0, passes:0, notes:[] };
+      d.selecVue = null;
+      if (d.carriere){ d.carriere.caps = d.carriere.caps || 0; d.carriere.butsSelec = d.carriere.butsSelec || 0; }
+      d.v = 15;
     }
     /* La qualité et le défaut se découvrent désormais à la création : une carrière
        commencée avant ne les a peut-être pas encore vus, et plus rien ne les lui

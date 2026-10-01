@@ -388,6 +388,28 @@ function annexeHTML(a){
         : `Tu n'étais pas du voyage.`}</p></div></div>`;
 }
 
+/* LA FENÊTRE INTERNATIONALE, LUE APRÈS COUP. Deux matchs d'un bloc, comme le
+   mercredi de coupe : on ne les opère pas, on en lit le résultat — et surtout ce
+   qu'ils ont coûté aux jambes de samedi, qui est tout le sujet. */
+function selecHTML(s){
+  if (!s) return '';
+  if (s.absent) return `<h3>La sélection</h3>
+    <div class="bloc"><span class="i">🌍</span><div><h4>Tu n'es pas parti</h4>
+      <p class="narr" style="margin:0">${s.absent === 'blessé' ? "Blessé" : "Suspendu"} : la trêve s'est jouée sans toi, et un autre a tenu ta place.${
+        s.sorti ? ` <b>La liste suivante est sortie sans toi.</b>` : ''}</p></div></div>`;
+  const ton = s.notes.length ? (s.notes.reduce((a, b) => a + b, 0) / s.notes.length >= 6.5 ? 'gagne' : '') : '';
+  return `<h3>La sélection</h3>
+    <div class="bloc ${ton}"><span class="i">🌍</span><div>
+      <h4>${s.matchs.map(x => `${esc(x.adv)} ${x.bn}–${x.be}`).join(' · ')}</h4>
+      <p class="narr" style="margin:0">${s.caps
+        ? `${s.caps} sélection${s.caps > 1 ? 's' : ''}, ${s.mins} min${
+            s.buts ? `, ${s.buts} but${s.buts > 1 ? 's' : ''}` : ''}${
+            s.passes ? `, ${s.passes} passe${s.passes > 1 ? 's' : ''} décisive${s.passes > 1 ? 's' : ''}` : ''
+          } — note ${s.matchs.filter(x => x.minutes).map(x => virg(x.note)).join(' et ')}. Samedi partira de plus loin.`
+        : `Tu as fait les deux matchs sur le banc. Le voyage, pas le terrain.`}${
+        s.sorti ? ` <b>La liste suivante est sortie sans toi.</b>` : ''}</p></div></div>`;
+}
+
 function ecranResultat(){
   const m = S.dernier;
   const gauche = m.adv.dom ? S.club.nom : m.adv.nom, droite = m.adv.dom ? m.adv.nom : S.club.nom;
@@ -402,7 +424,7 @@ function ecranResultat(){
   return `<div class="card">
     <div class="step">${ordinal(S.journee + 1)} journée · terminé</div>
     <div class="score"><span class="big">${score}</span><div><b>${esc(gauche)}</b> – ${esc(droite)}<br><span class="sub">${maLigne}</span></div></div>
-    ${annexeHTML(m.annexe)}
+    ${annexeHTML(m.annexe)}${selecHTML(m.selec)}
     ${m.arret || m.seance ? `<h3>Ta semaine</h3>
       ${m.arret ? `<p class="narr" style="margin-bottom:6px"><b>${esc(m.arret.titre)}</b> \u2014 tu as choisi : \u00ab ${esc(m.arret.choix)} \u00bb.${
         /* Ce que la décision a produit tout de suite, quand il y a quelque chose à
@@ -519,6 +541,12 @@ function ecranBilan(){
                 ? `Europe : éliminés ${TOURS_EURO[S.euro.hist[S.euro.hist.length - 1].t]}.`
                 : `Europe : sortis en phase de groupes.`) : ''
         ].filter(Boolean).join(' ')}</p></div></div>` : ''}
+    ${(S.selec && (S.selec.caps || S.selec.notes.length)) ? `
+      <div class="bloc"><span class="i">🌍</span><div><h4>La sélection</h4>
+        <p class="narr" style="margin:0">${S.selec.caps} sélection${S.selec.caps > 1 ? 's' : ''}${
+          S.selec.buts ? `, ${S.selec.buts} but${S.selec.buts > 1 ? 's' : ''}` : ''}${
+          S.selec.notes.length ? `, ${virg(Math.round(S.selec.notes.reduce((a, b) => a + b, 0) / S.selec.notes.length * 10) / 10)} de moyenne` : ''}. ${
+          S.selec.dedans ? "Tu es toujours dans leurs plans." : "Ils ne t'ont pas gardé."}</p></div></div>` : ''}
     ${carriereHTML()}
     <div class="btn-row"><button class="btn ghost" onclick="ouvrirJournal()">📓 Le journal</button>
       <button class="btn" onclick="ouvrirEte()">L'été →</button></div>
@@ -753,6 +781,8 @@ function ecranCarriere(){
       <div><div class="v">${moy == null ? '—' : virg(Math.round(moy * 100) / 100)}</div><div class="k">moyenne</div></div>
       <div><div class="v">${c.titres}${c.coupes ? `+${c.coupes}` : ''}${c.europes ? `+${c.europes}` : ''}</div>
         <div class="k">${[c.titres ? 'championnat' : '', c.coupes ? 'coupe' : '', c.europes ? 'europe' : ''].filter(Boolean).join(' · ') || 'trophée'}</div></div>
+      ${c.caps ? `<div><div class="v">${c.caps}${c.butsSelec ? `·${c.butsSelec}` : ''}</div>
+        <div class="k">sélections${c.butsSelec ? ' · buts' : ''}</div></div>` : ''}
     </div>
     ${meilleure ? `<div class="bloc gagne"><span class="i">⭐</span><div><h4>Ta saison</h4>
       <p class="narr" style="margin:0">${meilleure.annee}-${meilleure.annee + 1} à ${esc(meilleure.club)} : ${meilleure.matchs} matchs, ${meilleure.buts} but${meilleure.buts > 1 ? 's' : ''}${meilleure.note == null ? '' : `, ${virg(meilleure.note)} de moyenne`}${meilleure.pos ? ` — ${meilleure.pos}ᵉ du championnat` : ''}.</p></div></div>` : ''}
