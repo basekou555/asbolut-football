@@ -4534,7 +4534,11 @@ function direJambes(){ const v = S.etats.fraicheur;
 function direFraicheur(){ const v = S.etats.fraicheur;
   return v > 88 ? "Frais" : v > 72 ? "En jambes" : v > 58 ? "Émoussé"
     : v > 20 ? "Vidé — le coach te sortira tôt"
-    : v > 0 ? "À bout — tu ne finiras pas le match"
+    /* Sa formulation, 01/10/2026 : « tu n'as qu'une heure dans les jambes » plutôt
+       que « tu ne finiras pas le match ». Elle dit la même chose en donnant la
+       mesure, et elle colle à ce que le moteur fait — à ce niveau de fraîcheur le
+       changement avance de vingt-deux minutes, donc on sort vers l'heure de jeu. */
+    : v > 0 ? "À bout — tu n'as qu'une heure dans les jambes"
     : "Dans le rouge — tu joues sur la réserve, et ça va casser"; }
 /* CE QUE LE STAFF DIT DE TOI. Deux défauts, tous deux relevés par le propriétaire
    le 27/09/2026 :
