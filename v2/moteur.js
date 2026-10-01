@@ -305,7 +305,14 @@ function nouvellePartie(c){
      star** : niveau médian 88 pour un championnat dont le meilleur club vaut 78,
      et 37 buts par saison pour un attaquant médian. Resserré : la première saison
      ne bouge pas, le sommet d'une carrière oui. */
-  const plafond = {}; AXES.forEach(a => plafond[a] = ri(POT_MIN, POT_MAX));
+  /* ET UN POTENTIEL NE PEUT PAS ÊTRE SOUS LÀ OÙ TU COMMENCES. Il était tiré entre
+     56 et 80 pendant que la base de départ monte à 75 (50, plus dix d'origine, plus
+     quinze de qualité tirée) : un axe sur quatre naissait donc **au-dessus de son
+     propre plafond**, jusqu'à dix-neuf points. C'est ça — et non une accumulation —
+     qui rendait le plafond décoratif. Le tirage garde une marge de progression
+     au-dessus du départ : une qualité veut dire que l'axe peut monter, pas qu'il
+     est déjà fini. */
+  const plafond = {}; AXES.forEach(a => plafond[a] = Math.max(ri(POT_MIN, POT_MAX), base[a] + MARGE_POT));
   /* Le socle : le plancher de chaque axe pour le reste de la carrière. C'est ce
      que l'origine t'a donné — une carrière peut t'abîmer, elle ne peut pas
      effacer d'où tu viens. Borné par le départ réel pour que la qualité et le
@@ -911,10 +918,27 @@ function plafondReel(a){
   return Math.min(S.moi.plafond[a], moy + 25);          // pas de 100 en physique avec 10 partout
 }
 /* La seule porte par laquelle un axe bouge. Une hausse est libre jusqu'au
-   plafond ; une baisse s'arrête au socle. L'usure, quand elle viendra, passera
-   par ici et n'aura rien de plus à savoir. */
+   plafond ; une baisse s'arrête au socle. L'usure passe par ici et n'a rien de
+   plus à savoir.
+   LE PLAFOND ÉTAIT DÉCORATIF (le propriétaire, 01/10/2026 : sa technique à 80,8
+   pour un plafond de 79). Cette fonction promettait « une hausse libre jusqu'au
+   plafond » **et ne lisait jamais le plafond** : mesuré sur 12 carrières entières,
+   75 % des lectures étaient au-dessus, de +5 en moyenne et jusqu'à +22,9. La cause
+   est le plancher de la marge d'une séance (`.12`) : même collé au plafond, une
+   séance rend encore deux points de trace par saison, et ça s'accumule vingt ans.
+   Le plafond est maintenant lu — et la borne retient **trois** choses, pour ne
+   rien casser au passage :
+   — `base`, donc une carrière déjà au-dessus n'est jamais rabotée : elle cesse de
+     monter, elle ne perd rien de ce qu'elle a gagné ;
+   — `plafondReel(a)`, la vraie limite (ton potentiel, borné par la moyenne des
+     autres axes + 25) ;
+   — `pic[a]`, sans quoi la séance mentale ne pourrait plus te rendre la tête que
+     tu avais quand `plafondReel` a baissé derrière toi — c'est-à-dire la spirale
+     refermée le 27/09, qu'on rouvrirait sans le voir. */
 function bougerAxe(a, d){
-  const v = clamp(S.moi.base[a] + d);
+  let v = clamp(S.moi.base[a] + d);
+  if (d > 0) v = Math.min(v, Math.max(S.moi.base[a], plafondReel(a),
+    (S.moi.pic && S.moi.pic[a]) || 0));
   S.moi.base[a] = d < 0 ? Math.max(v, S.moi.socle[a] == null ? 0 : S.moi.socle[a]) : v;
   if (S.moi.pic) S.moi.pic[a] = Math.max(S.moi.pic[a], S.moi.base[a]);
 }
@@ -1761,15 +1785,40 @@ const TAILLE_GROUPE = 18;
    la même logique aux buts puisque c'est le doublé qu'il nomme. Symétrique : un
    deuxième fait raté ne coûte pas autant que le premier non plus. */
 const POIDS_FAIT = [1, .75, .5, .35];
-const POIDS_BUT = [.7, .5, .35, .25];
-/* Pour un coéquipier, un but pèse plus que pour toi : sa note n'a pas de faits
-   de match pour la porter, seulement ce que le film raconte de lui. */
-/* CE QU'UN BUT VAUT DANS LA NOTE D'UN COÉQUIPIER. Mesuré sur 14 387 notes : à 1,2,
+/* UN BUT VAUT UN BUT, POUR TOI COMME POUR LES AUTRES (le propriétaire, 01/10/2026).
+   Il y avait deux tables pour le même événement : **ton** but payait 0,70 et celui
+   d'un coéquipier 1,50**. L'écart était justifié par « ta note a des faits de match
+   pour la porter » — sauf qu'un fait qui marque porte `n:0`, précisément pour ne pas
+   payer deux fois : le but était donc payé **une seule fois, à 0,70**. Deux
+   conséquences mesurées, et la même cause : un but te rapportait +0,79 de note là
+   où il rapportait le double à Garnier, et sur une même décision de fait de match,
+   réussir valait +0,70 quand rater coûtait **−1,71** (0,95 × `ECHELLE_FAIT`) — un
+   rapport de 2,4 sur le même geste. Une seule table pour tout le monde ferme les
+   deux d'un coup, et garde le rendement décroissant qui rend le 10 rare. */
+/* CE QU'UN BUT VAUT DANS UNE NOTE. Mesuré sur 14 387 notes : à 1,2,
    un but rapportait +1,5 quand le tirage de la note en valait 2,6 d'amplitude — donc
    un buteur pouvait finir sous un défenseur qui n'avait rien fait, et c'est ce que le
    propriétaire a vu (« certaines notes un peu trop justes »). Le fait pèse plus, la
    chance pèse moins. */
+const POIDS_BUT = [.7, .5, .35, .25];
+/* DEUX TABLES, ET C'EST JUSTE : MESURÉ, PUIS REMIS EN PLACE (01/10/2026). Ton but
+   paie 0,70 et celui d'un coéquipier 1,50, ce qui se lit comme une incohérence sur
+   la liste des notes. Essayé : une table commune. Mesuré, 28 carrières entières —
+   un doublé te mettait à **9,09** et un triplé à **9,60**, les notes à 9,5 et plus
+   passaient de **3,2 % à 8,6 %** et les matchs au-dessus de 7,5 de **32,6 % à
+   42,5 %**. C'est-à-dire le défaut que le propriétaire avait fait corriger le 27/09
+   (« le 10 doit rester rare ») et celui du 29/09 (« les grands soirs étaient devenus
+   ordinaires »). La raison est structurelle : **les deux notes ne portent pas la même
+   chose** — la tienne additionne tes faits de match, ta forme, ta tête, tes cartons
+   et la difficulté du duel, celle d'un coéquipier ne porte que ce que le film raconte
+   de lui. Un but y pèse donc plus parce qu'il y est presque seul.
+   Et l'écart réussir / rater d'un fait de match n'est pas celui que la formule
+   suggère : mesuré par la note réelle, un fait **réussi paie +0,95** et un fait
+   **raté coûte −1,40** — un rapport de 1,5 et non de 2,4, parce qu'un fait réussi
+   gagne aussi le match et que le résultat se paie à part. Rien à corriger. */
 const POIDS_BUT_AUTRE = [1.5, 1, .7, .45];
+/* Une passe décisive suit la même règle : .4 pour toi, .55 pour un coéquipier. */
+const PASSE_NOTE = .4, PASSE_NOTE_AUTRE = .55;
 function cumul(n, table){
   let t = 0;
   for (let i = 0; i < n; i++) t += table[i] != null ? table[i] : table[table.length - 1];
@@ -2077,7 +2126,7 @@ function finirAnnexe(info, m){
     }
     const duel = duelResultat(m.ecartForce);
     m.note = Math.round(clamp(6.1 + poidsResultat(m.res, m.bn, m.be, derriere, m.ecartForce)
-      + cumul(m.buts, POIDS_BUT) + m.passes * .4
+      + cumul(m.buts, POIDS_BUT) + m.passes * PASSE_NOTE
       + (derriere ? (be === 0 ? .8 * duel : be >= 4 ? -.7 : 0) : 0)
       + (niveauJour() - S.club.force) * .05 + poidsEtat() + poidsFaits(m) + poidsCartons(m) + aleaNote(), 3, 10) * 10) / 10;
     S.stats.matchs++; S.stats.buts += m.buts; S.stats.passes += m.passes;
@@ -2228,7 +2277,7 @@ function jouerSelection(){
          compare au niveau de la nation, pas à celui de ton club — c'est pour ça
          qu'une première sélection est dure. */
       m.note = Math.round(clamp(6.1 + poidsResultat(res, bn, be, derriere, nous - force)
-        + cumul(m.buts, POIDS_BUT) + m.passes * .4
+        + cumul(m.buts, POIDS_BUT) + m.passes * PASSE_NOTE
         + (derriere ? (be === 0 ? .8 : be >= 4 ? -.7 : 0) : 0)
         + (niveauJour() - nous) * .05 + poidsEtat() + aleaNote(), 3, 10) * 10) / 10;
       f.notes.push(m.note); f.buts += m.buts; f.passes += m.passes;
@@ -3214,7 +3263,7 @@ function finirMatch(){
     const derriere = S.moi.poste === 'G' || S.moi.poste === 'D';
     const duel = duelResultat(m.ecartForce);
     m.note = clamp(6.1 + poidsResultat(res, m.bn, m.be, derriere, m.ecartForce)
-      + cumul(m.buts, POIDS_BUT) + m.passes * .4
+      + cumul(m.buts, POIDS_BUT) + m.passes * PASSE_NOTE
       + (derriere ? (m.be === 0 ? 1 * duel : m.be === 1 ? .35 * duel : m.be >= 4 ? -.7 : 0) : 0)
       /* Un fait de match pèse **un point de note**, pas trois dixièmes (demande du
          propriétaire, 27/09/2026 : « on fait quasiment que des matchs corrects, il
@@ -3443,7 +3492,7 @@ function notesEquipe(m){
     const f = faits[x.nom] || { b:0, p:0, j:0, r:0, pm:0 };
     const n = 6.1 + (bonus + (x.niv - S.club.force) * .05 + rnd(-.95, .95)
       + (derriere ? (m.be === 0 ? .7 : m.be >= 4 ? -.7 : 0) : 0)) * a
-      + cumul(f.b, POIDS_BUT_AUTRE) + f.p * .55 - f.j * .25 - f.r * 1.3 - (f.pm || 0) * 1.1;
+      + cumul(f.b, POIDS_BUT_AUTRE) + f.p * PASSE_NOTE_AUTRE - f.j * .25 - f.r * 1.3 - (f.pm || 0) * 1.1;
     x.ref.note = Math.round(clamp(n, 3, 10) * 10) / 10;
     x.ref.sum = (x.ref.sum || 0) + x.ref.note; x.ref.nb = (x.ref.nb || 0) + 1;
     // une bonne note, c'est une place la semaine prochaine
@@ -3602,6 +3651,18 @@ function apresMatch(){
      non plus : un rappel de 1 % vers 50 tient l'écart-type autour de sept points,
      assez pour que les arrêts et le match pèsent plus que le hasard. */
   LIGNES.forEach(k => S.lignes[k] = clamp(S.lignes[k] * .99 + .5 + rnd(-1.8, 1.8)));
+  /* LES TIENS S'ÉLOIGNENT TOUT SEULS (le propriétaire, 01/10/2026, en demandant
+     pourquoi son ambition « rester près des miens » ne lui reprochait jamais rien).
+     Mesuré avant d'y toucher, 28 carrières entières : **médiane 100**, et **64 % des
+     semaines à 100 même en ne faisant jamais rien pour eux** — l'usure annuelle de
+     2,2 ne pesait rien face aux +16 d'un été et aux +22 d'une maison. Donc ni
+     l'ambition ne pouvait rien lire, ni la récupération mentale qu'ils pilotent
+     (+0,12 contre +0,3) ne variait jamais. C'est exactement le défaut des supporters,
+     réglé le 29/09 de la même façon : **un rappel**. « Le football les éloigne tout
+     seul » était écrit depuis le 27/09 ; maintenant c'est vrai, et les garder devient
+     l'arbitrage qu'on avait promis. Le plancher du premier gros salaire tient
+     toujours en dessous. */
+  if (S.vie) bougerProches((RAPPEL_PROCHES_VERS - S.vie.proches) * RAPPEL_PROCHES);
   S.ligneRef = S.ligneRef || { ...S.lignes };
   LIGNES.forEach(k => S.ligneRef[k] = S.ligneRef[k] * .82 + S.lignes[k] * .18);
   // ta forme de référence : ce que tu vaux d'habitude, pour que la note lise le creux
@@ -3814,6 +3875,8 @@ function primesDeLaSaison(){
    encaisse**. Quand il y a du monde derrière toi, un mauvais samedi se répare dans la
    semaine ; quand il n'y a plus personne, il s'installe. C'est le seul effet, et il
    passe par la seule porte du mental (`coutMental`, et la récupération hebdomadaire). */
+/* Vers quoi les tiens reviennent quand on ne fait rien, et à quelle vitesse. */
+const RAPPEL_PROCHES = .022, RAPPEL_PROCHES_VERS = 46;
 function proches(){ return S.vie ? S.vie.proches : 50; }
 /* LE PLANCHER DES TIENS. Aider sa famille au premier gros salaire ne s'oublie
    pas : c'est la seule chose du jeu qui pose un plancher sur une jauge, et elle
@@ -3897,6 +3960,8 @@ const FIN_CARRIERE = 38;
    et un attaquant médian à 40 buts par saison. Le sommet d'un joueur doit rester
    un peu au-dessus du meilleur club, pas vingt points au-dessus. */
 const POT_MIN = 56, POT_MAX = 80;
+/* La marge de progression qu'un axe garde toujours au-dessus de son départ. */
+const MARGE_POT = 6;
 
 /* Quatre façons de passer l'été. Chacune donne quelque chose tout de suite et
    quelque chose qui dure — et aucune ne donne les deux. */
@@ -4355,11 +4420,24 @@ function jugerAmbition(){
       : pres ? "Vous y étiez presque. C'est ce qui fait qu'on recommence."
       : "Une saison sans rien à mettre dans l'armoire. Ce n'est pas pour ça que tu joues.";
   } else if (a === 'proches'){
-    const p = proches();
-    note = p >= 60 && S.stats.matchs >= 15 ? 1 : p >= 46 ? 0 : -1;
+    /* ELLE NE DEMANDAIT RIEN (mesuré le 01/10/2026 : **satisfaite 100 % du temps**
+       sur 140 saisons, jamais un seul reproche). Elle lisait le **niveau** de la
+       jauge, or les tiens ne descendent pratiquement plus : l'été, les chantiers et
+       le plancher du premier gros salaire les tiennent en haut, donc le seuil était
+       franchi d'office. Elle lit maintenant **ce que la saison leur a fait** — le
+       niveau reste le plancher (on ne prétend pas être près des siens quand ils sont
+       à trente), mais le « oui » demande en plus de ne pas les avoir laissés glisser
+       cette année. Le football les éloigne tout seul : les garder est l'arbitrage,
+       c'est écrit depuis le 27/09, et c'est ce que l'ambition doit mesurer. */
+    const p = proches(), av = S.vie.prochesAvant == null ? p : S.vie.prochesAvant;
+    const tenu = p >= av - 1;
+    note = p >= 60 && S.stats.matchs >= 15 && tenu ? 1 : p >= 46 ? 0 : -1;
     mot = note > 0 ? "Tu joues, et les dimanches sont à eux. C'est exactement ce que tu voulais."
-      : note === 0 ? "Tu donnes des nouvelles, ils comprennent. Ce n'est pas tout à fait ce que tu voulais."
+      : note === 0 ? (tenu
+        ? "Tu donnes des nouvelles, ils comprennent. Ce n'est pas tout à fait ce que tu voulais."
+        : "Ils ont compris que tu avais une saison. Il y a quand même des dimanches où personne n'a appelé.")
       : "Tu as joué, et tu n'as vu personne. Ce n'était pas le marché.";
+    S.vie.prochesAvant = p;
   } else if (a === 'argent'){
     const g = S.vie.gagne || 0, av = S.vie.gagneAvant || 0;
     note = g >= av ? 1 : g >= av * .8 ? 0 : -1;

@@ -1697,6 +1697,90 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     déployée à la 17ᵉ journée : saison finie, trêve passée, signature, **deuxième saison entière**
     jouée. Le banc d'essai de la semaine **ne peut pas être touché** : `uneSaison()` s'arrête au
     bilan, donc `genererOffres()` n'y est jamais appelé.
+- **LE PLAFOND ÉTAIT DÉCORATIF, ET LES TIENS NE DEMANDAIENT RIEN** (le propriétaire,
+  01/10/2026, après les trois propositions : « vas-y dans cet ordre »). Trois questions
+  ouvertes, traitées dans l'ordre que j'avais proposé — et **deux des trois diagnostics
+  que je lui avais donnés étaient faux**. La mesure les a corrigés avant le code.
+  - **1. LE PLAFOND, ET CE N'ÉTAIT PAS UNE ACCUMULATION.** `bougerAxe()` promettait
+    « une hausse libre **jusqu'au plafond** » et **ne lisait jamais le plafond** :
+    mesuré, 12 carrières entières, **75 % des lectures au-dessus, +5 en moyenne,
+    jusqu'à +22,9**. Deux causes séparées, la seconde étant la vraie :
+    - le plancher de la marge d'une séance (`.12`) : collé au plafond, une séance rend
+      encore deux points de trace par saison, et ça s'accumule vingt ans ;
+    - **le potentiel pouvait être tiré sous le point de départ.** `ri(56, 80)` pendant
+      que la base de départ monte à 75 (50, plus dix d'origine, plus quinze de qualité
+      tirée) : **un axe sur quatre naissait au-dessus de son propre plafond**, jusqu'à
+      dix-neuf points. C'est ça, et non la fuite hebdomadaire, qui rendait le plafond
+      décoratif.
+    Corrigé par deux lignes : `bougerAxe()` borne la hausse à
+    `max(base, plafondReel(a), pic[a])`, et le tirage du potentiel garde `MARGE_POT`=6
+    au-dessus du départ. **Les trois termes de la borne sont nécessaires** : `base` pour
+    ne jamais raboter une carrière déjà au-dessus (elle cesse de monter, elle ne perd
+    rien), `plafondReel` pour la vraie limite, et **`pic`** sans quoi la séance mentale
+    ne pourrait plus rendre la tête qu'on avait quand `plafondReel` a baissé derrière
+    soi — c'est-à-dire la spirale refermée le 27/09, qu'on rouvrirait sans le voir.
+    **Mesuré après** : **0 hausse au-dessus de la borne sur 25 882**, **0 axe né
+    au-dessus de son plafond**. Le sommet d'une carrière passe de 73,5 à 72,3 et les
+    titres de 3,23 à 3,08 (dans le bruit de la sonde) : **`POT_MAX` n'a pas besoin de
+    bouger**, ce qui répond à la question que je lui avais laissée.
+    **Un résidu que je ne maquille pas** : 71 axes sur 80 finissent la carrière
+    au-dessus d'un plafond **usé par l'âge** (jusqu'à +20, au plancher de 40). C'est le
+    potentiel qui s'érode plus vite que la base ne le suit (×.55 par saison) — par
+    construction, et borné.
+  - **2. LE BUT : MESURÉ, ESSAYÉ, PUIS REMIS EN PLACE.** Je lui avais signalé deux
+    écarts. Les deux existent, **aucun des deux n'est un défaut** :
+    - *ton but paie 0,70, celui d'un coéquipier 1,50.* Essayé une table commune. Mesuré,
+      28 carrières : un doublé te mettait à **9,09**, un triplé à **9,60**, les notes à
+      9,5 et plus passaient de **3,2 % à 8,6 %** et les matchs au-dessus de 7,5 de
+      **32,6 % à 42,5 %** — le 10 cessait d'être rare (27/09) et les grands soirs
+      redevenaient ordinaires (29/09). Resserrer la suite de la table ne suffisait pas
+      (encore 8,0 %). La raison est structurelle : **les deux notes ne portent pas la
+      même chose** — la tienne additionne tes faits de match, ta forme, ta tête, tes
+      cartons et la difficulté du duel, celle d'un coéquipier ne porte que le film. Un
+      but y pèse plus parce qu'il y est presque seul. **Deux tables, et c'est juste.**
+    - *réussir un fait paie +0,70 quand le rater coûte −1,71*, soit 2,4×. **Faux** :
+      c'est la lecture de la formule, pas de la note. Mesuré par la note réelle sur
+      l'arbre déployé, un fait **réussi paie +0,95** et un fait **raté coûte −1,40** —
+      **1,5× et non 2,4×**, parce qu'un fait réussi gagne aussi le match et que le
+      résultat se paie à part. Rien à corriger.
+    Vérifié que le retour en arrière est complet : contre la version en ligne, la
+    distribution est **identique** (moyenne 6,90 → 6,90 · sous 5,0 10,3 → 10,7 % ·
+    au-dessus de 7,5 34,9 → 34,8 % · 9,5 et plus 3,5 → 4,0 %).
+  - **3. LES TIENS SATURAIENT, COMME LES SUPPORTERS AVANT LE 29/09.** Son ambition
+    « rester près des miens » ne lui reprochait jamais rien : mesuré, **satisfaite 100 %
+    sur 140 saisons**. J'ai d'abord corrigé son barème (il lit maintenant **ce que la
+    saison leur a fait** et non le niveau, avec le niveau comme plancher) — et ça n'a
+    rien changé : **100 % → 98 %**. La cause était en dessous. Mesuré : `S.vie.proches`
+    a une **médiane de 100**, et **64 % des semaines sont à 100 même en ne faisant
+    jamais rien pour eux** — l'usure annuelle de 2,2 ne pèse rien face aux +16 d'un été
+    et aux +22 d'une maison. Donc ni l'ambition ne pouvait rien lire, **ni la
+    récupération mentale qu'ils pilotent** (+0,12 contre +0,3) ne variait jamais : une
+    mécanique qui ne varie pas n'existe pas. Même correctif que pour le stade : **un
+    rappel** (2,2 % par journée vers 46), le plancher du premier gros salaire tenant
+    toujours en dessous. « Le football les éloigne tout seul » était écrit depuis le
+    27/09 ; maintenant c'est vrai.
+    **Mesuré après** : quand on s'en occupe, 5ᵉ 69 · **médiane 86** · 95ᵉ 97 ; quand on
+    les néglige, 5ᵉ 57 · **médiane 68** · 95ᵉ 80 ; **0 % des semaines à 100** dans les
+    deux cas. Et l'ambition devient un arbitrage : **54 % réussi · 46 % « tu as dérivé »
+    · 0 % raté**, contre 99/1/0 en ligne.
+  - **Et deux chiffres que la mesure a rendus à leur place** : « tout gagner » ne punit
+    pas 77 % des saisons comme je l'avais écrit (ce chiffre fondait le presque-compte
+    avec l'échec) mais **39 %**, inchangé par ce lot — sa règle (« une ambition qui punit
+    neuf fois sur dix ») n'est pas franchie. Et « construire autre chose » n'est pas à
+    90 % de raté : c'était une sonde dont le joueur **ne construisait jamais**. Avec un
+    joueur qui bâtit : **14 % réussi · 75 % presque · 11 % raté**.
+  - **Vérifié** : les sept invariants du tableau des notes à zéro écart, **31 faits sur
+    31**, score = film **0 écart**, zéro doublon de nom, les incohérences de minutes à
+    zéro ; 24 carrières entières de 18 à 38 ans avec tous les écrans, zéro erreur ;
+    `tests/simulate.js` → `ERRORS: none` ; le banc d'essai à **250 saisons par ligne**
+    tient l'invariant aux trois croisements (académie·M matchs technique 22,1±0,46 /
+    trace poste +7,0 ; quartier·D matchs 21,6 à égalité / trace physique +10,1 ;
+    étranger·A matchs physique 19,7 et poste 19,6 à une erreur-type / trace technique
+    +9,2) et **« toujours lever le pied » ne prend les matchs nulle part** ; **aucune
+    migration** — `MARGE_POT` ne s'applique qu'à la création, la borne de `bougerAxe()`
+    ne rabote pas une base acquise, et `prochesAvant` se pose au premier bilan. Vérifié
+    en reprenant une vraie partie de la version déployée à la 17ᵉ journée : saison
+    finie, trêve passée, **deuxième saison entière** jouée.
 - **Ce qui n'est pas encore là** : le **mercato côté entraîneur·euse** (il lit ce que le marché a
   fait, il ne le fait pas), et l'écran de vie du coach. (Tout le reste du 2.0 est livré : les deux
   modes, les trente et un faits de match, les vingt-neuf arrêts, la sélection, la trêve, les offres,
