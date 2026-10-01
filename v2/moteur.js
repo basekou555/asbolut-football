@@ -4085,8 +4085,23 @@ function genererOffres(){
      donc intéressante. */
   /* Les offres viennent des deux divisions : un club de l'élite peut venir te
      chercher en bas, et c'est la seule porte de sortie quand ton club descend. */
-  const cand = toutesLesEquipes().filter(e => e.nom !== S.club.nom && e.force > cote - 14);
-  const poids = cand.map(e => 1 / (1 + Math.max(0, e.force - (cote - 5)) * .55));
+  /* TA PLACE SE MESURE AU MONDE, PAS À TOI-MÊME. Le plancher était ancré sur ta
+     seule cote (`force > cote - 14`) : une fois que tu dépasses tout le monde — ce
+     qui arrive au sommet d'une carrière, puisque le meilleur club vaut 65 et qu'une
+     cote de pointe vaut 80 — **plus un seul club ne passait le filtre**, et tu ne
+     recevais plus rien pendant des saisons entières. On compare donc au sommet du
+     monde quand tu es au-dessus de lui. */
+  const tous = toutesLesEquipes().filter(e => e.nom !== S.club.nom);
+  const sommet = tous.reduce((a, e) => Math.max(a, e.force), 0);
+  const ref = Math.min(cote, sommet);
+  const cand = tous.filter(e => e.force > ref - 14);
+  /* Et la fenêtre est désormais à deux bords : un club **au-dessus** de toi appelle
+     rarement (il a le choix), un club **loin en dessous** aussi (il n'a pas les
+     moyens, et tu n'irais pas). Entre les deux, il appelle volontiers, d'autant plus
+     qu'il est proche de ce que tu vaux. Sans ce second bord, un joueur qui domine son
+     championnat recevait les dix-huit clubs à poids égal. */
+  const poids = cand.map(e => { const d = e.force - ref;
+    return d > 0 ? 1 / (1 + d * .55) : 1 / (1 + (-d) * .09); });
   const combien = Math.min(cand.length, Math.max(0, ri(0, 2) + (S.ete && S.ete.offres ? 1 : 0) + (bonne && joue ? 1 : 0)));
   const tires = [];
   for (let k = 0; k < combien && cand.length; k++){

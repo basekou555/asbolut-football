@@ -1647,6 +1647,56 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
   incohérence ; 24 carrières entières sans erreur ; `tests/simulate.js` → `ERRORS: none` ;
   **aucune migration** (une sauvegarde prise en plein match garde son événement `penalty`, que le
   film sait toujours afficher).
+- **PERSONNE N'APPELAIT PLUS, PARCE QUE J'AVAIS DÉPASSÉ TOUT LE MONDE** (le propriétaire,
+  01/10/2026, sauvegarde à l'appui : « ça fait deux saisons que j'ai aucune proposition de club »).
+  La fenêtre des offres avait son plancher ancré sur **lui** et non sur le monde
+  (`force > cote - 14`) : sa cote valait **99,2** quand le meilleur club du jeu vaut **73**, donc le
+  filtre exigeait un club au-dessus de 85 et **aucun des trente-cinq** ne passait. Le garde-fou
+  écrit pour qu'un grand club n'appelle pas tous les étés fermait la porte entièrement dès qu'on
+  sortait de l'échelle du monde — l'inverse exact de ce que son propre commentaire annonçait.
+  - **Mesuré avant de toucher à quoi que ce soit**, 20 carrières entières : ses deux saisons étaient
+    le cas doux. De **23 à 32 ans** — tout le sommet d'une carrière — **53 à 68 % des intersaisons
+    ne produisaient aucune offre**, et les suites sans rien allaient jusqu'à **douze saisons
+    d'affilée**. Au-dessus de 80 de cote : **96 % d'intersaisons à zéro offre**.
+  - **La référence est désormais le sommet du monde quand on est au-dessus de lui**
+    (`ref = min(cote, sommet)`), donc le plancher suit le championnat et non le joueur. Mesuré
+    après : **plus aucune suite au-delà de deux saisons** (une seule fois), et 0 à 10 % de zéro au
+    sommet. Sur sa propre sauvegarde : 0 candidat sur 35 → **6 candidats, 2 à 4 offres** par été.
+  - **Et la fenêtre a maintenant deux bords**, sans quoi un joueur qui domine son championnat
+    recevait les dix-huit clubs **à poids égal** (le terme existant ne pénalise que les clubs
+    au-dessus de la cote, et il devient inerte quand plus personne n'est au-dessus) : un club loin
+    en dessous n'appelle pas non plus — il n'a pas les moyens, et tu n'irais pas. Mesuré sur un
+    joueur qui signe toujours la meilleure offre : il atterrit dans le meilleur club du monde
+    **19 % du temps**, 6,3 points en dessous de lui en moyenne.
+  - **CE QUE LE DÉFAUT FABRIQUAIT, ET C'EST LE PLUS IMPORTANT** : ne plus recevoir d'offre, c'est
+    `resterAuClub()` à vie dans le meilleur club qu'on ait atteint, pendant que le club se
+    reconstruit autour de soi. Mesuré, 40 carrières de vingt saisons, avant / après :
+    | | déployé | après |
+    |---|---|---|
+    | titres par carrière | 6,30 (méd. 7, max 14) | **3,27** (méd. 3, max 11) |
+    | titres par saison | 0,316 | **0,164** |
+    | clubs traversés | 4,7 | **7,3** |
+    C'est exactement la bande pour laquelle la pondération des offres avait été calibrée le
+    27/09 (**3,3 titres et 6,6 clubs**) : les 6,30 titres de la version en ligne étaient une dérive
+    du bug, pas un réglage.
+  - **Une sonde qui se trompait, corrigée au passage.** `v2coher.js` comptait 95 à 136
+    « incohérences de minutes » — elle attendait `90 − minute d'entrée` pour un entrant et la minute
+    de sortie pour un sortant, alors qu'**un joueur peut entrer puis ressortir** (son temps de jeu
+    est sortie − entrée). La version déployée en affichait 136 avec la même sonde : c'était elle, pas
+    le moteur. Elle lit maintenant l'entrée et la sortie de chaque nom : **0 écart des deux côtés**.
+  - **Ce qui reste à décider, et c'est à lui** : avec trois titres au lieu de six, l'ambition
+    « tout gagner » n'est plus satisfaite que **23 % des saisons** (contre 37 % sur la version
+    déployée, et 53 % le jour où les trois états ont été posés). Sa règle était « une ambition qui
+    punit neuf fois sur dix n'est plus une ambition » — 23 % n'y est pas, mais c'est l'ambition dure
+    du jeu. Si elle doit redevenir atteignable, le levier est dans son barème, pas dans les offres.
+  - **Vérifié** : les sept invariants du tableau des notes à zéro écart (dont la sonde corrigée),
+    **31 faits sur 31**, score = film **0 écart** sur 5 567 faits, zéro doublon de nom, les
+    incohérences de minutes à zéro ; 24 carrières entières de 18 à 38 ans avec tous les écrans,
+    zéro erreur ; `tests/simulate.js` → `ERRORS: none` ; **aucune migration** (`VERSION` ne change
+    pas, le calcul se refait à chaque été) — vérifié en reprenant une vraie partie de la version
+    déployée à la 17ᵉ journée : saison finie, trêve passée, signature, **deuxième saison entière**
+    jouée. Le banc d'essai de la semaine **ne peut pas être touché** : `uneSaison()` s'arrête au
+    bilan, donc `genererOffres()` n'y est jamais appelé.
 - **Ce qui n'est pas encore là** : le **mercato côté entraîneur·euse** (il lit ce que le marché a
   fait, il ne le fait pas), et l'écran de vie du coach. (Tout le reste du 2.0 est livré : les deux
   modes, les trente et un faits de match, les vingt-neuf arrêts, la sélection, la trêve, les offres,
