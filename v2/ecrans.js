@@ -525,7 +525,7 @@ function filmHTML(m){
   m.moments.forEach(f => lignes.push({ min:f.min, moi:true, ico: f.reussi ? '🎯' : '💨',
     t: `${f.chaud ? '<b>' + (f.reussi ? 'Sous pression' : 'Sous pression') + '</b> · ' : ''}${esc(f.choix)} — ${esc(f.txt || '')}` }));
   if (m.perduLeFil) lignes.push({ min:m.perduLeFil + 1, moi:true, ico:'🌫️',
-    t: "<b>Tu as perdu le fil</b> — vingt minutes à côté de la partie" });
+    t: `<b>Tu as perdu le fil</b> — ${90 - m.perduLeFil >= 20 ? "vingt minutes à côté de la partie" : "la fin du match à côté de la partie"}` });
   lignes.sort((a, b) => a.min - b.min);
   if (!lignes.length) return `<div><span class="min">—</span><span>😐</span><span>Rien à raconter. Ça arrive.</span></div>`;
   return lignes.map(l => `<div${l.moi ? ' class="me"' : ''}><span class="min">${ordinal(l.min)}</span><span>${l.ico}</span><span>${l.t}</span></div>`).join('');

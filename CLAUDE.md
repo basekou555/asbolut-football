@@ -1553,6 +1553,42 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     c'est sa partie préférée du mode (21/09/2026). Manquent aussi l'écran de vie et l'argent du
     coach (la jauge `proches` existe et un arrêt la touche, il n'y a pas d'écran), et le banc
     d'essai de l'entraîneur·euse n'est pas encore une page de `labo.html` : il vit dans une sonde.
+- **LES MINUTES NE PEUVENT PLUS SE CONTREDIRE** (le propriétaire, 01/10/2026, capture à l'appui :
+  un fait de match annoncé à la **25ᵉ minute** dont le texte disait « il entre à la 72ᵉ pour son
+  premier match »). Mesuré avant de toucher à quoi que ce soit, 1 985 faits joués : **578
+  incohérences**, dans six familles distinctes. Il n'y avait pas un défaut mais une règle qui
+  manquait — **un fait qui affirme un événement du match doit s'accrocher à l'événement réel**,
+  exactement comme les issues le font depuis le 29/09 (`ecrireFait()`).
+  | ce qui se contredisait | combien | ce qui le ferme |
+  |---|---|---|
+  | « il entre à la 72ᵉ » écrit en dur, fait tiré entre la 10ᵉ et la 88ᵉ | 169 | `ancre` : le jeune est un **entrant réel du film** (≤24 ans), avec son nom et sa minute |
+  | « rouge pour un des tiens » sans expulsion au film | 162 | `ancre` sur une **vraie expulsion**, et le fait porte son nom |
+  | « il reste vingt-cinq minutes » quelle que soit la minute | 151 | le temps restant est calculé (`90 - min`) |
+  | fait du mercredi hors de ton temps de jeu (`ri(20, 85)` en aveugle) | 58 | `momentSemaine()` tire dans ta fenêtre réelle |
+  | fait du samedi joué **après** ta sortie (la cuisse, un rouge) | 24 | `suiteMatch()` retire les faits hors fenêtre |
+  | « tu sors à l'heure de jeu » / « tu joues les quatre-vingt-dix » démentis par le compteur | 13 | l'issue porte `mins` et **écrit** tes minutes, donc la note et la fraîcheur suivent |
+  Deux phrases réécrites par ailleurs : « tu ne le vois plus de la mi-temps » (faux à la 80ᵉ) et
+  « perdre le fil — vingt minutes à côté de la partie », qui devient « la fin du match » quand il
+  reste moins de vingt minutes (journal **et** film).
+  **Deux pièges trouvés à la mesure, et c'est elle qui les a trouvés, pas la lecture** :
+  1. **L'âge d'un joueur n'est pas sur l'enveloppe.** Les listes du onze et du banc sont des
+     enveloppes (`{nom, poste, niv, ref}`) ; à lire `c.entrant.age` au lieu de `c.entrant.ref.age`,
+     le fait du jeune **ne sortait plus jamais** — 173 tirages devenus zéro.
+  2. **Un rouge dans ton camp arrive 4,5 % des matchs.** Une fois `adix` ancré, il lui fallait
+     l'événement **et** le tirage : 3 sorties sur 1 878 faits, autant dire une famille morte.
+     Quand l'expulsion a vraiment eu lieu, le fait qui en parle **passe devant le tirage**
+     (`prio`) : il revient à 15 pour 2 092. Et une ancre qui ne trouve pas son événement
+     retire une fois dans le sac, sinon les deux familles ancrées mangeaient 10 % des faits.
+  **Mesuré après, 2 092 faits joués : zéro incohérence** sur les six contrôles, et **29 familles
+  sur 29** toujours tirées. `jeune` passe de 173 à 88 pour mille faits — il demande maintenant un
+  jeune qui entre vraiment, ce qui est le prix de la vérité.
+  **Vérifié** : les sept invariants du tableau des notes à zéro écart, **31 faits sur 31**,
+  **score = film 0 écart** sur 5 045 faits, zéro doublon de nom ; 24 carrières entières de 18 à
+  38 ans avec tous les écrans, zéro erreur ; le banc d'essai à 150 saisons par ligne tient
+  l'invariant aux trois croisements et « toujours lever le pied » n'est le meilleur nulle part ;
+  `tests/simulate.js` → `ERRORS: none` ; **aucune migration** — les textes sont résolus au tirage
+  et non stockés comme fonctions, donc une sauvegarde prise en plein match se recharge telle
+  quelle.
 - **Ce qui n'est pas encore là** : le **mercato côté entraîneur·euse** (il lit ce que le marché a
   fait, il ne le fait pas), et l'écran de vie du coach. (Tout le reste du 2.0 est livré : les deux
   modes, les trente et un faits de match, les vingt-neuf arrêts, la sélection, la trêve, les offres,
