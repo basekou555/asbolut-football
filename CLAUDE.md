@@ -1610,12 +1610,43 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
   - **Rien n'est sauvegardé** : `RAP` vit le temps de la fenêtre, et la fenêtre se pose sur le corps
     de la page, donc l'écran qui pose problème reste intact derrière. Le texte est capturé **avant**
     l'ouverture, sinon on rapporterait l'écran du rapport.
+  - **La sauvegarde part avec le message** (le propriétaire, 01/10/2026 : « c'est pas pratique de
+    devoir copier le texte, vaut mieux intégrer le message dans le copier »). Le bouton ne copiait
+    que le JSON, donc il fallait coller la sauvegarde **puis** écrire le problème à côté — c'est
+    ce qui s'est passé deux fois. Il copie maintenant **le rapport entier, la phrase en tête**, puis
+    la sauvegarde à la suite. Vérifié : 3 Ko de rapport + 57 Ko de sauvegarde, le JSON reste
+    relisible tel quel.
   - **Vérifié** : le rapport ouvert et refermé sur les **dix-sept écrans** des deux modes au fil de
     deux saisons, **zéro `undefined`, zéro `[object Object]`, zéro fenêtre qui reste** ; quatre champs
     remis d'aplomb à la mesure (l'adversaire est un objet en championnat et une chaîne le mercredi,
     un fait d'entraîneur·euse porte `titre`/`texte` là où un fait de joueur·euse porte `q`/`opts.p`,
     `m.mvt` est une liste d'objets, une offre porte `ans` et non `duree`) ; l'écran capturé est coupé
     à 1 400 caractères et le dit. Le reste du moteur n'est pas touché.
+- **UN PENALTY DOIT FINIR QUELQUE PART** (le propriétaire, 01/10/2026, sauvegarde à l'appui :
+  « le penalty n'est pas dans les stats »). Le film montrait « Penalty pour Stade Rennais » à la
+  81ᵉ et c'était tout : l'événement était tiré à **14 % des matchs** et ne produisait **rien**
+  — ni but au score, ni arrêt, ni raté, et personne ne le tirait. C'est la même règle que les
+  minutes du matin même, prise par l'autre bout : **un événement qui affirme quelque chose doit
+  se résoudre**.
+  - Il s'accroche désormais à un **but réel** de ce camp-là — le film dit « sur penalty » et la
+    note le compte déjà — ou il est **manqué**, et il porte alors un nom, une pastille ❌ et
+    **1,1 de note en moins** pour celui qui l'a raté. Il se résout **après** que les buteurs sont
+    nommés, sinon il n'y a personne à qui l'accrocher.
+  - **Il n'est jamais le tien** : ton penalty à toi est une décision (`penA`, `pen`), pas un
+    tirage, et un penalty raté tombé du ciel te coûterait sans que tu aies choisi.
+  - **Un penalty n'a pas de passeur** : on ne l'accroche qu'à un but qui n'en a pas, sinon le film
+    disait « But de X, servi par Y, sur penalty ».
+  - **Mesuré, 3 060 matchs** : **0 penalty sans suite** (contre 14 % des matchs avant), 240
+    transformés, 194 manqués, **0 penalty avec un passeur**, **score = film 0 écart**.
+- **LES MOTS DU PENALTY** (même retour : « la phrase "tu l'envoies à l'opposé" n'est pas claire,
+  mets "tu l'envoies au fond du cadre" ou "à côté" »). « À l'opposé » décrit un côté, pas une
+  issue : on ne savait pas si c'était dedans. Les quatre issues de `penA` le disent maintenant,
+  avec ses mots — **au fond du cadre** / **à côté**, pour toi comme pour le tireur habituel.
+  **Vérifié** : les quatre relues à l'écran ; les sept invariants du tableau des notes à zéro
+  écart, 31 faits sur 31, score = film 0 écart, zéro doublon de nom ; les minutes à zéro
+  incohérence ; 24 carrières entières sans erreur ; `tests/simulate.js` → `ERRORS: none` ;
+  **aucune migration** (une sauvegarde prise en plein match garde son événement `penalty`, que le
+  film sait toujours afficher).
 - **Ce qui n'est pas encore là** : le **mercato côté entraîneur·euse** (il lit ce que le marché a
   fait, il ne le fait pas), et l'écran de vie du coach. (Tout le reste du 2.0 est livré : les deux
   modes, les trente et un faits de match, les vingt-neuf arrêts, la sélection, la trêve, les offres,
