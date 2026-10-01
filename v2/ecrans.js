@@ -16,8 +16,8 @@ const ANNEES = [
   { a:2018, ico:'💻', nom:"Aujourd'hui", sub:"La data, les réseaux, les corps qui tiennent plus longtemps." },
 ];
 
-let ETAPE = 0;
-const NEW = { nom:"", poste:'M', annee:2018, origine:null, ambition:null };
+let ETAPE = -1;
+const NEW = { nom:"", poste:'M', annee:2018, origine:null, ambition:null, mode:null };
 
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
 const app = () => document.getElementById('app');
@@ -39,13 +39,36 @@ function rendre(){
   const f = { semaine:ecranSemaine, arret:ecranArret, moment:ecranMoment,
     resultat:ecranResultat, bilan:ecranBilan, journal:ecranJournal,
     ete:ecranEte, offres:ecranOffres, mercato:ecranMercato, vie:ecranVie,
-    carriere:ecranCarriere, tirage:ecranTirage }[S.ecran];
-  el.innerHTML = (S.ecran === 'tirage' ? '' : topHTML()) + (f ? f() : `<div class="card"><h2>Écran inconnu</h2><p class="sub">${esc(S.ecran)}</p></div>`);
+    carriere:ecranCarriere, tirage:ecranTirage,
+    /* Le mode entraîneur·euse a ses écrans, pas ses copies : tout ce qui est
+       commun (le classement, l'effectif, le film du match, les notes, le journal)
+       est appelé par eux. */
+    csemaine:ecranCSemaine, carret:ecranCArret, cmoment:ecranCMoment,
+    cresultat:ecranCResultat, cbilan:ecranCBilan, cvire:ecranCVire,
+    coffres:ecranCOffres, cmercato:ecranCMercato, ccarriere:ecranCCarriere }[S.ecran];
+  el.innerHTML = (S.ecran === 'tirage' ? '' : S.mode === 'coach' ? cTopHTML() : topHTML())
+    + (f ? f() : `<div class="card"><h2>Écran inconnu</h2><p class="sub">${esc(S.ecran)}</p></div>`);
   window.scrollTo(0, 0);
 }
 
 /* ---------------- création ---------------- */
 function creationHTML(){
+  /* DEUX MÉTIERS, UNE SEULE CRÉATION. Le choix du mode est la première chose
+     demandée, parce que tout ce qui suit en dépend : un poste et une origine de
+     joueur·euse, ou une origine d'entraîneur·euse et un objectif. */
+  if (ETAPE === -1 || NEW.mode == null) return `<div class="card">
+    <div class="step">Création · qui tu es</div>
+    <h2>De quel côté de la ligne</h2>
+    <p class="narr">Deux métiers, un seul monde : les mêmes clubs, les mêmes joueurs, le même
+      championnat. Ce qui change, c'est ce que tu as entre les mains.</p>
+    ${optHTML('👟', "Joueur·euse", "Ton corps, ta place dans un onze, une carrière",
+      [{c:'foot', t:"⚽ les faits de match"}, {c:'foot', t:"🏃 ton niveau, ton usure"}, {c:'risk', t:"🪑 et le banc quand ça va mal"}],
+      "setMode('joueur')")}
+    ${optHTML('📋', "Entraîneur·euse", "Vingt-deux personnes, une semaine, un président",
+      [{c:'foot', t:"💬 des interlocuteurs"}, {c:'foot', t:"🚪 des décisions en cours de match"}, {c:'risk', t:"🏛️ et la porte quand ça va mal"}],
+      "setMode('coach')")}
+  </div>`;
+  if (NEW.mode === 'coach') return cCreationHTML();
   if (ETAPE === 0) return `<div class="card">
     <div class="step">Création · étape 1 sur 4</div>
     <h2>Qui tu es, et quand</h2>
@@ -83,6 +106,7 @@ function origineDit(o){
   Object.entries(o.liens || {}).forEach(([k, v]) => d.push({ c: v > 0 ? 'foot' : 'risk', t: `${v > 0 ? '▲' : '▼'} ${LIEN_NOM[k] || k}` }));
   return d;
 }
+function setMode(m){ NEW.mode = m; ETAPE = 0; rendre(); }
 function setPoste(id){ NEW.poste = id; rendre(); }
 function setAnnee(a){ NEW.annee = a; rendre(); }
 function etape(n){
@@ -832,17 +856,29 @@ function fermerJournal(){ S.ecran = RETOUR; rendre(); }
 
 function recommencer(){
   if (!confirm("Effacer cette carrière et repartir de zéro ?")) return;
-  effacer(); ETAPE = 0; NEW.origine = null; NEW.ambition = null; rendre();
+  effacer(); ETAPE = -1; NEW.origine = null; NEW.ambition = null; NEW.mode = null; rendre();
 }
 
 /* ---------------- démarrage ---------------- */
 function demarrer(){
   const d = charger();
-  if (d){ S = d; if (S.ecran === 'journal') S.ecran = 'semaine';
-    /* Ton club n'a qu'un effectif : le tien. Une sauvegarde d'avant le mercato en
-       portait deux (le fantôme de la ligue et le vrai) ; c'est ici que ça se règle. */
-    if (S.equipe && S.equipe.length) syncClubSq();
-    /* Le salaire d'une carrière d'avant l'argent : ce qu'elle vaudrait aujourd'hui. */
-    if (!S.salaire) poserSalaire(salaireDe(niveau(), S.moi.age, S.club.force, S.division || 1)); }
+  if (d){ S = d;
+    /* DEUX MODES, DEUX REPRISES. `syncClubSq()` et `niveau()` lisent `S.moi.base.tech`
+       et ajoutent une ligne « moi » à l'effectif du club : appliqués à une partie
+       d'entraîneur·euse, le premier inventait un joueur qui n'existe pas et le second
+       rendait NaN. Chaque mode relit sa propre partie. */
+    if (S.mode === 'coach'){
+      if (S.ecran === 'journal') S.ecran = 'csemaine';
+      cLireEffectif();
+      if (!S.salaire) poserSalaire(cSalaire());
+      if (S.objectif == null) cPoserObjectif();
+    } else {
+      if (S.ecran === 'journal') S.ecran = 'semaine';
+      /* Ton club n'a qu'un effectif : le tien. Une sauvegarde d'avant le mercato en
+         portait deux (le fantôme de la ligue et le vrai) ; c'est ici que ça se règle. */
+      if (S.equipe && S.equipe.length) syncClubSq();
+      /* Le salaire d'une carrière d'avant l'argent : ce qu'elle vaudrait aujourd'hui. */
+      if (!S.salaire) poserSalaire(salaireDe(niveau(), S.moi.age, S.club.force, S.division || 1));
+    } }
   rendre();
 }
