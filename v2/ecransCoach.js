@@ -285,6 +285,7 @@ function ecranCOffres(){
       ${S.libre ? `<button class="btn ghost" onclick="cPasserOffre()">Refuser</button>`
         : `<button class="btn ghost" onclick="cResterAuClub()">Rester à ${esc(S.club.nom)}</button>`}
       <button class="btn" onclick="cSignerOffre()">Signer</button></div>
+    ${raccrocherHTML('cRaccrocher')}
   </div>${liensJournal()}`;
 }
 function cMotClub(o){
@@ -479,7 +480,9 @@ function ecranCCarriere(){
     <div class="step">${S.annee} · ${S.moi.age} ans · c'est fini</div>
     <div class="big-ico">🏁</div>
     <h2>Ce qu'il restera</h2>
-    <p class="narr">${esc(S.fin && S.fin.raison === "personne n'a rappelé"
+    <p class="narr">${esc(S.fin && S.fin.raison === 'tu as raccroché'
+      ? "Tu as rendu le survêtement au moment que tu avais choisi. Peu de bancs se quittent comme ça."
+      : S.fin && S.fin.raison === "personne n'a rappelé"
       ? "Personne n'a rappelé. Un banc ne se reprend pas quand on veut."
       : "Tu as fait le tour.")}</p>
     <div class="stats">
