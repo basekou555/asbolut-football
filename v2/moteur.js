@@ -2073,7 +2073,23 @@ const POIDS_FAIT = [1, .75, .5, .35];
    un buteur pouvait finir sous un défenseur qui n'avait rien fait, et c'est ce que le
    propriétaire a vu (« certaines notes un peu trop justes »). Le fait pèse plus, la
    chance pèse moins. */
-const POIDS_BUT = [.7, .5, .35, .25];
+/* QUATRE BUTS DOIVENT FAIRE UN SOIR DE GALA (le propriétaire, 02/10/2026, rapport à
+   l'appui : « c'est assez rare de mettre 4 buts et d'avoir 8 » — 7,9, derrière deux
+   défenseurs qui n'avaient pas marqué et un remplaçant entré dix minutes). Mesuré
+   avant d'y toucher, 26 624 de tes notes contre 491 229 notes de coéquipiers : ta
+   soirée à quatre buts payait **8,74** quand le doublé d'un coéquipier payait
+   **9,21** — un coéquipier qui en met deux passait devant toi qui en mets quatre.
+   La cause n'est pas la forme de la table (le rendement décroissant est sa propre
+   règle du 27/09, et elle reste) mais son **échelle** : le premier but valait .7 là
+   où le premier fait de match vaut 1, donc la somme plafonnait à +1,8 quelle que
+   soit la soirée. C'est désormais la même table que les faits — un but est un fait
+   de match, le rendement décroît comme il l'a dit, et rien de plus. Mesuré après :
+   un but 7,52 · un doublé 8,41 · un triplé 8,94 · quatre buts **9,37**, et tu es le
+   meilleur des tiens 53 % des soirs où tu marques au moins deux fois (contre 37 %).
+   Ce qui reste écarté, et c'est la mesure du 01/10 qui le dit : prendre la table des
+   coéquipiers (1,5 / 1 / 0,7 / 0,45) mettrait **10 % de tes notes à 9,5 et plus** et
+   39 % au-dessus de 7,5 — le 10 cesserait d'être rare. */
+const POIDS_BUT = [1, .75, .5, .35];
 /* DEUX TABLES, ET C'EST JUSTE : MESURÉ, PUIS REMIS EN PLACE (01/10/2026). Ton but
    paie 0,70 et celui d'un coéquipier 1,50, ce qui se lit comme une incohérence sur
    la liste des notes. Essayé : une table commune. Mesuré, 28 carrières entières —
@@ -2089,9 +2105,24 @@ const POIDS_BUT = [.7, .5, .35, .25];
    suggère : mesuré par la note réelle, un fait **réussi paie +0,95** et un fait
    **raté coûte −1,40** — un rapport de 1,5 et non de 2,4, parce qu'un fait réussi
    gagne aussi le match et que le résultat se paie à part. Rien à corriger. */
-const POIDS_BUT_AUTRE = [1.5, 1, .7, .45];
-/* Une passe décisive suit la même règle : .4 pour toi, .55 pour un coéquipier. */
-const PASSE_NOTE = .4, PASSE_NOTE_AUTRE = .55;
+/* ET FINALEMENT : UN BUT VAUT UN BUT, POUR TOI COMME POUR EUX (02/10/2026). La
+   deuxième table existait pour une seule raison — la tienne était trop petite, donc
+   il fallait payer leurs buts plus cher pour qu'un but se voie dans la liste. Cette
+   raison a disparu avec l'échelle ci-dessus. La garder serait un privilège sans
+   explication, et c'est lui qui se voyait à l'écran : mesuré, un **triplé de toi à
+   8,2 derrière trois coéquipiers à un but** (8,8 · 8,6 · 8,3) dans un 6-0. Mesuré sur
+   18 000 de tes matchs, le nombre de coéquipiers qui te dépassent en ayant marqué
+   **moins** de buts que toi : 0,98 avec leur table, **0,80** avec la tienne, et
+   personne au-dessus de toi 68 % → **77 %** des soirs où tu marques deux fois ou
+   plus. Leurs notes ne bougent que de 6,41 à 6,35 en moyenne : c'est le haut de la
+   liste qui se range, pas le niveau général.
+   Ce qui n'est **pas** aligné, et volontairement : leur part de chance reste à ±0,95
+   contre ±0,85 chez toi. C'est la décision du 29/09 — ta note a tes faits de match,
+   ta forme, ta tête et tes cartons pour faire l'écart, la leur n'a que le film, donc
+   sans un tirage un peu plus large elle n'aurait aucun relief. */
+const POIDS_BUT_AUTRE = POIDS_BUT.slice();
+/* Et une passe décisive, de même : la même valeur pour tout le monde. */
+const PASSE_NOTE = .4, PASSE_NOTE_AUTRE = PASSE_NOTE;
 function cumul(n, table){
   let t = 0;
   for (let i = 0; i < n; i++) t += table[i] != null ? table[i] : table[table.length - 1];
@@ -3792,7 +3823,19 @@ function surLeBanc(m, min, genre){
   return l.length ? pick(l).nom : coequipier();
 }
 function notesEquipe(m){
-  const bonus = m.res === 'V' ? .55 : m.res === 'D' ? -.45 : 0;
+  /* LA MÊME SOIRÉE SE JUGE SUR UNE SEULE ÉCHELLE. `duelResultat()` fait suivre la
+     récompense à la difficulté depuis le 29/09 — mais il n'était appliqué qu'à
+     **ta** note. Dans une victoire 5-0 chez plus faible, ton résultat payait donc
+     0,28 et le leur 0,55, et le clean sheet d'un défenseur 0,55 pour toi contre
+     0,70 pour lui : la liste des notes comparait deux barèmes, et c'est ce qui
+     mettait deux défenseurs sans un but au-dessus d'un quadruplé (rapport du
+     02/10/2026). La récompense d'un coéquipier est amortie comme la tienne.
+     Ce qui n'est pas aligné, et volontairement : **le coût** d'une défaite lourde,
+     qui te prend jusqu'à 1,1 point quand il leur en prend 0,45. Ta note est plus
+     exposée que la leur, c'est la demande du 29/09 (« on peut être mauvais un soir
+     où l'équipe gagne ») et ça ne se touche pas. */
+  const duelE = duelResultat(m.ecartForce);
+  const bonus = m.res === 'V' ? .55 * duelE : m.res === 'D' ? -.45 : 0;
   const joueurs = [];
   S.equipe.forEach(j => { j.note = null; j.noteR = null; });
   S.concurrents.forEach(c => { c.note = null; c.noteR = null; });
@@ -3828,7 +3871,7 @@ function notesEquipe(m){
     const a = minutes >= 70 ? 1 : minutes >= 30 ? .72 : .45;
     const f = faits[x.nom] || { b:0, p:0, j:0, r:0, pm:0 };
     const n = 6.1 + (bonus + (x.niv - S.club.force) * .05 + rnd(-.95, .95)
-      + (derriere ? (m.be === 0 ? .7 : m.be >= 4 ? -.7 : 0) : 0)) * a
+      + (derriere ? (m.be === 0 ? .7 * duelE : m.be >= 4 ? -.7 : 0) : 0)) * a
       + cumul(f.b, POIDS_BUT_AUTRE) + f.p * PASSE_NOTE_AUTRE - f.j * .25 - f.r * 1.3 - (f.pm || 0) * 1.1;
     x.ref.note = Math.round(clamp(n, 3, 10) * 10) / 10;
     x.ref.sum = (x.ref.sum || 0) + x.ref.note; x.ref.nb = (x.ref.nb || 0) + 1;

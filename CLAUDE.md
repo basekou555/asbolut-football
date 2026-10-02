@@ -2560,6 +2560,95 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     convocation, les deux matchs de milieu de semaine dans le film et le calendrier international
     n'existent pas. C'est le sujet qu'il avait lui-même mis après celui-ci.
 
+- **QUATRE BUTS DOIVENT FAIRE UN SOIR DE GALA** (le propriétaire, 02/10/2026, rapport de bug à
+  l'appui : « c'est assez rare de mettre 4 buts d'avoir 8 » — un quadruplé à **7,9**, quatrième des
+  siens, derrière deux défenseurs qui n'avaient pas marqué et un remplaçant entré dix minutes).
+  Mesuré avant d'y toucher, 26 624 de tes notes contre 491 229 notes de coéquipiers : sa soirée
+  n'était pas un coup de malchance, c'était le barème.
+  | buts | ta note | la note d'un coéquipier |
+  |---|---|---|
+  | 0 | 6,11 | 6,31 |
+  | 1 | 7,20 | 8,09 |
+  | 2 | 7,93 | **9,21** |
+  | 3 | 8,39 | 9,77 |
+  | 4 | **8,74** | 9,84 |
+  Autrement dit **un coéquipier qui en mettait deux passait devant toi qui en mettais quatre**, et
+  quand tu marquais deux fois ou plus tu n'étais le meilleur des tiens que 37 % du temps. Trois
+  causes séparées, chacune mesurée, chacune corrigée.
+  1. **L'échelle de ton but, pas la forme de sa table.** Le rendement décroissant est sa propre règle
+     du 27/09 (« le premier fait vaut un point, le deuxième 0,75, le troisième 0,5 ») et elle reste ;
+     ce qui était faux, c'est que le **premier but** valait .7 là où le premier fait de match vaut 1,
+     donc la somme plafonnait à +1,8 quelle que soit la soirée. `POIDS_BUT` devient `[1, .75, .5,
+     .35]` — la même table que les faits, parce qu'un but **est** un fait de match. Mesuré : un but
+     7,52 · un doublé 8,41 · un triplé 8,94 · quatre buts **9,37**.
+  2. **La même soirée se jugeait sur deux échelles.** `duelResultat()` fait suivre la récompense à la
+     difficulté depuis le 29/09 — mais il n'était appliqué qu'à **ta** note. Dans une victoire 5-0
+     chez plus faible (son cas : écart de force 11), ton résultat payait 0,28 et le leur 0,55, et le
+     clean sheet d'un défenseur 0,55 pour toi contre 0,70 pour lui. C'est ce qui mettait deux
+     défenseurs sans un but au-dessus d'un quadruplé. Leur récompense est amortie comme la tienne.
+  3. **Et il restait une table de faveur.** Après les deux premières corrections, un triplé de toi à
+     **8,2 derrière trois coéquipiers à un but** (8,8 · 8,6 · 8,3) dans un 6-0 — vu à l'écran avant
+     de livrer. La deuxième table (`POIDS_BUT_AUTRE` à 1,5 le premier but) n'existait que pour une
+     raison : la tienne était trop petite, donc il fallait payer leurs buts plus cher pour qu'un but
+     se voie dans la liste. Cette raison avait disparu au point 1, donc la garder était un privilège
+     sans explication. **Une seule table pour tout le monde**, la passe décisive comprise (.4 partout
+     au lieu de .55 pour eux). Mesuré, nombre de coéquipiers qui te dépassent en ayant marqué
+     **moins** de buts que toi : 0,98 → **0,80**, et personne au-dessus de toi 68 % → **77 %** des
+     soirs où tu marques au moins deux fois. Leurs notes ne bougent que de 6,41 à **6,35** en
+     moyenne : c'est le haut de la liste qui se range, pas le niveau général.
+  **C'est bien l'inverse du choix du 01/10**, et c'est volontaire : ce jour-là j'avais essayé de
+  donner **leur** table (1,5 / 1 / 0,7 / 0,45) **à toi**, ce qui mettait 10 % de tes notes à 9,5 et
+  plus et 39 % au-dessus de 7,5 — le 10 cessait d'être rare. Re-mesuré ici : 9,5+ à **10,0 %** avec
+  leur table contre 3,9 % avec la tienne. La bonne direction était l'autre : aligner **leur** table
+  sur la tienne, ce qui n'avait jamais été mesuré.
+  **Mesuré après, 26 465 de tes notes** :
+  | buts | ta note | ton rang | 9,5 et plus |
+  |---|---|---|---|
+  | 0 | 6,07 | — | 0,1 % |
+  | 1 | 7,50 | — | 2,9 % |
+  | 2 | 8,45 | 2,1 (médiane 1) | 17,1 % |
+  | 3 et + | 9,0 à 9,3 | **1,4** (médiane 1) | 38 à 57 % |
+  Et l'écart au meilleur du match, les soirs où tu marques deux fois, tombe de 0,78 à **0,21** de
+  moyenne (médiane 0 : tu es le meilleur).
+  **Ce que ça coûte, et je ne le maquille pas** : tes notes à 9,5 et plus passent de **1,7 % à
+  3,9 %**. Les deux tiers de cette hausse sont sur des soirées à deux buts ou plus (0,1 % sans but,
+  2,9 % avec un seul), donc le 10 reste lié à une vraie performance — mais c'est le double de ce
+  qu'il y avait. Le reste de la bande ne bouge pas : moyenne 6,70 → **6,80**, sous 5,0 11,7 →
+  **12,1 %**, au-dessus de 7,5 29,3 → **32,6 %** (la bande historique est 30-34 %), et la moyenne
+  reste au-dessus du pivot de 6,2 que lit la confiance du coach.
+  **Et le monde ne bouge pas** : à 120 carrières entières avant et après, titres par carrière
+  **4,12 → 4,14**, gagné 30,5 → 29,5, matchs 586 → 590. C'était le risque réel de ce lot — ta note
+  nourrit la confiance du coach, donc ton temps de jeu, donc ta cote, donc les offres — et il ne
+  s'est pas réalisé.
+  **Ce qui n'est pas aligné, et volontairement, deux fois** : (1) le **coût** d'une défaite lourde,
+  qui te prend jusqu'à 1,1 point quand il leur en prend 0,45 — ta note doit être plus exposée que la
+  leur, c'est la demande du 29/09 ; (2) leur part de chance reste à ±0,95 contre ±0,85 chez toi,
+  parce que ta note a tes faits, ta forme, ta tête et tes cartons pour faire l'écart et que la leur
+  n'a que le film.
+  **Vérifié** : les sept invariants du tableau des notes à zéro écart, **31 faits sur 31**, score =
+  film **0 écart** sur 5 789 faits, les minutes à zéro incohérence, zéro doublon de nom et dix-huit
+  clubs dans les cinq championnats ; 24 carrières entières de 18 à 38 ans avec tous les écrans, zéro
+  erreur ; l'écran de résultat relu sur des triplés et des quadruplés (un 4 buts en 5-0 à l'extérieur
+  donne **10, meilleur des tiens** ; un 4 buts dans un 4-1 serré donne 8,7, premier aussi), zéro
+  `undefined` ; `tests/simulate.js` → `ERRORS: none` ; le banc de la semaine tient l'invariant aux
+  trois croisements (académie·M matchs « le mental » 23,1±0,51 / trace « ton poste » +7,2 ;
+  quartier·D matchs « deux séances » 21,0±0,51 / trace « le physique » +10,1 ; étranger·A, où à 250
+  saisons « la technique » semblait prendre les deux, **tranché à 700 saisons** : les matchs vont au
+  mental 20,0±0,33 et la trace à la technique +9,3, qui est à 19,6 sur les matchs — c'était du bruit,
+  la leçon de méthode du 29/09 appliquée à temps) ; **aucune migration** (`VERSION` ne bouge pas :
+  aucun champ de sauvegarde ne change, les notes déjà jouées gardent la leur) — vérifié sur une vraie
+  partie de **joueur·euse** et une vraie partie d'**entraîneur·euse** de la version déployée,
+  reprises à la 17ᵉ journée, saison finie, trêve passée, **deux saisons entières** jouées, 22 joueurs
+  et zéro doublon.
+  **Ce qui reste à décider, et c'est à lui** : les 3,9 % de notes à 9,5 et plus. Si le 10 doit
+  redevenir aussi rare qu'avant, le levier est la queue de `POIDS_BUT` (le troisième et le quatrième
+  but), pas le premier — c'est le premier qui porte la comparaison avec ses coéquipiers.
+  **Un piège d'outillage trouvé en route** : mes sondes de carrière appelaient `choisirVie()` sans
+  `finirVie()`, donc **elles s'arrêtaient toutes à la fin de la première saison** sans le dire — 20
+  matchs par « carrière » au lieu de 580, et une distribution de notes mesurée sur des joueurs de
+  dix-huit ans (moyenne 5,8 au lieu de 6,8). Une sonde qui s'arrête en silence est pire qu'une sonde
+  absente, comme celle qui ignorait son propre `NS` le 30/09.
+
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).
 - Tout l'état d'une carrière est dans l'objet global `state` (sérialisé dans localStorage). `state.pendingChoice` désigne l'écran courant ; `render()` dans `ui.js` dispatche.
