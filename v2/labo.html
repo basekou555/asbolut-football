@@ -132,6 +132,12 @@ function uneSaison(iOrig, poste, polF){
       nFaits++; if (f.reussi) nReussis++;
     }
     else if (S.ecran === 'resultat') apresMatch();
+    /* LA TRÊVE D'HIVER COUPE LA SAISON EN DEUX. Sans cette branche le banc s'arrêtait
+       à la 17ᵉ journée et toutes les lignes affichaient une demi-saison. Le banc ne
+       fait pas les courses : il rentre chez lui, c'est-à-dire le choix qui ne touche
+       pas le football — et il est le même sur les neuf lignes, donc il ne biaise pas
+       la comparaison des semaines, qui est la seule chose mesurée ici. */
+    else if (S.ecran === 'treve'){ if (!S.treve.fait) choisirTreve('chez'); else finirTreve(); }
     else break;
   }
   const g = {}; AXES.forEach(a => g[a] = S.moi.base[a] - dep[a]);
