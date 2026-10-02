@@ -545,7 +545,9 @@ function classementHTML(){
     ${t.map((e, i) => `<div${e.nom === S.club.nom ? ' style="border-color:var(--gold-dim)"' : ''}>
       <span class="m">${i + 1}</span><span>${esc(e.nom)}</span>
       <span class="tag">${e.pts} pts · ${e.j} j · ${e.v || 0}V ${e.n || 0}N ${e.d || 0}D · ${e.bp - e.bc > 0 ? '+' : ''}${e.bp - e.bc}</span></div>`).join('')}
-  </div><p class="sub">${(S.division || 1) === 1
+  </div><p class="sub">${(S.pays || 'FR') !== 'FR'
+    ? `Les ${MONTEES} derniers quittent l'élite. Si c'est ton club, il n'y a pas de division en dessous pour toi.`
+    : (S.division || 1) === 1
     ? `Les ${MONTEES} derniers descendent en ${esc(nomDivision(2))}.`
     : `Les ${MONTEES} premiers montent en ${esc(nomDivision(1))}.`}</p></details>`;
 }
@@ -893,7 +895,9 @@ function ecranOffres(){
     <div class="step">Mercato ${S.annee} · ${S.moi.age} ans · ${reste > 1 ? "une proposition parmi d'autres" : 'une proposition'}</div>
     <div class="big-ico">📞</div>
     <h2>${esc(o.nom)}</h2>
-    <p class="sub">${esc(nomDivision(o.div))}${o.salaire ? ` · ${esc(sous(o.salaire))} par an sur ${o.ans} ans` : ''}</p>
+    <p class="sub">${o.pays ? `${PAYS[o.pays].dr} ${esc(nomChampionnat(o.pays, S.annee))}` : esc(nomDivision(o.div))}${o.salaire ? ` · ${esc(sous(o.salaire))} par an sur ${o.ans} ans` : ''}</p>
+    ${o.pays ? `<p class="narr" style="border-left:3px solid var(--gold-dim);padding-left:10px">
+      <b>Changer de pays.</b> ${esc(motEtranger(o))}</p>` : ''}
     <p class="narr">${esc(motClub(o))} ${esc(motPlace(o.force))}${o.salaire ? ` ${esc(motSalaire(o.salaire))}` : ''}</p>
     ${situationTete()}
     ${S.libre ? `<p class="sub">${esc(S.club.nom)} n'a pas prolongé : tu n'as pas de club si tu refuses tout.</p>`
@@ -1065,9 +1069,11 @@ function ecranCarriere(){
     <h3>Saison par saison</h3>
     <div class="notes">${(c.annees || []).map(a => `<div>
       <span class="p">${String(a.annee).slice(2)}</span>
-      <span>${esc(a.club)} <i>${a.matchs} m·${a.buts} b${a.pos ? ` · ${a.pos}ᵉ` : ''}</i>${a.pos === 1 ? ' 🏆' : ''}${a.coupe ? ' 🏅' : ''}${a.euro ? ' ⭐' : ''}</span>
+      <span>${a.pays && a.pays !== 'FR' ? (PAYS[a.pays] || {}).dr + ' ' : ''}${esc(a.club)} <i>${a.matchs} m·${a.buts} b${a.pos ? ` · ${a.pos}ᵉ` : ''}</i>${a.pos === 1 ? ' 🏆' : ''}${a.coupe ? ' 🏅' : ''}${a.euro ? ' ⭐' : ''}</span>
       <span class="n">${a.note == null ? '—' : virg(a.note)}</span></div>`).join('')}</div>
     <p class="sub">Les clubs : ${esc((c.clubs || []).join(', ')) || '—'}.</p>
+    ${(c.pays || []).length > 1 ? `<p class="sub">Les pays : ${(c.pays || [])
+      .map(p => `${(PAYS[p] || {}).dr || ''} ${esc(nomPays(p).replace(/^(la |l')/, ''))}`).join(' · ')}.</p>` : ''}
     ${vieFinaleHTML()}
     <div class="btn-row"><button class="btn ghost" onclick="ouvrirJournal()">📓 Le journal</button>
       <button class="btn" onclick="recommencer()">Une autre carrière</button></div>

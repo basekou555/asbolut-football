@@ -344,7 +344,7 @@ function nouvellePartie(c){
   const club = ligue.equipes[ri(ligue.equipes.length - 4, ligue.equipes.length - 1)];
   const { concurrents, equipe } = creerEffectif(club, poste.id);
   S = {
-    v: VERSION, mode: 'joueur', annee: c.annee, division: 1, bonusOffres: 0,
+    v: VERSION, mode: 'joueur', annee: c.annee, division: 1, pays: 'FR', natal: 'FR', bonusOffres: 0,
     argent: 0, salaire: 0,
     /* CE QUE LES ARRÊTS PEUVENT MAINTENANT PROMETTRE OU PORTER (30/09/2026).
        `promesses` : les conséquences différées — une phrase à la presse qu'on peut
@@ -534,12 +534,93 @@ function nomsPris(){
   return s;
 }
 
-function creerLigue(annee){
+/* ========== LES PAYS ==========
+   « C'est ennuyeux de rester dans un seul pays » (le propriétaire, 02/10/2026). Le monde
+   du 2.0 était **trente-six clubs français** : `EU_CLUBS` ne servait que d'adversaire de
+   coupe d'Europe et `WORLD_CLUBS` n'était lu nulle part.
+   Ce qui décide des destinations, c'est le **vivier** : il faut dix-huit clubs pour une
+   saison de trente-quatre journées, sur laquelle tout est calibré (le rythme des
+   décisions, les cinq tours de coupe, les cinq fenêtres de sélection, les trois bancs
+   d'essai). Mesuré sur `EU_CLUBS` + les clubs de complément : l'Angleterre en fournit 28,
+   l'Italie 23, l'Espagne et l'Allemagne 22 — mais les Pays-Bas 15, le Portugal 13, la
+   Belgique 12, et l'Amérique du Sud neuf en 1970. Les quatre premiers sont donc jouables ;
+   les autres restent ce qu'ils étaient, des adversaires d'Europe.
+   `S.pays` est le pays où tu joues, et le monde simulé est **le sien**. Le championnat que
+   tu quittes est rangé dans `S.mondes` : y revenir, c'est retrouver les clubs qu'on a
+   connus, vieillis du temps passé ailleurs. */
+const PAYS = {
+  FR: { nom:"la France", dr:'🇫🇷', nat:'FR', d2:true, abr:'FR',
+        lig: a => a >= 2002 ? "Ligue 1" : "Division 1", sal: () => 1 },
+  /* Pas le drapeau à croix de saint Georges : c'est un drapeau de subdivision, il
+     s'affiche en carré vide sur la moitié des téléphones. */
+  /* Les facteurs sont petits exprès : le gros de l'écart de salaire vient déjà de la
+     force du club, et **tous** les clubs qui appellent de l'étranger sont des clubs
+     d'histoire. Mesuré à 1,9 / 1,7 / 1,55 / 1,3 : le salaire médian d'une offre
+     étrangère valait **deux fois** celui d'une offre française, ce qui rendait l'argent
+     sans arbitrage. Ce qui reste vrai et voulu : l'Italie des années 80 et l'Angleterre
+     d'après les droits télé paient mieux que la France de la même année. */
+  EN: { nom:"l'Angleterre", dr:'🇬🇧', nat:'EN', abr:'ENG',
+        lig: a => a >= 1993 ? "Premier League" : "First Division",
+        sal: a => a >= 2004 ? 1.5 : a >= 1996 ? 1.3 : 1 },
+  IT: { nom:"l'Italie", dr:'🇮🇹', nat:'IT', abr:'ITA', lig: () => "Serie A",
+        sal: a => a >= 1984 && a < 2000 ? 1.45 : 1.15 },
+  ES: { nom:"l'Espagne", dr:'🇪🇸', nat:'ES', abr:'ESP', lig: () => "Liga",
+        sal: a => a >= 2000 ? 1.35 : 1.12 },
+  DE: { nom:"l'Allemagne", dr:'🇩🇪', nat:'DE', abr:'GER', lig: () => "Bundesliga",
+        sal: a => a >= 1974 ? 1.2 : 1.05 },
+};
+/* Les clubs de complément de chaque championnat : ceux qui n'ont pas de poids
+   historique dans `EU_CLUBS` mais qui remplissent un tableau. Ils vivent ici et non
+   dans `eras.js`, que la 1.0 partage avec sa propre table. */
+/* IL EN FAUT VINGT-DEUX, PAS DIX-HUIT, et c'est la mesure qui l'a dit. Avec un vivier de
+   dix-huit à dix-neuf clubs, `renouvelerElite()` sortait les trois derniers et ne trouvait
+   personne pour les remplacer : mesuré, le championnat d'Espagne **tombait de 18 à 16
+   clubs** en deux saisons, et l'Allemagne à 15. Un championnat a besoin de clubs de
+   réserve pour que son bas de tableau veuille dire quelque chose. */
+const CLUBS_PAYS = {
+  EN:["Aston Villa","West Ham","Leicester City","Southampton","Crystal Palace","Fulham",
+      "Wolverhampton","Sheffield United","Ipswich Town","Norwich City","Derby County",
+      "Coventry City","Sunderland","Middlesbrough","Blackburn","Stoke City","West Bromwich",
+      "Birmingham City","Queens Park Rangers","Portsmouth","Charlton","Luton Town"],
+  ES:["Getafe","Osasuna","Deportivo Alavés","Cádiz CF","RCD Mallorca","Celta Vigo","Espanyol",
+      "Real Sociedad","Real Betis","Villarreal","Rayo Vallecano","Real Saragosse",
+      "Real Valladolid","Sporting Gijón","Las Palmas","Deportivo La Corogne","Real Oviedo",
+      "Racing Santander","Málaga CF","Elche CF","Levante","Hércules"],
+  IT:["Torino","Bologna","Genoa","Sampdoria","Udinese","Lecce","Cagliari","Hellas Vérone",
+      "Parme","Lazio","Bari","Brescia","Vicenza","Catane","Pérouse","Côme","Foggia","Ascoli",
+      "Cesena","Avellino","Pise","Reggiana"],
+  DE:["VfB Stuttgart","Eintracht Francfort","Schalke 04","Werder Brême","SC Fribourg",
+      "Mayence","FC Cologne","Hertha Berlin","Kaiserslautern","Bochum","Nuremberg","Hanovre",
+      "MSV Duisbourg","Fortuna Düsseldorf","Karlsruhe","Arminia Bielefeld","Hansa Rostock",
+      "Eintracht Brunswick","Rot-Weiss Essen","Uerdingen","SpVgg Fürth","Wattenscheid"],
+};
+function paysCourant(){ return (typeof S !== 'undefined' && S && S.pays) || 'FR'; }
+function monPays(){ return PAYS[paysCourant()] || PAYS.FR; }
+function nomPays(p){ return (PAYS[p] || PAYS.FR).nom; }
+function nomChampionnat(p, a){ return (PAYS[p] || PAYS.FR).lig(a == null ? S.annee : a); }
+/* L'année est passée explicitement partout où `S` peut ne pas exister encore. */
+/* CE QU'ON VA CHERCHER AILLEURS : le niveau, et l'argent. L'Italie des années 80 et
+   l'Angleterre d'après les droits télé payaient ce que la France ne payait pas — c'est
+   la moitié de la raison de partir, et elle se lit dans le salaire de l'offre. */
+function facteurPays(p, a){ return (PAYS[p] || PAYS.FR).sal(a == null ? (typeof S !== 'undefined' && S ? S.annee : 2018) : a); }
+/* Le vivier d'un pays à une époque : les clubs d'histoire, puis ceux qui remplissent. */
+function poolPays(pays, dk){
+  if ((pays || 'FR') === 'FR') return {
+    gros: (typeof FR_CLUBS !== 'undefined' ? FR_CLUBS : []).filter(c => (c.s[dk] || 0) >= 2)
+      .map(c => ({ nom:c.n, s:c.s[dk] })),
+    petits: (typeof FR_LOWER !== 'undefined' ? FR_LOWER : []).map(n => ({ nom:n, s: rnd(-1.7, 1) })) };
+  const nat = (PAYS[pays] || {}).nat;
+  return {
+    gros: (typeof EU_CLUBS !== 'undefined' ? EU_CLUBS : []).filter(c => c.nat === nat && (c.s[dk] || 0) >= 2)
+      .map(c => ({ nom:c.n, s:c.s[dk] })),
+    petits: (CLUBS_PAYS[pays] || []).map(n => ({ nom:n, s: rnd(-1.7, 1) })) };
+}
+
+function creerLigue(annee, pays){
+  const p = pays || paysCourant();
   const dk = typeof decadeKey === 'function' ? decadeKey(annee) : '10';
-  const tousGros = (typeof FR_CLUBS !== 'undefined' ? FR_CLUBS : []).filter(c => (c.s[dk] || 0) >= 2)
-    .map(c => ({ nom:c.n, s:c.s[dk] }));
-  const tousPetits = (typeof FR_LOWER !== 'undefined' ? FR_LOWER : []).map(n => ({ nom:n, s: rnd(-1.7, 1) }));
-  const gros = shuffle(tousGros), petits = shuffle(tousPetits);
+  const pool = poolPays(p, dk);
+  const gros = shuffle(pool.gros), petits = shuffle(pool.petits);
   /* LA PENTE : l'écart historique entre un gros et un petit club. À 4 par point de
      poids, le premier était **douze à quatorze points au-dessus du cinquième** et le
      titre était joué avant août : mesuré, 3,9 champions différents sur vingt saisons
@@ -555,10 +636,18 @@ function creerLigue(annee){
   /* L'élite : six clubs d'histoire et douze qui remplissent. L'échelon inférieur :
      ce qui reste, et **les gros clubs qui n'ont pas été tirés** — un grand peut donc
      être en bas et remonter, ce qui arrive vraiment. */
-  const d1 = [...gros.slice(0, 6), ...petits.slice(0, 12)].map(x => faire(x, true))
+  /* À l'étranger, le vivier ne porte pas deux divisions : l'Angleterre en fournit 28
+     clubs en tout, l'Espagne 22. Les grands clubs d'histoire n'y sont pas six non plus
+     (trois en Espagne en 1962) : on prend ce qu'il y a et on complète, pour que le
+     tableau fasse bien dix-huit. Conséquence assumée : **pas de montée ni de descente
+     hors de France** — ce qui s'y joue à la place est dans `renouvelerElite()`. */
+  const nG = Math.min(6, gros.length);
+  const d1 = [...gros.slice(0, nG), ...petits.slice(0, 18 - nG)].map(x => faire(x, true))
     .sort((a, b) => b.force - a.force);
-  const d2 = [...gros.slice(6, 9), ...petits.slice(12, 27)].map(x => faire(x, false))
-    .sort((a, b) => b.force - a.force);
+  const d2 = PAYS[p] && PAYS[p].d2
+    ? [...gros.slice(6, 9), ...petits.slice(12, 27)].map(x => faire(x, false))
+      .sort((a, b) => b.force - a.force)
+    : [];
   return { equipes: d1, autre: d2, N: d1.length,
     classement: Object.fromEntries(d1.map(e => [e.nom, { pts:0, j:0, v:0, n:0, d:0, bp:0, bc:0 }])) };
 }
@@ -578,8 +667,13 @@ const MONTEES = 3;
    descendant : la descente coûte, la montée rapporte, et l'échange redevient
    neutre. C'est aussi ce qui donne à une descente son poids. */
 const PRIME_ELITE = 6;
-function abrDivision(d){ return `${S.annee >= 2002 ? 'L' : 'D'}${d == null ? (S.division || 1) : d}`; }
+function abrDivision(d){
+  if ((S.pays || 'FR') !== 'FR') return monPays().abr;
+  return `${S.annee >= 2002 ? 'L' : 'D'}${d == null ? (S.division || 1) : d}`;
+}
 function nomDivision(d){
+  /* Hors de France il n'y a qu'un échelon : le nom du championnat EST la division. */
+  if ((S.pays || 'FR') !== 'FR') return nomChampionnat(S.pays, S.annee);
   const n = d == null ? (S.division || 1) : d;
   return n === 1 ? (S.annee >= 2002 ? "Ligue 1" : "Division 1")
     : (S.annee >= 2002 ? "Ligue 2" : "Division 2");
@@ -611,6 +705,7 @@ function noterRangs(){
 }
 function promotionsRelegations(){
   const mienne = S.ligue.equipes || [], autre = S.ligue.autre || [];
+  if (!monPays().d2) return renouvelerElite();
   if (!autre.length || mienne.length < 6) return;
   const cl = classementTrie().filter(x => mienne.some(e => e.nom === x.nom));
   const nomsDe = l => l.map(e => e.nom);
@@ -641,6 +736,43 @@ function promotionsRelegations(){
   if (S.division !== avant)
     jrn('division', S.division === 2 ? `${S.club.nom} descend en ${nomDivision(2)}.`
       : `${S.club.nom} remonte en ${nomDivision(1)}.`);
+}
+
+/* CE QUI REMPLACE LA MONTÉE ET LA DESCENTE HORS DE FRANCE. Le vivier d'un pays
+   étranger ne porte pas deux divisions (voir `creerLigue`), mais un classement qui a un
+   bas de tableau sans conséquence est un chiffre affiché sans conséquence — la règle du
+   projet. Les trois derniers **quittent donc le monde simulé** et trois clubs du vivier
+   restant prennent leur place. Et si c'est ton club, tu descends avec lui : il n'y a pas
+   d'échelon inférieur où te suivre, donc **ton contrat tombe** et il faut partir. C'est
+   la deuxième chose du jeu qui t'y oblige, après le non-renouvellement. */
+function renouvelerElite(){
+  const l = S.ligue.equipes || [];
+  if (l.length < 6) return;
+  const cl = classementTrie().filter(x => l.some(e => e.nom === x.nom));
+  const bas = cl.slice(-MONTEES).map(x => x.nom);
+  if (!bas.length) return;
+  /* `bas` est rangé du moins mauvais au dernier : si on ne peut en remplacer que deux,
+     ce sont les **deux derniers** qui partent, pas les deux premiers de la charrette. */
+  const dk = typeof decadeKey === 'function' ? decadeKey(S.annee) : '10';
+  const dedans = l.map(e => e.nom);
+  const pool = poolPays(S.pays, dk);
+  const libres = shuffle(pool.gros.concat(pool.petits).filter(x => !dedans.includes(x.nom)));
+  const pris = nomsPris();
+  /* On ne sort que ce qu'on peut remplacer : un championnat garde sa taille, sinon le
+     tableau se vide d'une saison sur l'autre (mesuré avant la correction du vivier). */
+  const neufs = libres.slice(0, Math.min(bas.length, libres.length)).map(x => {
+    const ancre = clamp(52 + x.s * PENTE_CLUB, 44, 74);
+    const pot = clamp(ancre - PRIME_ELITE + rnd(-3, 3), 40, 80);
+    const sq = creerEffectifAdverse(clamp(pot + rnd(-3, 3), 42, 80), pris);
+    return { nom:x.nom, ancre:dec1(ancre), pot:dec1(pot), sq, force:forceEffectif(sq) };
+  });
+  const sortent = bas.slice(bas.length - neufs.length);
+  S.ligue.equipes = l.filter(e => !sortent.includes(e.nom)).concat(neufs);
+  S.mouvDiv = { montent: neufs.map(e => e.nom), descendent: sortent.slice() };
+  if (sortent.includes(S.club.nom)){
+    S.clubDescendu = true;
+    jrn('division', `${S.club.nom} descend. Il n'y a pas de division en dessous pour toi : il faut partir.`);
+  }
 }
 
 /* L'été du championnat : chaque club rejoue son niveau, dans les deux divisions.
@@ -877,6 +1009,50 @@ function relireClubSq(){
    te remplace, et ton nouveau club te fait de la place. Tes nouveaux coéquipiers
    sont **les joueurs de ce club** — ceux dont tu lisais les noms au classement et
    dans les buts encaissés, pas un effectif tiré au sort pour l'occasion. */
+/* ON RANGE LE MONDE QU'ON QUITTE. Sans ça, dix saisons de noms de clubs et de buteurs
+   s'effaceraient en signant ailleurs, et revenir en France donnerait un championnat
+   d'inconnus — alors que « une carrière doit laisser une trace » est le sujet du jeu.
+   Le championnat mis de côté continue sans toi : on le fait vivre d'autant d'étés que
+   tu as passés ailleurs (plafonné à six, au-delà ce n'est plus le même monde de toute
+   façon et chaque passage coûte un vieillissement de vingt-deux joueurs par club). */
+function changerDePays(pays, club){
+  const vieux = S.pays || 'FR';
+  S.mondes = S.mondes || {};
+  S.mondes[vieux] = { ligue:S.ligue, division:S.division || 1, an:S.annee };
+  const garde = S.mondes[pays];
+  S.pays = pays;
+  if (garde){
+    S.ligue = garde.ligue; S.division = garde.division || 1;
+    delete S.mondes[pays];
+    const n = clamp(Math.round(S.annee - (garde.an || S.annee)), 0, 6);
+    for (let k = 0; k < n; k++) faireVivreLigue();
+  } else {
+    S.division = 1; S.ligue = creerLigue(S.annee, pays);
+  }
+  assurerClub(club);
+  S.ligue.N = (S.ligue.equipes || []).length;
+  S.ligue.classement = Object.fromEntries((S.ligue.equipes || [])
+    .map(e => [e.nom, { pts:0, j:0, v:0, n:0, d:0, bp:0, bc:0 }]));
+  S.clubDescendu = false;
+  jrn('pays', `Tu quittes ${nomPays(vieux)} pour ${nomPays(pays)} : ${nomChampionnat(pays, S.annee)}.`);
+}
+/* Le club qui t'appelle de l'étranger n'a pas d'effectif tant que tu n'as pas signé :
+   une offre n'est qu'un nom et une force. S'il n'est pas dans le championnat qu'on vient
+   de fabriquer (un tirage l'a laissé dehors), on l'y met — sinon `monClub()` rendrait
+   null et la première journée planterait. */
+function assurerClub(club){
+  const l = S.ligue.equipes || (S.ligue.equipes = []);
+  /* IL FAUT REGARDER LES DEUX DIVISIONS. Mesuré : en rentrant en France, un club rangé
+     dans l'échelon inférieur du monde qu'on avait quitté n'était pas trouvé dans
+     l'élite, on l'y ajoutait — et il existait **deux fois**, avec ses vingt-deux
+     joueurs. 204 doublons de club et 272 de joueur sur dix-huit carrières. Le
+     changement de division, lui, se fait juste après dans `rejoindre()`. */
+  if (toutesLesEquipes().some(e => e.nom === club.nom)) return;
+  const f = clamp(club.force || 55, 42, 80);
+  const sq = creerEffectifAdverse(f, nomsPris());
+  if (l.length >= 18){ l.sort((a, b) => b.force - a.force); l.pop(); }
+  l.push({ nom:club.nom, ancre:dec1(f), pot:dec1(f), sq, force:forceEffectif(sq) });
+}
 function rejoindre(club){
   const pris = nomsPris();
   const vieux = monClub();
@@ -888,6 +1064,7 @@ function rejoindre(club){
     }
     vieux.force = forceEffectif(vieux.sq);
   }
+  if (club.pays && club.pays !== (S.pays || 'FR')) changerDePays(club.pays, club);
   S.club = { nom: club.nom, force: Math.round(club.force) };
   /* Signer dans l'autre division, c'est changer de division. `S.ligue.equipes` est
      toujours celle où tu joues : sans cet échange, ton club n'était plus au
@@ -2057,8 +2234,11 @@ function advAnnexe(info){
   if (info.c === 'coupe'){
     if (info.t <= 1){
       const dedans = toutesLesEquipes().map(e => e.nom);
-      const petits = (typeof FR_LOWER !== 'undefined' ? FR_LOWER : []).filter(n => !dedans.includes(n));
-      const nom = petits.length ? pick(petits) : "un club de National";
+      /* Le petit club des premiers tours est un club **du pays où tu joues** : en
+         Italie, « LB Châteauroux » se lisait comme un défaut au premier coup d'œil. */
+      const dk0 = typeof decadeKey === 'function' ? decadeKey(S.annee) : '10';
+      const petits = poolPays(S.pays, dk0).petits.map(x => x.nom).filter(n => !dedans.includes(n));
+      const nom = petits.length ? pick(petits) : "un club de l'échelon inférieur";
       return { nom, force: Math.round(clamp(S.club.force - rnd(5, 16), 38, 76)), petit:true };
     }
     const autres = S.ligue.equipes.filter(e => e.nom !== S.club.nom);
@@ -2066,7 +2246,11 @@ function advAnnexe(info){
     return { nom:e.nom, force:e.force };
   }
   const dk = typeof decadeKey === 'function' ? decadeKey(S.annee) : '10';
-  const eu = (typeof EU_CLUBS !== 'undefined' ? EU_CLUBS : []).filter(c => (c.s[dk] || 0) >= 2);
+  /* On ne tire pas un club de son propre championnat en Europe : il est déjà au
+     classement, et on le joue deux fois en championnat. */
+  const moiNat = monPays().nat;
+  const eu = (typeof EU_CLUBS !== 'undefined' ? EU_CLUBS : [])
+    .filter(c => (c.s[dk] || 0) >= 2 && c.nat !== moiNat);
   if (!eu.length) return { nom:"un club européen", force: S.club.force };
   // plus on avance, plus on tombe sur du lourd
   const tri = eu.slice().sort((a, b) => (b.s[dk] || 0) - (a.s[dk] || 0));
@@ -3721,7 +3905,7 @@ function apresMatch(){
      seul » était écrit depuis le 27/09 ; maintenant c'est vrai, et les garder devient
      l'arbitrage qu'on avait promis. Le plancher du premier gros salaire tient
      toujours en dessous. */
-  if (S.vie) bougerProches((RAPPEL_PROCHES_VERS - S.vie.proches) * RAPPEL_PROCHES);
+  if (S.vie) bougerProches((cibleProches() - S.vie.proches) * RAPPEL_PROCHES);
   S.ligneRef = S.ligneRef || { ...S.lignes };
   LIGNES.forEach(k => S.ligneRef[k] = S.ligneRef[k] * .82 + S.lignes[k] * .18);
   // ta forme de référence : ce que tu vaux d'habitude, pour que la note lise le creux
@@ -3847,6 +4031,14 @@ function bougerClubEtSelection(note, pos){
     if ((S.division || 1) > 1) cible -= 26;               // on ne va pas les chercher en bas
   } else cible = m >= 6 ? 14 : 0;
   if (S.moi.age >= 32) cible -= (S.moi.age - 31) * 11;    // ils regardent devant
+  /* ET ON TE VOIT MOINS DE LOIN. Avant Bosman, un sélectionneur ne se déplaçait pas
+     pour suivre un expatrié : la cible est fortement amortie. Après, les matchs passent
+     à la télévision et l'amorti est léger — mais il reste, parce qu'un championnat
+     étranger n'est pas celui que le sélectionneur regarde chaque semaine. */
+  /* Calibré : à .5 et .82 la sélection **disparaissait** — zéro sélection de médiane
+     pour qui part, contre sept en restant. Taxer un sous-système est une décision, le
+     supprimer n'en est pas une. À .68 et .9 on en perd la moitié. */
+  if ((S.pays || 'FR') !== 'FR') cible *= S.annee >= 1996 ? .9 : .68;
   cible = clamp(cible, 0, 100);
   S.liens.selection = clamp((S.liens.selection || 0) * .5 + cible * .5);
   if (S.liens.selection >= 60) jrn('selection', `On parle de toi pour la sélection.`);
@@ -3906,12 +4098,15 @@ function bilanSuite(pos, note){
    le rend en francs avant 2002 et à l'échelle de l'époque. Calibré pour qu'un
    débutant de bas de tableau touche quelques dizaines de milliers, un titulaire
    confirmé quelques centaines, et une star quelques millions. */
-function salaireDe(niv, age, force, div){
+/* LE SALAIRE SUIT LE PAYS. `pays` est facultatif : sans lui on lit celui où tu joues,
+   donc tous les appels existants continuent de dire la même chose. */
+function salaireDe(niv, age, force, div, pays){
   const base = Math.pow(Math.max(0, niv - 45) / 30, 2.6) * 3.2;
   const ageF = age <= 19 ? .3 : age <= 21 ? .5 : age <= 23 ? .75 : age <= 31 ? 1 : age <= 33 ? .85 : .7;
   const clubF = clamp(.45 + (force - 50) * .045, .35, 2.2);
   const era = typeof eraForYear === 'function' ? eraForYear(S ? S.annee : 2018) : { marketSize:1 };
-  return Math.max(.004, base * ageF * clubF * ((div || 1) === 2 ? .45 : 1) * (era.marketSize || 1));
+  return Math.max(.004, base * ageF * clubF * ((div || 1) === 2 ? .45 : 1) * (era.marketSize || 1)
+    * facteurPays(pays || paysCourant(), S ? S.annee : 2018));
 }
 /* La monnaie, à l'échelle de l'époque (francs avant 2002) et à la virgule française
    comme tous les autres nombres du jeu. */
@@ -3937,6 +4132,15 @@ function primesDeLaSaison(){
    passe par la seule porte du mental (`coutMental`, et la récupération hebdomadaire). */
 /* Vers quoi les tiens reviennent quand on ne fait rien, et à quelle vitesse. */
 const RAPPEL_PROCHES = .022, RAPPEL_PROCHES_VERS = 46;
+/* LE COÛT D'UN DÉPART DOIT ÊTRE UN ÉTAT, PAS UN ÉVÉNEMENT. Mesuré sur 30 carrières par
+   ligne : partir dès qu'on pouvait laissait **les tiens à 64 et sept sélections**,
+   exactement comme en restant — le −12 du jour de la signature était effacé en une saison
+   par le rappel (2,2 % par journée vers 46), et le −16 sur la sélection par sa
+   convergence. Je promettais donc un prix que personne ne payait, ce qui est la règle du
+   projet prise à l'envers. Vivre à l'étranger **abaisse la cible** : les tiens sont à six
+   cents kilomètres toute l'année, pas seulement le jour du déménagement. */
+const PROCHES_LOIN = 33;
+function cibleProches(){ return (S.pays || 'FR') === 'FR' ? RAPPEL_PROCHES_VERS : PROCHES_LOIN; }
 function proches(){ return S.vie ? S.vie.proches : 50; }
 /* LE PLANCHER DES TIENS. Aider sa famille au premier gros salaire ne s'oublie
    pas : c'est la seule chose du jeu qui pose un plancher sur une jauge, et elle
@@ -4175,7 +4379,10 @@ function vieillir(){
   if (S.coupe && S.coupe.gagnee) c.coupes = (c.coupes || 0) + 1;
   if (S.euro && S.euro.gagnee) c.europes = (c.europes || 0) + 1;
   if (!c.clubs.includes(S.club.nom)) c.clubs.push(S.club.nom);
-  c.annees.push({ annee:S.annee, club:S.club.nom, pos, matchs:S.stats.matchs,
+  /* Les pays traversés : c'est une trace, donc le bilan de carrière la relit. */
+  c.pays = c.pays || [];
+  if (!c.pays.includes(S.pays || 'FR')) c.pays.push(S.pays || 'FR');
+  c.annees.push({ annee:S.annee, club:S.club.nom, pays:S.pays || 'FR', pos, matchs:S.stats.matchs,
     buts:S.stats.buts, note: S.bilan ? S.bilan.note : null, niveau: Math.round(niveau()),
     div: S.bilan ? S.bilan.division : 1, montee: !!(S.bilan && S.bilan.montee),
     descente: !!(S.bilan && S.bilan.descente),
@@ -4188,6 +4395,47 @@ function vieillir(){
    propositions, ce serait bien que j'aie une proposition sans savoir si j'en
    aurai de meilleures » (le propriétaire, 26/09/2026, sur la 1.0). Refuser fait
    disparaître l'offre pour de bon, et la suivante peut être pire, ou ne pas venir. */
+/* QUI T'APPELLE DE L'ÉTRANGER. Un club étranger n'a pas d'effectif tant que tu n'as
+   pas signé : une offre, c'est un nom, un pays et une force — celle que lui donne son
+   poids historique à cette époque, par la même pente que le championnat où tu joues.
+   **ET C'EST L'ÉPOQUE QUI DÉCIDE DE QUI APPELLE, pas seulement de la fréquence.** Avant
+   l'arrêt Bosman, un club ne peut aligner que deux étrangers : il ne dépense donc une de
+   ces deux places que pour quelqu'un dont il est sûr, et seuls les **clubs d'histoire**
+   font venir un joueur de l'étranger. Après 1995, tout le tableau peut appeler.
+   Ce n'est pas qu'une couleur d'époque, c'est ce qui empêche l'étranger de dominer :
+   mesuré avec les seuls clubs d'histoire, **toute** offre venue d'ailleurs était un grand
+   club, donc partir n'était pas une décision mais une promotion — 4,45 titres par
+   carrière pour qui partait systématiquement contre 2,83 sur la version déployée. */
+/* Mesuré à .13 et .5 sur dix-huit carrières : une offre de l'étranger arrivait dans
+   **40 % des intersaisons avant Bosman et 61 à 65 % après** — autant dire tous les étés,
+   ce qui n'est ni rare ni une décision. À .055 et .28 on retombe dans la bande visée. */
+const ETRANGER_AVANT = .055, ETRANGER_APRES = .28;
+function candidatsEtrangers(dk){
+  const out = [], bosman = S.annee >= 1996;
+  Object.keys(PAYS).filter(p => p !== (S.pays || 'FR')).forEach(p => {
+    const q = poolPays(p, dk);
+    (bosman ? q.gros.concat(q.petits) : q.gros).forEach(x => out.push({ nom:x.nom, pays:p,
+      force: dec1(clamp(52 + x.s * PENTE_CLUB + rnd(-2, 2), 44, 76)) }));
+  });
+  return out;
+}
+/* CE QU'ON DIT AVANT DE SIGNER AILLEURS. Une offre de l'étranger n'est pas une offre
+   de plus : elle change le monde, le public, les tiens, et avant Bosman la sélection.
+   Les trois conséquences sont écrites avant le clic, parce qu'aucune ne se devine. */
+function motEtranger(o){
+  const rentre = o.pays === (S.natal || 'FR');
+  const l = [`Tu jouerais ${nomChampionnat(o.pays, S.annee)}`];
+  l.push("tout le vestiaire et le public sont à refaire");
+  l.push("le coach ne te connaît pas : la première saison se gagne");
+  l.push(rentre ? "mais tu rentres, et les tiens sont là" : "les tiens restent ici");
+  if (S.annee < 1996 && (S.liens.selection || 0) > 12)
+    l.push(rentre ? "et le sélectionneur te reverra jouer chaque semaine"
+      : "et en " + S.annee + " le sélectionneur te verra beaucoup moins");
+  const f = facteurPays(o.pays, S.annee), ici = facteurPays(S.pays || 'FR', S.annee);
+  if (f > ici * 1.15) l.push("mais on y paie mieux qu'ici");
+  else if (f < ici * .9) l.push("et on y paie moins bien qu'ici");
+  return l.join(" · ") + ".";
+}
 function genererOffres(){
   const n = niveau();
   const joue = S.stats.matchs >= 12, bonne = S.stats.notes.length && moyenneNotes() >= 6.4;
@@ -4220,17 +4468,28 @@ function genererOffres(){
      recevais plus rien pendant des saisons entières. On compare donc au sommet du
      monde quand tu es au-dessus de lui. */
   const tous = toutesLesEquipes().filter(e => e.nom !== S.club.nom);
-  const sommet = tous.reduce((a, e) => Math.max(a, e.force), 0);
+  const dkO = typeof decadeKey === 'function' ? decadeKey(S.annee) : '10';
+  const etr = candidatsEtrangers(dkO);
+  const sommet = tous.concat(etr).reduce((a, e) => Math.max(a, e.force), 0);
   const ref = Math.min(cote, sommet);
-  const cand = tous.filter(e => e.force > ref - 14);
+  const cand = tous.filter(e => e.force > ref - 14).map(e => ({ nom:e.nom, force:e.force }))
+    .concat(etr.filter(e => e.force > ref - 10));
   /* Et la fenêtre est désormais à deux bords : un club **au-dessus** de toi appelle
      rarement (il a le choix), un club **loin en dessous** aussi (il n'a pas les
      moyens, et tu n'irais pas). Entre les deux, il appelle volontiers, d'autant plus
      qu'il est proche de ce que tu vaux. Sans ce second bord, un joueur qui domine son
      championnat recevait les dix-huit clubs à poids égal. */
+  const rare = S.annee >= 1996 ? ETRANGER_APRES : ETRANGER_AVANT;
   const poids = cand.map(e => { const d = e.force - ref;
-    return d > 0 ? 1 / (1 + d * .55) : 1 / (1 + (-d) * .09); });
-  const combien = Math.min(cand.length, Math.max(0, ri(0, 2) + (S.ete && S.ete.offres ? 1 : 0) + (bonne && joue ? 1 : 0)));
+    const w = d > 0 ? 1 / (1 + d * .55) : 1 / (1 + (-d) * .09);
+    return e.pays ? w * rare : w; });
+  let combien = Math.min(cand.length, Math.max(0, ri(0, 2) + (S.ete && S.ete.offres ? 1 : 0) + (bonne && joue ? 1 : 0)));
+  /* La descente d'un club étranger te met dehors sans qu'il y ait d'échelon inférieur où
+     te suivre : c'est la seule cause de départ forcé que ce lot ajoute, donc elle ne doit
+     pas pouvoir finir une carrière à vingt-quatre ans sur un tirage à zéro offre. Une
+     proposition au moins arrive. Les deux vieilles causes (l'âge, la saison blanche)
+     gardent leur dureté. */
+  if (S.clubDescendu && !combien && cand.length) combien = 1;
   const tires = [];
   for (let k = 0; k < combien && cand.length; k++){
     let t = poids.reduce((a, x) => a + x, 0) * Math.random(), i = 0;
@@ -4240,12 +4499,14 @@ function genererOffres(){
   const d1 = (S.ligue.equipes || []);
   const maDiv = S.division || 1;
   S.offres = tires.map(e => {
-    const div = d1.some(x => x.nom === e.nom) ? maDiv : (maDiv === 1 ? 2 : 1);
+    /* Un club étranger n'est dans aucune de tes deux divisions : il joue l'élite de
+       chez lui. Sans ce cas, il arrivait annoncé en « Ligue 2 ». */
+    const div = e.pays ? 1 : (d1.some(x => x.nom === e.nom) ? maDiv : (maDiv === 1 ? 2 : 1));
     /* Le salaire est dans l'offre, et il ne suit pas la force du club : un club
        moyen qui te veut vraiment paie plus qu'un grand qui hésite. C'est ça,
        l'arbitrage — jouer ou gagner sa vie. */
-    return { nom:e.nom, force:e.force, div,
-      salaire: Math.round(salaireDe(n, S.moi.age, e.force, div) * rnd(.8, 1.45) * 1000) / 1000,
+    return { nom:e.nom, force:e.force, div, pays: e.pays || null,
+      salaire: Math.round(salaireDe(n, S.moi.age, e.force, div, e.pays) * rnd(.8, 1.45) * 1000) / 1000,
       ans: ri(2, 4) };
   });
   S.offreIdx = 0;
@@ -4257,7 +4518,8 @@ function genererOffres(){
      pas tes trente-trois ans. C'est la seule chose qui t'oblige à partir. */
   const cl = S.liens.club;
   const dur = (S.moi.age >= 33 && S.stats.matchs < 10) || (S.stats.matchs === 0 && S.moi.age >= 21);
-  S.libre = (dur && cl < 64) || (cl < 28 && S.stats.matchs < 18);
+  /* Et la descente à l'étranger : il n'y a pas d'échelon inférieur où te suivre. */
+  S.libre = (dur && cl < 64) || (cl < 28 && S.stats.matchs < 18) || !!S.clubDescendu;
   if (S.libre) jrn('offre', cl < 28 && !dur
     ? `${S.club.nom} ne prolonge pas : ils ont tourné la page depuis longtemps.`
     : `${S.club.nom} ne prolonge pas.`);
@@ -4274,8 +4536,35 @@ function signerOffre(){
   const o = offreCourante(); if (!o) return;
   jrn('offre', `Tu signes à ${o.nom} : ${sous(o.salaire)} par an, ${o.ans} ans.`);
   poserSalaire(o.salaire); S.contrat = o.ans;
-  bougerProches(-4);      // on déménage, et les tiens restent où ils sont
+  /* CE QUE PARTIR COÛTE, et c'est ce qui en fait une décision plutôt qu'une promotion :
+     changer de club éloigne les tiens, changer de **pays** les laisse derrière. Le public
+     est à refaire entièrement, la première saison se joue dans une langue qu'on ne parle
+     pas — et avant Bosman, un sélectionneur ne voyait plus jouer ceux qui étaient partis. */
+  /* RENTRER N'EST PAS PARTIR. Relu à l'écran : une offre française quand on joue en
+     Angleterre affichait « les tiens restent ici » — alors que c'est exactement l'inverse,
+     on revient là où ils sont. `S.natal` est le pays où la carrière a commencé. */
+  const loin = !!(o.pays && o.pays !== (S.pays || 'FR'));
+  const rentre = loin && o.pays === (S.natal || 'FR');
+  bougerProches(rentre ? 10 : loin ? -12 : -4);
   rejoindre(o);
+  if (loin){
+    S.liens.supporters = 46;
+    if (!rentre) coutMental(2.2, "une ville que tu ne connais pas, une langue que tu ne parles pas");
+    /* IL FAUT S'ADAPTER, ET ÇA SE PAIE SUR LE TERRAIN. Mesuré sans ce coût, 30 carrières
+       par ligne : partir dès qu'on peut rapportait **3,93 titres par carrière contre 3,13
+       en restant** — parce qu'avec quatre championnats de plus, il se trouve toujours un
+       club à ta portée qui appelle, donc on signe mieux qu'en restant chez soi. Ce n'était
+       pas une décision, c'était un meilleur tirage.
+       Le coût n'invente rien : `rejoindre()` remet déjà la confiance du coach à 50 et celle
+       du club à 52 quand on change de club. En changeant de **pays** on démarre plus bas —
+       le coach ne te connaît pas, tu ne parles pas la langue, et la confiance du coach pèse
+       sur le choix du onze. C'est la première saison qui se paie, et elle se rattrape. */
+    S.liens.coach = 40; S.liens.club = 44;
+    if (!rentre && S.annee < 1996 && (S.liens.selection || 0) > 0){
+      S.liens.selection = clamp((S.liens.selection || 0) - 10);
+      jrn('selection', `Partir à l'étranger, en ${S.annee} : le sélectionneur te verra moins.`);
+    }
+  }
   ouvrirMercato(false);
 }
 function resterAuClub(){

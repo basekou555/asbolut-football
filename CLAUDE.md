@@ -1989,6 +1989,108 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     confirmation en attente ») — vérifié sur une vraie partie de joueur·euse **et** une vraie
     partie d'entraîneur·euse de la version déployée, reprises à la 17ᵉ journée, saison finie,
     trêve passée, deuxième saison jouée.
+- **ON PEUT PARTIR À L'ÉTRANGER** (le propriétaire, 02/10/2026 : « il faut d'autres clubs,
+  c'est ennuyeux de rester dans un seul pays »). Le monde du 2.0 était **trente-six clubs
+  français** : `EU_CLUBS` ne servait que d'adversaire de coupe d'Europe, `WORLD_CLUBS`
+  n'était lu nulle part, et le « parti à l'étranger » du mercato n'était pas une
+  destination mais une sortie du monde. On joue maintenant **cinq championnats**, dans les
+  deux modes.
+  - **CE QUI DÉCIDE DES DESTINATIONS, C'EST LE VIVIER**, et c'est une mesure, pas un choix
+    de goût : il faut **dix-huit clubs** pour une saison de trente-quatre journées, sur
+    laquelle tout est calibré (le rythme des décisions, les cinq tours de coupe, les cinq
+    fenêtres de sélection, les trois bancs d'essai). Mesuré sur `EU_CLUBS` + les clubs de
+    complément : l'Angleterre en fournit 28, l'Italie 23, l'Espagne et l'Allemagne 22 —
+    mais les Pays-Bas 15, le Portugal 13, la Belgique 12, et l'Amérique du Sud **neuf en
+    1970**. Les quatre premiers sont donc jouables ; les autres restent ce qu'ils étaient,
+    des adversaires d'Europe. Un championnat à quatorze clubs jouerait vingt-six journées,
+    c'est-à-dire qu'il faudrait re-régler tout le reste.
+  - **`S.pays` est le pays où tu joues, et le monde simulé est le sien.** `creerLigue()`
+    prend un pays ; la France garde ses deux divisions, l'étranger n'en a qu'une (le vivier
+    n'en porte pas deux). **Le championnat qu'on quitte est rangé dans `S.mondes`** et
+    vieilli d'autant d'étés qu'on a passés ailleurs : y revenir, c'est retrouver les clubs
+    qu'on a connus, pas un championnat d'inconnus. La sauvegarde passe de 268 à **352-385 Ko**
+    après une carrière à deux pays.
+  - **Hors de France, pas de montée ni de descente — mais le bas de tableau compte quand
+    même** : les trois derniers quittent l'élite et trois clubs du vivier prennent leur
+    place (`renouvelerElite()`). Et **si c'est ton club, il n'y a pas d'échelon inférieur où
+    te suivre : ton contrat tombe et il faut partir.** C'est la deuxième chose du jeu qui
+    t'y oblige, après le non-renouvellement — avec une offre garantie, parce qu'une cause de
+    départ forcé ajoutée aujourd'hui ne doit pas finir une carrière à vingt-quatre ans sur
+    un tirage à zéro offre.
+  - **L'ÉPOQUE DÉCIDE DE QUI APPELLE, PAS SEULEMENT DE LA FRÉQUENCE.** Avant l'arrêt Bosman,
+    un club n'aligne que deux étrangers : il ne dépense une de ces deux places que pour
+    quelqu'un dont il est sûr, donc **seuls les clubs d'histoire** font venir un joueur de
+    l'étranger. Après 1995, tout le tableau peut appeler. Mesuré, une offre de l'étranger
+    arrive dans **8 à 23 % des intersaisons avant Bosman et 42 à 49 % après**.
+  - **L'argent est l'autre moitié de la raison de partir** : un facteur par pays et par
+    époque (`PAYS[].sal`) — l'Italie de 1984 à 1999 et l'Angleterre d'après les droits télé
+    paient ce que la France ne paie pas. Premier calibrage à 1,9 / 1,7 / 1,55 / 1,3 : le
+    salaire médian d'une offre étrangère valait **deux fois** celui d'une offre française,
+    donc l'argent n'était plus un arbitrage. Resserré à 1,5 / 1,45 / 1,35 / 1,2.
+  - **CINQ DÉFAUTS TROUVÉS À LA MESURE, et le quatrième est le plus important.**
+    1. **Un championnat a besoin de clubs de réserve.** Avec un vivier de dix-huit ou
+       dix-neuf clubs, `renouvelerElite()` sortait les trois derniers et ne trouvait
+       personne : mesuré, **l'Espagne tombait de 18 à 16 clubs en deux saisons et
+       l'Allemagne à 15**. Les listes de complément passent à vingt-deux clubs par pays, et
+       on ne sort plus que ce qu'on peut remplacer.
+    2. **204 doublons de club et 272 de joueur sur dix-huit carrières** : en rentrant en
+       France, un club rangé dans l'échelon inférieur du monde qu'on avait quitté n'était
+       pas trouvé dans l'élite — `assurerClub()` ne regardait qu'une division — donc on
+       l'ajoutait et il existait **deux fois, avec ses vingt-deux joueurs**.
+    3. **Partir était une promotion, pas une décision** : avec les seuls clubs d'histoire,
+       **toute** offre venue d'ailleurs était un grand club — 4,45 titres par carrière pour
+       qui partait systématiquement contre 2,83 sur la version déployée. C'est ce qui a
+       amené la règle de Bosman ci-dessus, et un coût d'adaptation : changer de **pays**
+       démarre à 40 de confiance du coach et 44 de confiance du club, là où changer de club
+       remet 50 et 52. Le coach ne te connaît pas, et c'est lui qui fait le onze.
+    4. **LE COÛT QUE J'ANNONÇAIS N'ÉTAIT PAS PAYÉ.** Mesuré sur 30 carrières par ligne :
+       partir dès qu'on pouvait laissait **les tiens à 64 et sept sélections**, exactement
+       comme en restant. Le −12 du jour de la signature était effacé en une saison par le
+       rappel des proches (2,2 % par journée vers 46), et le −16 sur la sélection par sa
+       convergence. Je promettais donc un prix que personne ne payait, ce qui est la règle
+       du projet prise à l'envers. **Vivre loin est un état, pas un événement** : la cible
+       du rappel tombe à 33 quand on joue à l'étranger, et la cible de la sélection est
+       amortie (×0,68 avant Bosman, ×0,9 après — un sélectionneur ne se déplaçait pas pour
+       suivre un expatrié, et même à la télévision il regarde d'abord son championnat).
+       Premier calibrage trop dur (×0,5 / ×0,82) : **zéro sélection de médiane**, c'est-à-dire
+       un sous-système supprimé plutôt que taxé.
+    5. **« Les tiens restent ici » s'affichait à quelqu'un qui rentrait chez lui.** Vu à
+       l'écran avant de livrer : une offre française quand on joue en Angleterre annonçait
+       le prix d'un départ. `S.natal` existe, rentrer **rend** dix points aux tiens, ne coûte
+       pas de mental, ne coûte plus la sélection, et la phrase dit « le sélectionneur te
+       reverra jouer chaque semaine ».
+  - **MESURÉ, 90 CARRIÈRES PAR LIGNE** (l'erreur-type sur les titres vaut 0,26) :
+    | | on ne part jamais | on part dès qu'on peut |
+    |---|---|---|
+    | titres par carrière | 3,22 | **3,79** (+0,57, soit 2,2 erreurs-types) |
+    | gagné sur la carrière | 21,6 | **25,9** (+20 %) |
+    | les tiens à la fin | **64** | 59 |
+    | sélections | **5** | **0** |
+    | clubs traversés | 9 | 14 |
+    | matchs | 582 | 579 |
+    Donc **c'est un arbitrage, et il est net** : on échange sa carrière internationale et
+    une part de sa vie de famille contre des trophées de club et de l'argent. C'est, mot
+    pour mot, l'histoire des Français partis en Italie ou en Espagne avant Bosman.
+  - **Ce qui reste à décider, et c'est à lui** : les +20 % d'argent rendent **les deux gros
+    chantiers moins rares** — mesuré sur les 24 carrières de `v2vie` : l'affaire passe de 12
+    à 17 carrières sur 24 et l'école de foot de 3 à 7. Si les chantiers doivent rester un
+    choix, le levier est leur prix, pas les offres. Et si +0,57 titre lui paraît trop, le
+    levier est la fenêtre des offres étrangères (`ETRANGER_AVANT` / `ETRANGER_APRES`).
+  - **Ce qui n'est pas là** : les Pays-Bas, le Portugal, la Belgique et l'Amérique du Sud
+    (pas assez de clubs pour dix-huit sans inventer des noms) ; et quelques clubs de
+    complément sont anachroniques dans les premières époques (Brighton en 1962), comme ils
+    l'étaient déjà en 1.0.
+  - **Vérifié** : les sept invariants du tableau des notes à zéro écart sur 1 700 matchs,
+    **31 faits sur 31**, score = film **0 écart** sur 5 638 faits, les minutes à zéro
+    incohérence, **zéro doublon de nom** et **dix-huit clubs dans les cinq championnats** sur
+    90 carrières par ligne ; 24 carrières entières avec tous les écrans, zéro erreur ; les
+    écrans d'offre relus dans les trois sens (partir, rentrer, repartir) sans un
+    `undefined`, le rapport de bug ouvert dessus ; le mode entraîneur·euse joué sur douze
+    carrières entières (50 % des intersaisons avec une offre étrangère, cinq pays, zéro
+    erreur) ; `tests/simulate.js` → `ERRORS: none` ; **aucune migration** (`VERSION` reste à
+    15 : une sauvegarde v15 n'a pas de `pays`, ce qui vaut la France, ni de `mondes`) —
+    vérifié sur une vraie partie de joueur·euse **et** d'entraîneur·euse de la version
+    déployée, reprises à la 17ᵉ journée, saison finie, trêve passée, deuxième saison jouée.
 - **Ce qui n'est pas encore là** : rien du 2.0. (Les deux modes, les trente et un faits de match, les
   vingt-neuf arrêts, les quatorze familles et dix situations de match du coach, la sélection, les deux
   mercatos, la vie et l'argent des deux côtés, la trêve, les offres, la progression d'une saison sur
