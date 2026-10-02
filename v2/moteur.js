@@ -356,7 +356,7 @@ function nouvellePartie(c){
        premier appel passe par l'arrêt `selection` ; ensuite les fenêtres se jouent
        d'elles-mêmes, et on peut ne plus être rappelé. */
     selec: { dedans:false, caps:0, buts:0, passes:0, notes:[] }, selecVue: null,
-    vie: { proches: 58, chantiers: [], achats: [], gagne: 0, gagneAvant: 0, salaire0: 0, grosFait: false, prochesPlancher: 0 },
+    vie: { proches: 58, chantiers: [], achats: [], petites: [], gagne: 0, gagneAvant: 0, salaire0: 0, grosFait: false, prochesPlancher: 0 },
     moi: { nom: c.nom, poste: poste.id, posteNom: poste.nom, specNom: poste.spec,
       age: 18, base, boost: { tech:0, phys:0, ment:0, spec:0 }, plafond, socle,
       u0: c.origine.u0, origine: c.origine.id, ambition: c.ambition.id, pic,
@@ -1252,7 +1252,9 @@ function recupPhys(){
      que la séance physique, donc on sait exactement ce qu'il vaut. */
   return clamp((1 + (S.moi.base.phys - 50) * .016
     + Math.min(S.moi.boost.phys * RECUP_SEANCE, RECUP_SEANCE_MAX))
-    * (aAchat('prepa') ? 1.14 : 1), .62, 1.6);
+    /* Et le logement à côté du centre : deux heures de route en moins par jour, c'est
+       la version louable à l'année du préparateur, moins forte et dix fois moins chère. */
+    * (aAchat('prepa') ? 1.14 : 1) * (aPetite('logement') ? 1.09 : 1), .62, 1.6);
 }
 function choisirSemaine(id){
   const s = SEMAINES.find(x => x.id === id); if (!s) return;
@@ -3465,6 +3467,8 @@ function choisirMoment(i){
     /* 3/5 : l'analyste vidéo. Il ne change pas ce que tu vaux, il change ce que tu
        reconnais — donc la réussite d'un fait, et rien d'autre. */
     + (aAchat('video') ? .06 : 0)
+    /* La version louée à la saison, deux fois moins forte que l'analyste à toi. */
+    + (aPetite('images') ? .035 : 0)
     + (S.etats.fraicheur - 80) * .001 - pression;
   const reussi = Math.random() < clamp(o.p + bonus, .05, .95);
   const r = reussi ? o.ok : o.ko;
@@ -4128,7 +4132,9 @@ function apresMatch(){
      remplaçait la séance mentale — ce que le propriétaire avait vu venir tout seul
      (« si je fais que m'occuper de ma famille, ça va arrêter mon mental
      suffisamment pour pas avoir à entraîner le mental »). */
-  const repare = .12 + (proches() - 50) * .006;
+  /* Un préparateur mental pour la saison double cette récupération naturelle — il ne
+     touche pas au pic : devenir plus solide qu'on ne l'a jamais été ne s'achète pas. */
+  const repare = (.12 + (proches() - 50) * .006) * (aPetite('tete') ? 2 : 1);
   const plafondTete = S.moi.pic.ment - BORNE_TETE;
   if (repare > 0 && S.moi.base.ment < plafondTete - .2)
     bougerAxe('ment', Math.min(repare, plafondTete - S.moi.base.ment));
@@ -4175,8 +4181,18 @@ const TREVE = [
     dit:[{c:'foot',t:"🩼 le corps se répare"},{c:'foot',t:"🩹 moins de blessures d'ici juin"},{c:'risk',t:"🫁 ce ne sont pas des vacances"}] },
 ];
 function ouvrirTreve(){
-  if (!S.vie) S.vie = { proches: 50, chantiers: [], achats: [], gagne: 0 };
+  if (!S.vie) S.vie = { proches: 50, chantiers: [], achats: [], petites: [], gagne: 0 };
   S.treve = { fait: null, suite: null, suiteAchat: null };
+  /* LE SALAIRE TOMBAIT EN UNE FOIS, EN JUIN. La boutique d'hiver était donc toujours
+     plus pauvre que celle de l'été — et c'est sur celle d'hiver qu'il est tombé :
+     697 kF en poche quand le moins cher valait 820 kF. La moitié du salaire est versée
+     ici, l'autre au bilan. **Le total d'une saison ne change pas d'un centime** ; ce qui
+     change, c'est qu'un milieu de saison n'est plus un écran où l'on ne peut rien faire. */
+  if (!S.avance){
+    S.avance = Math.round((S.salaire || 0) * .5 * 1000) / 1000;
+    S.argent = Math.round(((S.argent || 0) + S.avance) * 1000) / 1000;
+    if (S.avance > 0) jrn('argent', `La moitié de ton année est tombée : ${sous(S.avance)}.`);
+  }
   S.ecran = 'treve'; sauver(); rendre();
 }
 function choisirTreve(id){
@@ -4439,6 +4455,15 @@ const CHANTIERS = [
        devient atteignable pour qui renonce à se payer un staff. */
     cout: 5, trace:"Des centaines de gamins ont appris à jouer là où tu as appris.",
     dit:[{c:'foot',t:"📣 ton nom, partout"},{c:'vie',t:"🏡 les tiens en sont fiers"},{c:'risk',t:"💰 très cher"}] },
+  /* LE HAUT DE L'ÉCHELLE MANQUAIT AUSSI. Mesuré sans jamais rien dépenser : à partir
+     de vingt-six ans **les neuf articles sont tous à portée** (compte médian 14,6 pour
+     un plus cher à 10,4), donc la fin de carrière d'un joueur qui thésaurise n'avait
+     plus rien à viser. Neuf années de ton meilleur salaire : personne ne l'achète en
+     s'étant payé un staff, et c'est le seul moyen de s'en souvenir. */
+  { id:'club', ico:'🏟️', nom:"Racheter le club de tes débuts",
+    sub:"Celui qui t'a formé. Il descend tous les trois ans et le président ne répond plus au téléphone.",
+    cout: 9, trace:"Le club qui t'a appris à jouer existe encore, et c'est grâce à toi.",
+    dit:[{c:'vie',t:"🏡 les tiens y sont tous les dimanches"},{c:'foot',t:"📣 personne n'oubliera ton nom là-bas"},{c:'risk',t:"💰 neuf ans de salaire"}] },
   { id:'commerce', ico:'🏪', nom:"Monter une affaire",
     sub:"Un restaurant, une salle, une concession. Ton beau-frère dit que c'est béton.",
     cout: 4.5, trace:"Ton affaire tournait encore quand tu as raccroché.",
@@ -4499,6 +4524,54 @@ const BOUTIQUE = [
    mais **un ou deux se tiennent** pour le prix d'un demi-chantier par an. C'est la bande
    qu'on veut : on s'offre un staff, pas tout un staff. */
 const ENTRETIEN = .12;
+/* ========== LES PETITES CHOSES ==========
+   « Les prix ne sont pas donnés, il n'y a pas assez d'articles, il doit en avoir pour
+   tous les prix » (le propriétaire, 02/10/2026, sur l'écran de la trêve). Mesuré avant
+   d'y toucher, 622 ouvertures de boutique sur 319 saisons : entre dix-huit et vingt et
+   un ans, **92 % des ouvertures n'offrent rien** (compte médian 0,03 contre 0,31 pour
+   le moins cher), et à partir de vingt-six ans les neuf articles sont tous à portée.
+   La boutique était donc un mur, puis une inondation : jamais une échelle.
+   Ce qui manquait est le bas. Ces quatre-là coûtent un quart à un demi salaire, ne
+   valent **que la saison en cours** — donc elles ne s'empilent pas et ne demandent
+   aucun entretien, ce qui est précisément ce que l'entretien à 12 % protège côté staff
+   — et chacune branche une mécanique qui existait déjà. On les reprend chaque année si
+   on veut, et c'est de l'argent qui ne construit rien : l'arbitrage reste le même. */
+const PETITES = [
+  { id:'tiensLa', ico:'✈️', nom:"Faire venir les tiens à chaque match",
+    sub:"Le train, l'hôtel, les places. Ta mère n'a jamais vu ce stade.",
+    cout:.25, quoi:"les tiens sont là toute la saison",
+    dit:[{c:'vie',t:"🏡 ils se rapprochent"},{c:'vie',t:"🏡 la saison ne les éloigne pas"},{c:'risk',t:"💰 un quart de salaire"}] },
+  { id:'logement', ico:'🚗', nom:"Un logement à côté du centre",
+    sub:"Dix minutes à pied, au lieu d'une heure de route deux fois par jour.",
+    cout:.35, quoi:"tu récupères mieux entre deux journées",
+    dit:[{c:'foot',t:"🫁 récupération, cette saison"},{c:'risk',t:"💰 un tiers de salaire"}] },
+  { id:'tete', ico:'🧠', nom:"Un préparateur mental pour la saison",
+    sub:"Une heure le mardi, à parler de ce dont on ne parle pas au vestiaire.",
+    cout:.45, quoi:"ta tête se recharge deux fois plus vite",
+    dit:[{c:'foot',t:"🧠 la réserve remonte, cette saison"},{c:'risk',t:"💰 un demi-salaire"}] },
+  { id:'images', ico:'🎬', nom:"Les images de l'adversaire, chaque semaine",
+    sub:"Un étudiant te monte vingt minutes sur celui qui te marquera samedi.",
+    cout:.55, quoi:"tu fais un peu plus souvent le bon geste",
+    dit:[{c:'foot',t:"⚽ les faits de match, cette saison"},{c:'risk',t:"💰 un demi-salaire"}] },
+];
+function aPetite(id){ return !!(S.vie && (S.vie.petites || []).includes(id)); }
+function coutPetite(c){
+  const ref = Math.max(.05, (S.vie && S.vie.salaireMax) || S.salaire || .05);
+  return Math.round(c.cout * ref * 1000) / 1000;
+}
+function acheterPetite(id){
+  const c = PETITES.find(x => x.id === id); if (!c || aPetite(id)) return;
+  const q = coutPetite(c);
+  if (q > S.argent) return;
+  S.argent = Math.round((S.argent - q) * 1000) / 1000;
+  S.vie.petites = (S.vie.petites || []).concat(id);
+  /* Celle-ci agit tout de suite, les trois autres au fil de la saison. */
+  if (id === 'tiensLa') bougerProches(12);
+  const suite = `${c.nom} : ${sous(q)}. Jusqu'en juin, ${c.quoi} — et pas une journée de plus.`;
+  if (S.ecran === 'treve' && S.treve) S.treve.suiteAchat = suite; else if (S.vie) S.vie.suiteAchat = suite;
+  jrn('vie', `${c.nom} — ${sous(q)}.`);
+  sauver(); rendre();
+}
 function aAchat(id){ return !!(S.vie && (S.vie.achats || []).includes(id)); }
 function aChantier(id){ return !!(S.vie && (S.vie.chantiers || []).some(x => x.id === id && !x.coule)); }
 function coutAchat(c){
@@ -4663,7 +4736,10 @@ function progresserAxes(){
 function encaisserLaSaison(){
   const primes = primesDeLaSaison();
   const total = (S.salaire || 0) + primes.reduce((a, x) => a + x.q, 0);
-  S.argent = Math.round((S.argent + total) * 1000) / 1000;
+  /* La moitié du salaire est déjà tombée à la trêve : on ne verse que le reste, mais
+     ce que la saison a **rapporté** reste le total, sinon le bilan mentirait. */
+  const verse = Math.round((total - (S.avance || 0)) * 1000) / 1000;
+  S.argent = Math.round((S.argent + verse) * 1000) / 1000;
   S.vie.gagneAvant = S.vie.gagne || 0;
   S.vie.gagne = Math.round(total * 1000) / 1000;
   S.vie.primes = primes.map(x => x.t);
@@ -4696,7 +4772,13 @@ function encaisserLaSaison(){
   S.vie.entretien = Math.round(garde.reduce((a, id) => {
     const c = BOUTIQUE.find(x => x.id === id); return a + (c ? coutAchat(c) * ENTRETIEN : 0); }, 0) * 1000) / 1000;
   jrn('argent', `La saison a rapporté ${sous(S.vie.gagne)}.`);
-  bougerProches(-2.2 - Math.max(0, (S.moi.age - 27)) * .18);
+  /* Les faire venir à chaque match annule l'usure de l'année : c'est tout ce que ça
+     achète, et ça se reprend chaque saison. */
+  if (!aPetite('tiensLa')) bougerProches(-2.2 - Math.max(0, (S.moi.age - 27)) * .18);
+  /* Le club de tes débuts est l'endroit où les tiens se retrouvent : il rend chaque
+     année l'essentiel de ce que la saison leur prend. C'est sa seule conséquence en
+     cours de carrière, et elle passe par la porte qui existe déjà. */
+  if (aChantier('club')) bougerProches(5);
 }
 function vieillir(){
   const pos = S.bilan ? S.bilan.pos : null;
@@ -5042,7 +5124,7 @@ function ouvrirVie(){
      sauvegarde sans objet `vie` faisait **planter le bouton du mercato en silence**,
      donc on ne pouvait jamais atteindre cet écran. Seule une partie d'avant la vie et
      l'argent peut être dans cet état, mais le plantage était réel. */
-  if (!S.vie) S.vie = { proches: 50, chantiers: [], achats: [], gagne: 0, gagneAvant: 0 };
+  if (!S.vie) S.vie = { proches: 50, chantiers: [], achats: [], petites: [], gagne: 0, gagneAvant: 0 };
   S.vie.achats = S.vie.achats || [];
   S.vie.fait = null; S.vie.suite = null; S.vie.suiteAchat = null;
   S.ecran = 'vie'; sauver(); rendre();
@@ -5092,6 +5174,12 @@ function faireChantier(ch){
     suite = `Deux soirs par semaine, un an. Au club, personne n'a compris — mais le jour où ça s'arrêtera, tu ne seras pas seulement un ancien joueur.`; }
   else if (ch.id === 'ecole'){ S.liens.supporters = clamp(S.liens.supporters + 20); bougerProches(12);
     suite = `Deux terrains, un éducateur, et cinquante gamins le mercredi. Il y a ton nom sur le portail, et tu n'as pas su quoi en penser.`; }
+  /* Ce `else` posait un `rend` : sans sa branche à lui, racheter un club de bas de
+     tableau en aurait fait une affaire qui rapporte. Un club de football ne rapporte
+     rien, c'est même tout son sujet. */
+  else if (ch.id === 'club'){ S.liens.supporters = clamp(S.liens.supporters + 10); bougerProches(14);
+    suite = `Tu as signé pour un club qui perd de l'argent, dans une ville qui ne retient personne.
+      Les tiens y sont tous les dimanches, et le portail porte ton nom.`; }
   else { fait.rend = Math.round(q * .16 * 1000) / 1000;
     suite = `Signé chez le notaire un mardi matin, entre deux entraînements. Ça tournera, ou ça ne tournera pas.`; }
   S.vie.chantiers.push(fait);
@@ -5172,6 +5260,8 @@ function demarrerSaison(club, reste){
   S.raccroche = 0;
   /* La trêve est une fois par saison, et le soin d'hiver ne passe pas l'été. */
   S.treveFaite = false; S.treveSoin = false; S.treve = null;
+  /* L'avance de la trêve et les petites choses ne valent que l'année écoulée. */
+  S.avance = 0; if (S.vie) S.vie.petites = [];
   /* Tout ce qui concerne le monde s'est déjà joué : les divisions se sont échangées,
      les deux championnats ont vieilli, le marché est passé et ton vestiaire a été
      relu. Ici on ne fait plus que remettre à zéro ce qui ne dure qu'une saison. */
@@ -5213,7 +5303,11 @@ function demarrerSaison(club, reste){
 function finCarriere(raison){
   if (S.stats && S.journee >= JOURNEES && S.bilan) { /* déjà comptée par vieillir() */ }
   S.fin = { raison, age: S.moi.age, annee: S.annee };
-  jrn('fin', `Fin de carrière à ${S.moi.age} ans.`);
+  /* LE JOURNAL DOIT DIRE POURQUOI. Il écrivait « Fin de carrière à 26 ans. » et rien
+     d'autre — or il y a quatre raisons de s'arrêter, et le journal est « la seule
+     mémoire du jeu ». Sans elle, ni lui ni moi ne pouvions dire ce qui venait de se
+     passer sur sa partie du 02/10/2026. Le mode entraîneur·euse l'écrivait déjà. */
+  jrn('fin', `Fin de carrière à ${S.moi.age} ans — ${raison}.`);
   S.ecran = 'carriere'; sauver(); rendre();
 }
 /* Raccrocher quand on l'a décidé. L'âge et le téléphone qui ne sonne plus tranchaient
@@ -5225,6 +5319,12 @@ function raccrocher(){
   if (!S.raccroche){ S.raccroche = 1; sauver(); return rendre(); }
   finCarriere('tu as raccroché');
 }
+/* LA CONFIRMATION NE PEUT PAS ÊTRE AU MÊME ENDROIT QUE CE QU'ELLE CONFIRME. Premier
+   jet : le second bouton remplaçait le premier, même place et même style, et « n'importe
+   quoi d'autre sur cet écran annule » ne protégeait de rien — un double-tap n'est rien
+   d'autre, et il terminait une carrière de vingt saisons. Le bouton qui tombe sous le
+   doigt est maintenant celui qui annule. */
+function annulerRaccroche(){ S.raccroche = 0; sauver(); rendre(); }
 function moyCarriere(){ const c = S.carriere; return c && c.nbNotes ? c.sum / c.nbNotes : null; }
 
 function classementTrie(){

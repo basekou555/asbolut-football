@@ -444,6 +444,9 @@ function rapportDetail(){
       + ` · entretien ${(S.vie || {}).entretien || 0}`);
     l.push(`  staff : ${((S.vie || {}).achats || []).join(', ') || 'rien'}`
       + ` · prix : ${BOUTIQUE.map(c => `${c.id} ${coutAchat(c)}`).join(', ')}`);
+    l.push(`  cette saison : ${((S.vie || {}).petites || []).join(', ') || 'rien'}`
+      + ` · prix : ${PETITES.map(c => `${c.id} ${coutPetite(c)}`).join(', ')}`
+      + ` · avance versée ${S.avance || 0}`);
     l.push(`  chantiers : ${((S.vie || {}).chantiers || []).map(x => x.id).join(', ') || 'rien'}`
       + ` · prix : ${CHANTIERS.map(c => `${c.id} ${coutChantier(c)}`).join(', ')}`);
   }
@@ -456,6 +459,8 @@ function rapportDetail(){
     l.push(`  construit : ${(v.chantiers || []).map(x => x.id + (x.coule ? ' (coulé)' : '')).join(', ') || 'rien'}`);
     if (S.mode !== 'coach') l.push(`  staff : ${(v.achats || []).join(', ') || 'rien'}`
       + ` · entretien ${v.entretien || 0} · prix : ${BOUTIQUE.map(c => `${c.id} ${coutAchat(c)}`).join(', ')}`);
+    if (S.mode !== 'coach') l.push(`  cette saison : ${(v.petites || []).join(', ') || 'rien'}`
+      + ` · prix : ${PETITES.map(c => `${c.id} ${coutPetite(c)}`).join(', ')}`);
     l.push(`  possible : ${dispo.map(c => `${c.id} ${coutChantier(c)}`).join(', ') || 'rien'}`
       + ` · au catalogue : ${(ch || []).map(c => `${c.id} ${coutChantier(c)}`).join(', ')}`);
     if (v.fait) l.push(`  choisi : ${v.fait.id} → « ${v.suite} »`);
@@ -528,12 +533,16 @@ function situationHTML(ouvert){
      d'autre chose que de football. Trois cases de plus, lisibles chaque semaine, et
      chacune dit ce qu'elle change — sinon ce serait trois chiffres de plus. */
   const ach = (S.vie && S.vie.achats) || [];
+  const pet = (S.vie && S.vie.petites) || [];
   const chs = ((S.vie && S.vie.chantiers) || []).filter(x => !x.coule);
   const hors = celSit('\u{1F4B0}', "Ton compte", `${sous(S.argent || 0)} de côté. `
       + (S.vie && S.vie.entretien ? `Ton staff coûte ${sous(S.vie.entretien)} par an.`
         : `La boutique ouvre à la trêve d'hiver et en juin.`))
     + (ach.length ? celSit('\u{1F6CE}\ufe0f', "Ton staff", ach.map(id => {
         const c = BOUTIQUE.find(x => x.id === id); return c ? `${c.ico} ${c.nom.toLowerCase()} — ${c.quoi}` : ''; })
+        .filter(Boolean).join(' · '), true) : '')
+    + (pet.length ? celSit('\u{1F5D3}\ufe0f', "Cette saison", pet.map(id => {
+        const c = PETITES.find(x => x.id === id); return c ? `${c.ico} ${c.nom.toLowerCase()} — ${c.quoi}` : ''; })
         .filter(Boolean).join(' · '), true) : '')
     + (chs.length ? celSit('\u{1F3D7}\ufe0f', "Ce que tu as bâti", chs.map(x =>
         `${x.nom.toLowerCase()} (${x.annee})`).join(' · '), true) : '');
@@ -909,10 +918,15 @@ function motSalaire(v){
 function raccrocherHTML(fn){
   if (!S.raccroche) return `<div class="btn-row">
     <button class="btn ghost" onclick="${fn}()">🏁 Raccrocher</button></div>`;
-  return `<p class="sub">Encore un clic et c'est fini : la carrière s'arrête là et tu lis
-    ce qu'il en reste. N'importe quoi d'autre sur cet écran annule.</p>
+  /* Le bouton qui reste sous le doigt est celui qui **annule** : un double-tap sur le
+     premier ne peut plus terminer une carrière. Arrêter demande d'aller chercher
+     l'autre, qui est ailleurs et qui est rouge. */
+  return `<p class="sub">Un clic de plus et c'est fini : la carrière s'arrête là et tu lis
+    ce qu'il en reste.</p>
     <div class="btn-row">
-      <button class="btn ghost" onclick="${fn}()">🏁 Oui, j'arrête ma carrière</button></div>`;
+      <button class="btn" onclick="annulerRaccroche()">Non, je continue</button></div>
+    <div class="btn-row">
+      <button class="btn danger" onclick="${fn}()">🏁 Oui, j'arrête ma carrière</button></div>`;
 }
 function ecranOffres(){
   const o = offreCourante();
@@ -1011,6 +1025,7 @@ function ecranMercato(){
    école de foot coûte trois fois ce qu'on a est une information. */
 function boutiqueHTML(){
   const a = (S.vie && S.vie.achats) || [];
+  const pe = (S.vie && S.vie.petites) || [];
   const ch = (S.vie && S.vie.chantiers) || [];
   const peut = q => q <= (S.argent || 0);
   const ligne = (c, q, prise, onclick, suffixe) => prise
@@ -1020,11 +1035,15 @@ function boutiqueHTML(){
         peut(q) ? onclick : null,
         peut(q) ? '' : `Il te manque ${sous(Math.round((q - (S.argent || 0)) * 1000) / 1000)}.`);
   return `<h3>La boutique</h3>
-    <p class="sub">${esc(sous(S.argent || 0))} de côté. ${a.length || ch.length
-      ? `Tu as déjà ${[a.length ? `${a.length} chose${a.length > 1 ? 's' : ''} pour le football` : '',
-          ch.length ? `${ch.length} chantier${ch.length > 1 ? 's' : ''}` : ''].filter(Boolean).join(' et ')}.`
+    <p class="sub">${esc(sous(S.argent || 0))} de côté. ${a.length || ch.length || pe.length
+      ? `Tu as déjà ${[pe.length ? `${pe.length} chose${pe.length > 1 ? 's' : ''} pour la saison` : '',
+          a.length ? `${a.length} chose${a.length > 1 ? 's' : ''} pour le football` : '',
+          ch.length ? `${ch.length} chantier${ch.length > 1 ? 's' : ''}` : ''].filter(Boolean).join(', ')}.`
       : `Rien d'acheté pour l'instant.`}</p>
-    <h4 class="sub" style="margin:10px 0 4px">Pour le football — ça dure toute la carrière</h4>
+    <h4 class="sub" style="margin:10px 0 4px">Les petites choses — seulement cette saison</h4>
+    ${PETITES.map(c => ligne(c, coutPetite(c), aPetite(c.id), `acheterPetite('${c.id}')`,
+      aPetite(c.id) ? `${c.quoi} — jusqu'en juin` : null)).join('')}
+    <h4 class="sub" style="margin:12px 0 4px">Pour le football — ça dure toute la carrière</h4>
     ${BOUTIQUE.map(c => ligne(c, coutAchat(c), aAchat(c.id), `acheter('${c.id}')`)).join('')}
     <h4 class="sub" style="margin:12px 0 4px">Ce qui restera après — la seule chose qui survit à la carrière</h4>
     ${CHANTIERS.map(c => { const d = ch.find(x => x.id === c.id);

@@ -2741,6 +2741,106 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
   - **Ce que ça ne répare pas** : le match **déjà joué** de sa sauvegarde garde ses quatre buts — les
     événements sont écrits. C'est au match suivant que le compte sera juste.
 
+- **LA BOUTIQUE ÉTAIT UN MUR PUIS UNE INONDATION, JAMAIS UNE ÉCHELLE** (le propriétaire,
+  02/10/2026, rapport à l'appui depuis l'écran de la trêve : « les prix ne sont pas donnés, il
+  n'y a pas assez d'articles, il doit en avoir pour tous les prix » — 697 kF en poche et **les
+  cinq lignes du staff comme les quatre chantiers affichant « il te manque… »**, donc aucun prix
+  qui lui soit réellement proposé). Mesuré avant d'y toucher, 622 ouvertures de boutique sur
+  319 saisons, et les deux politiques disent la même chose :
+  | | on ne dépense jamais | on achète tout ce qu'on peut |
+  |---|---|---|
+  | ouvertures où **rien** n'est à portée | 19,0 % | **87,9 %** |
+  | dont 18-21 ans | **92,0 %** | 94,6 % |
+  | dont 26-29 ans | 0 % | 78,9 % |
+  | articles à portée, médiane | **9 sur 9** | 0 |
+  Deux trous et non un : **le bas manquait** (compte médian 0,03 à dix-neuf ans contre 0,31
+  pour le moins cher) et, quand on ne dépense pas, **tout devient atteignable d'un coup à
+  vingt-six ans**. Entre les deux, aucun barreau. Trois corrections, plus deux défauts que son
+  deuxième rapport a fait sortir.
+  - **LE SALAIRE TOMBAIT EN UNE FOIS, EN JUIN.** La boutique d'hiver était donc structurellement
+    plus pauvre que celle de l'été — et c'est sur celle d'hiver qu'il est tombé : 697 kF en poche
+    quand le moins cher valait 820 kF. **La moitié du salaire est versée à la trêve**
+    (`S.avance`), l'autre au bilan ; `encaisserLaSaison()` ne verse que le reste et `S.vie.gagne`
+    reste le total, donc **ce qu'une saison rapporte ne change pas d'un centime**. Mesuré après :
+    rien à portée **8,2 % à la trêve contre 8,0 % à l'été** — les deux écrans sont désormais au
+    même niveau, là où l'hiver était le pauvre des deux.
+  - **QUATRE PETITES CHOSES, QUI NE VALENT QUE LA SAISON** (`PETITES`, un quart à un demi
+    salaire) : faire venir les tiens à chaque match, un logement à côté du centre, un préparateur
+    mental pour la saison, les images de l'adversaire chaque semaine. Chacune branche une
+    mécanique **qui existait déjà** — `bougerProches` et l'usure annuelle, `recupPhys()` (×1,09,
+    le même canal que le préparateur), la récupération naturelle de la tête (×2, sans toucher au
+    pic), la réussite des faits de match (+.035, la moitié de l'analyste à toi). Et **elles ne
+    s'empilent pas** : `S.vie.petites` est vidé à chaque `demarrerSaison()`, donc elles ne
+    demandent aucun entretien — ce qui est précisément ce que l'`ENTRETIEN` à 12 % protège côté
+    staff. On les reprend chaque année si on veut, et c'est de l'argent qui ne construit rien.
+  - **UN BARREAU EN HAUT** : `club` (🏟️ racheter le club de tes débuts), **neuf** années de ton
+    meilleur salaire, la chose la plus chère du jeu. Pure trace, avec une seule conséquence en
+    cours de carrière et par une porte qui existe : les tiens y sont tous les dimanches, donc
+    `bougerProches(+5)` par saison, soit l'essentiel de ce que l'année leur prend. *Un piège
+    fermé en l'écrivant* : le `else` de `faireChantier()` posait un `rend`, donc racheter un club
+    de bas de tableau en aurait fait une affaire **qui rapporte**. Un club de football ne
+    rapporte rien, c'est tout son sujet. Mesuré, douze carrières entières : il est à portée
+    **7 fois sur 12**, et toujours entre **31 et 35 ans** — c'est le barreau que la fin de
+    carrière n'avait pas, et il n'existe que pour qui a gardé son argent.
+  - **UNE FIN DE CARRIÈRE NE DISAIT PAS POURQUOI** (son deuxième rapport du 02/10 : le journal
+    d'une carrière arrêtée **à vingt-six ans** à 49 buts par saison, quatrième de D1 et
+    international). Il y a quatre raisons de s'arrêter et le journal — « la seule mémoire du jeu »
+    — n'en écrivait aucune : « Fin de carrière à 26 ans. » et rien d'autre. Il dit maintenant
+    laquelle, comme le mode entraîneur·euse le faisait déjà. **Et c'est ce qui a permis de
+    trancher son cas** : à vingt-six ans avec 33 matchs, `S.libre` est faux, donc ni le
+    non-renouvellement ni l'épuisement des offres ne peuvent terminer la carrière — il ne restait
+    que le bouton 🏁 Raccrocher, livré le matin même.
+  - **UNE CONFIRMATION NE PEUT PAS ÊTRE AU MÊME ENDROIT QUE CE QU'ELLE CONFIRME.** C'est le vrai
+    défaut derrière cette carrière perdue : le second bouton **remplaçait le premier**, même
+    place et même style, et le « n'importe quoi d'autre sur cet écran annule » ne protégeait de
+    rien — un double-tap n'est rien d'autre. Désormais le bouton qui tombe sous le doigt est
+    **« Non, je continue »** (`annulerRaccroche()`, partagé par les deux modes) et arrêter demande
+    d'aller chercher l'autre, qui est ailleurs et qui est **rouge** (`.btn.danger`, le seul bouton
+    du jeu qui détruit quelque chose).
+  - **MESURÉ APRÈS**, mêmes sondes, treize articles au catalogue au lieu de neuf :
+    | | avant | après |
+    |---|---|---|
+    | rien à portée — on ne dépense jamais | 19,0 % | **8,1 %** |
+    | rien à portée — on achète tout ce qu'on peut | 87,9 % | **30,6 %** |
+    | dont 18-21 ans (on ne dépense pas) | 92,0 % | **41,5 %** |
+    | dont 22-25 ans (on achète tout) | 75,8 % | **13,3 %** |
+    | dont 26-29 ans (on achète tout) | 78,9 % | **3,9 %** |
+    | âge du premier achat possible (médiane) | 22 | **19** |
+    Et la politique raisonnable — s'offrir une chose et la garder — trouve quelque chose à son
+    prix **99,2 % du temps entre vingt-deux et vingt-neuf ans**, en gardant son kiné et en
+    construisant seize diplômes et deux maisons sur seize carrières.
+  - **CE QUE ÇA COÛTE, ET JE NE LE MAQUILLE PAS.** Deux endroits où le mur reste, tous deux pour
+    la même raison — les prix sont indexés sur le **meilleur** salaire, qui ne redescend jamais :
+    (1) **à 34-38 ans, 64 à 77 % des ouvertures n'offrent rien** à qui a dépensé, parce que le
+    salaire s'est effondré et que le compte est vide ; (2) à dix-huit ans en août, avant le moindre
+    versement, le compte est à zéro et rien n'est à portée — la trêve est le premier moment où
+    quelque chose devient possible. Et la politique gloutonne est **punie plus fort qu'avant** :
+    acheter tout ce qui est à portée à chaque ouverture ne garde plus aucun staff et ne construit
+    plus qu'**un diplôme** (contre quinze diplômes et une maison avant), parce que les petites
+    choses mangent le compte chaque année. C'est la forme voulue — louer coûte peu et ne laisse
+    rien — mais c'est à lui de juger si c'est trop dur.
+  - **Vérifié** : les sept invariants du tableau des notes à zéro écart sur 850 matchs, **31 faits
+    sur 31**, score = film **0 écart** sur 5 304 faits, les minutes à zéro incohérence sur 1 064
+    faits ; 24 carrières entières de 18 à 38 ans avec tous les écrans, zéro erreur, et le gagné
+    sur la carrière inchangé (médiane **37,1** contre 37,5 avant — l'avance ne crée pas d'argent) ;
+    les écrans de trêve, de vie et des offres relus à dix-neuf comme à vingt et un ans, **zéro
+    `undefined`**, et le rapport de bug décrivant les prix des petites choses et l'avance versée au
+    centime ; `tests/simulate.js` → `ERRORS: none` ; le banc de la semaine à **150 saisons par
+    ligne** tient l'invariant aux trois croisements (académie·M matchs « le mental » 21,7±0,71 /
+    trace « ton poste » +7,0 ; quartier·D matchs « au hasard » 22,0±0,62 / trace « le physique »
+    +9,4 ; étranger·A matchs « ton poste » 21,4±0,64 / trace « la technique » +9,2) et **« toujours
+    lever le pied » ne prend les matchs nulle part** — il ne pouvait pas bouger, la sonde n'achète
+    jamais ; **aucune migration** (`VERSION` reste à 15 : une sauvegarde v15 n'a ni `avance` ni
+    `vie.petites`, et les deux valent « rien ») — vérifié sur une vraie partie de **joueur·euse**
+    et une d'**entraîneur·euse** de la version déployée, reprises à la 17ᵉ journée, **deux saisons
+    entières** jouées, 22 joueurs, zéro doublon.
+  - **Ce qui reste à décider, et c'est à lui** : son journal montre **49 à 60 buts par saison**
+    entre vingt et un et vingt-cinq ans, là où la mesure du 27/09 donnait 22 de médiane au sommet
+    et 36 au quatre-vingt-dixième centile. Sa carrière est un cas extrême (deux Europes, premier de
+    D1), mais si ce plafond doit redescendre, le levier est `tameXG` — et il touche **tous** les
+    scores du jeu, donc ça se mesure avant d'y toucher. Et le mode entraîneur·euse n'a toujours ni
+    trêve ni boutique.
+
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).
 - Tout l'état d'une carrière est dans l'objet global `state` (sérialisé dans localStorage). `state.pendingChoice` désigne l'écran courant ; `render()` dans `ui.js` dispatche.
