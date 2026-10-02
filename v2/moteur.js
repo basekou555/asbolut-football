@@ -3051,7 +3051,7 @@ A: [
     opts:[
       { l:"Le tirer", p:.76,
         ok:{ t:"Tu l'envoies au fond du cadre.", n:0, ev:['but'], e:{ ment:1.5, supporters:3 } },
-        ko:{ t:"Tu l'envoies à côté, et le stade s'en souvient.", n:-1.2, ev:['manque'], e:{ ment:-2.2, vestiaire:-4 } } },
+        ko:{ t:"Tu l'envoies à côté, et le stade s'en souvient.", n:-1.2, ev:['manque'], e:{ ment:-2.2, vestiaire:-2 } } },
       { l:"Le laisser au tireur habituel", p:.78,
         ok:{ t:"Il l'envoie au fond : un but pour l'équipe, rien pour toi.", n:-.2, ev:['equipe'], e:{ ligne:2 } },
         ko:{ t:"Il l'envoie à côté.", n:-.2, ev:['manque'], e:{ ment:-.5 } } } ] },
@@ -3071,12 +3071,34 @@ A: [
    avec le poste »). Ils sont les seuls à faire bouger le vestiaire en plein match.
    `gk` : ce qui change quand c'est un gardien — « pour le gardien c'est un peu
    différent, il y a de plus gros risques donc de plus grosses récompenses ». */
+/* ========== AIDER QUELQU'UN COÛTE TON MATCH ==========
+   « Je relève le joueur à chaque fois, ce n'est pas assez puni » (le propriétaire,
+   02/10/2026). Mesuré avant d'y toucher, les 62 options des 31 faits : **57 ne coûtent
+   rien du tout quand elles réussissent**. Pour un fait d'action c'est normal — le prix
+   est dans l'échec, et risquer est le sujet. Mais pour les cinq faits où l'on choisit
+   entre le groupe et son propre match, ça fait de la bonne action un gain pur :
+   « Aller le relever » rapportait **+4 d'entente ET +0,3 de note** pour une réussite sur
+   deux fois sur trois, et son échec ne coûtait que 0,3 de note et un demi-point de
+   mental. Mesuré sur 12 carrières par ligne, en prenant toujours l'option du groupe
+   contre toujours l'autre : **+14 points d'entente** et **+0,4 titre par carrière**, pour
+   **0,2 de note**. Ce n'est pas un arbitrage, c'est un repas gratuit.
+   Deux corrections, et la règle du 30/09 enfin appliquée aux faits de match :
+   1. **La bonne action coûte ton match, même quand elle marche.** C'est ce que son
+      propre texte d'échec disait déjà (« tu as perdu vingt secondes et le fil ») et que
+      la réussite ne disait pas. Aller relever quelqu'un, jouer simple pour un jeune,
+      monter dans une bagarre : on garde ce que ça donne au groupe, on perd un peu de sa
+      propre soirée. Parler avant une finale n'est pas une performance : zéro.
+   2. **`vestiaire: N` bouge LES TROIS lignes** (`bougerVestiaire`), donc une valeur
+      écrite pour une ligne en valait trois : « Parler » avant une finale donnait
+      vingt-quatre points d'entente. Les dix-neuf valeurs des faits sont divisées par
+      deux — le geste touche toujours tout le vestiaire, c'est ce qu'est un vestiaire,
+      mais à l'échelle de ce qu'il fait. */
 const MOMENTS_TOUS = [
   { id:'craque', q:"Un coéquipier vient de commettre l'erreur du match. Il est resté à genoux, les mains sur le visage.", axe:'ment',
     gk:{ 0:{ ok:{ ligne:6 } }, 1:{ ko:{ ligne:-5, coach:-3 } } },
     opts:[
       { l:"Aller le relever", p:.6,
-        ok:{ t:"Il se remet dedans et finit le match debout.", n:.3, e:{ ligne:4 } },
+        ok:{ t:"Il se remet dedans et finit le match debout — et toi, tu as regardé passer deux ballons.", n:-.3, e:{ ligne:4 } },
         ko:{ t:"Il te repousse : tu as perdu vingt secondes et le fil.", n:-.3, e:{ ment:-.5 } } },
       { l:"Le laisser, tu as un match à jouer", p:.75,
         ok:{ t:"Tu restes dans ton match, personne ne t'en veut.", n:.4, e:{ spec:.3 } },
@@ -3102,10 +3124,10 @@ const MOMENTS_TOUS = [
     gk:{ 0:{ ok:{ ligne:6 }, ko:{ ligne:-4 } } },
     opts:[
       { l:"Reculer tout le monde et tenir", p:.65,
-        ok:{ t:"Le bloc tient, vous sortez le point.", n:.5, e:{ vestiaire:4 } },
+        ok:{ t:"Le bloc tient, vous sortez le point.", n:.1, e:{ vestiaire:2 } },
         ko:{ t:"Vous reculez trop et vous encaissez.", n:0, ev:['encaisse'], e:{ ment:-.8 } } },
       { l:"Continuer à jouer haut", p:.4,
-        ok:{ t:"Vous marquez à dix, le stade se lève.", n:0, ev:['equipe'], e:{ vestiaire:6, supporters:4 } },
+        ok:{ t:"Vous marquez à dix, le stade se lève.", n:0, ev:['equipe'], e:{ vestiaire:3, supporters:4 } },
         ko:{ t:"Ils vous prennent dans le dos.", n:0, ev:['encaisse'], e:{ ligne:-3 } } } ] },
   /* « Il entre à la 72ᵉ » était écrit en dur, quand le fait se tirait entre la 10ᵉ et la
      88ᵉ : le propriétaire l'a vu à la 25ᵉ. Et personne n'entrait vraiment. Le jeune est
@@ -3123,28 +3145,28 @@ const MOMENTS_TOUS = [
       const quoi = age(c) <= 21 ? "pour son premier match" : "pour l'un de ses premiers matchs";
       return { min:c.min, q:`${c.entrant.nom} entre à la ${c.min}ᵉ ${quoi}. Il a les jambes qui tremblent, et il se place à côté de toi.` };
     },
-    gk:{ 0:{ ok:{ vestiaire:7 } }, 1:{ ko:{ coach:-3, vestiaire:-4 } } },
+    gk:{ 0:{ ok:{ vestiaire:3.5 } }, 1:{ ko:{ coach:-3, vestiaire:-2 } } },
     opts:[
       { l:"Jouer facile avec lui, le mettre dedans", p:.7,
-        ok:{ t:"Il touche dix ballons et il en réussit neuf.", n:.2, e:{ vestiaire:5 } },
-        ko:{ t:"Tu le sers mal, il perd deux ballons, on croit que c'est lui.", n:-.3, e:{ vestiaire:-2 } } },
+        ok:{ t:"Il touche dix ballons et il en réussit neuf. Les tiens, tu les as joués simples.", n:-.25, e:{ vestiaire:2.5 } },
+        ko:{ t:"Tu le sers mal, il perd deux ballons, on croit que c'est lui.", n:-.3, e:{ vestiaire:-1 } } },
       { l:"Jouer ton match", p:.8,
         ok:{ t:"Tu finis ton match comme tu l'avais commencé.", n:.4, e:{ spec:.3 } },
-        ko:{ t:"Il n'existe pas, et le coach t'a regardé faire.", n:-.2, e:{ coach:-2, vestiaire:-3 } } } ] },
+        ko:{ t:"Il n'existe pas, et le coach t'a regardé faire.", n:-.2, e:{ coach:-2, vestiaire:-1.5 } } } ] },
   { id:'bagarre', q:"Il l'a fauché, il reste au-dessus de lui, et il lui parle. Tout le monde monte.", axe:'ment',
-    gk:{ 0:{ p:-.05, ok:{ vestiaire:9 }, ko:{ coach:-4 } }, 1:{ ko:{ vestiaire:-2 } } },
+    gk:{ 0:{ p:-.05, ok:{ vestiaire:4.5 }, ko:{ coach:-4 } }, 1:{ ko:{ vestiaire:-1 } } },
     opts:[
       { l:"Y aller", p:.55,
-        ok:{ t:"Tu le relèves et tu écartes l'autre, l'arbitre te laisse.", n:.2, e:{ vestiaire:6 } },
+        ok:{ t:"Tu le relèves et tu écartes l'autre, l'arbitre te laisse. Dix minutes à penser à autre chose.", n:-.2, e:{ vestiaire:3 } },
         ko:{ t:"Tu en prends un aussi.", n:-.3, ev:['jaune'], e:{ coach:-2 } } },
       { l:"Rester à l'écart", p:.85,
         ok:{ t:"Tu gardes la tête froide, l'arbitre le note.", n:.3, e:{ coach:2 } },
-        ko:{ t:"Ils ont compté qui est venu, et tu n'y étais pas.", n:-.2, e:{ vestiaire:-5 } } } ] },
+        ko:{ t:"Ils ont compté qui est venu, et tu n'y étais pas.", n:-.2, e:{ vestiaire:-2.5 } } } ] },
   { id:'cuisse', q:"Ça tire derrière la cuisse. Le banc t'a vu la toucher.", axe:'phys', tard:true,
     opts:[
       { l:"Demander le changement", p:.7,
         ok:{ t:"Le kiné confirme : tu as bien fait de sortir, aucune blessure.", n:0, ev:['sortie'], e:{ corps:3, coach:1 } },
-        ko:{ t:"Il ne trouve rien : une crampe, tu es sorti pour rien.", n:0, ev:['sortie'], e:{ coach:-5, vestiaire:-2 } } },
+        ko:{ t:"Il ne trouve rien : une crampe, tu es sorti pour rien.", n:0, ev:['sortie'], e:{ coach:-5, vestiaire:-1 } } },
       { l:"Serrer les dents", p:.65,
         ok:{ t:"Tu finis le match, la cuisse tient.", n:0, e:{ coach:4 } },
         ko:{ t:"Ça lâche.", n:-.5, ev:['bless'], e:{ corps:-5, ment:-2.2 } } } ] },
@@ -3160,7 +3182,7 @@ const MOMENTS_CE = [
         ko:{ t:"Ils s'accrochent, tu joues les quatre-vingt-dix.", n:.2, mins:90, e:{ fit:-12 } } },
       { l:"Économiser tes jambes pour samedi", p:.55,
         ok:{ t:"Vous passez sans forcer.", n:.2, e:{ fit:-5 } },
-        ko:{ t:"Éliminés par un club de division inférieure.", n:-.6, e:{ vestiaire:-6, supporters:-8 } } } ] },
+        ko:{ t:"Éliminés par un club de division inférieure.", n:-.6, e:{ vestiaire:-3, supporters:-8 } } } ] },
   { id:'pelouse', q:"Un champ de patates. Le ballon ne roule pas, il saute.", axe:'tech', ou:'coupe',
     opts:[
       { l:"Jouer court quand même", p:.4,
@@ -3172,18 +3194,18 @@ const MOMENTS_CE = [
   { id:'tab', q:"Zéro partout. Le capitaine fait le tour et demande qui veut tirer.", axe:'ment', ou:'coupe', pasG:true, tab:true,
     opts:[
       { l:"Prendre le premier", p:.8,
-        ok:{ t:"Tu lances la série, tout le monde suit.", n:.6, e:{ ment:1.2, vestiaire:4 } },
+        ok:{ t:"Tu lances la série, tout le monde suit.", n:.6, e:{ ment:1.2, vestiaire:2 } },
         ko:{ t:"Tu le manques d'entrée, la série part de travers.", n:-.8, e:{ ment:-2.5 } } },
       { l:"Prendre le cinquième", p:.72,
         ok:{ t:"Celui qui qualifie. Tu es porté jusqu'au vestiaire.", n:1, e:{ ment:2, supporters:8 } },
-        ko:{ t:"Celui qui élimine. Tu connais le silence du vestiaire.", n:-1.2, e:{ ment:-3, vestiaire:-5 } } } ] },
+        ko:{ t:"Celui qui élimine. Tu connais le silence du vestiaire.", n:-1.2, e:{ ment:-3, vestiaire:-2.5 } } } ] },
   { id:'tabG', q:"Cinq tireurs, et tu es seul au milieu. Le premier pose déjà le ballon. Pour la première fois du match, plus personne ne peut rien faire à ta place.", axe:'spec', ou:'coupe', gOnly:true, tab:true,
     opts:[
       { l:"Suivre ce que tu as préparé", p:.3, aide:'spec',
         ok:{ t:"Tu pars du bon côté deux fois, tu en sors un : vous êtes qualifiés.", n:1.5, ev:['arretTab'], e:{ spec:1.2, supporters:8 } },
         ko:{ t:"Ils les mettent tous les cinq. Tu n'as rien à te reprocher, et ça ne console pas.", n:-.3, e:{ ment:-1.5 } } },
       { l:"Partir au feeling, et les regarder dans les yeux", p:.25, aide:'ment',
-        ok:{ t:"Tu en sors deux. Personne ne t'avait rien dit : c'est toi, tout seul.", n:1.8, ev:['arretTab'], e:{ ment:3, vestiaire:8 } },
+        ok:{ t:"Tu en sors deux. Personne ne t'avait rien dit : c'est toi, tout seul.", n:1.8, ev:['arretTab'], e:{ ment:3, vestiaire:4 } },
         ko:{ t:"Tu plonges trois fois avant la frappe : ils t'ont lu.", n:-.6, e:{ ment:-2, ligne:-2 } } } ] },
   { id:'depl', q:"Trois mille kilomètres, un stade plein et hostile, et samedi dans trois jours.", axe:'phys', ou:'euro', dehors:true, titu:true,
     opts:[
@@ -3204,11 +3226,11 @@ const MOMENTS_CE = [
   { id:'finale', q:"Le bus a mis quarante minutes à traverser la ville, personne n'a parlé. Le coach demande si quelqu'un veut dire quelque chose.", axe:'ment', finale:true,
     opts:[
       { l:"Parler", p:.6,
-        ok:{ t:"Tu trouves les mots, ils sortent du vestiaire différents.", n:.4, e:{ vestiaire:8 } },
+        ok:{ t:"Tu trouves les mots, ils sortent du vestiaire différents.", n:0, e:{ vestiaire:4 } },
         ko:{ t:"Tu bafouilles, et le silence retombe plus lourd.", n:-.3, e:{ ment:-1.5 } } },
       { l:"Laisser le capitaine le faire", p:.85,
         ok:{ t:"Il dit ce qu'il faut, et toi tu te concentres sur toi.", n:.4, e:{ ment:1 } },
-        ko:{ t:"Personne ne dit rien, vous entrez froids.", n:-.4, e:{ vestiaire:-3 } } } ] },
+        ko:{ t:"Personne ne dit rien, vous entrez froids.", n:-.4, e:{ vestiaire:-1.5 } } } ] },
 ];
 function suiteMatch(){
   const m = S.match;
