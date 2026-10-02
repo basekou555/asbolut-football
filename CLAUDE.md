@@ -2701,6 +2701,46 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     version déployée, reprises à la 17ᵉ journée, deux saisons entières jouées, 22 joueurs, zéro
     doublon.
 
+- **TU NE MARQUES PAS APRÈS AVOIR QUITTÉ LE TERRAIN** (le propriétaire, 02/10/2026, rapport à
+  l'appui : « je suis sorti et j'ai mis 2 buts »). Sorti à la 66ᵉ sur la cuisse, et le film lui
+  donnait un but à la **72ᵉ** et un autre à la **73ᵉ** — quatre buts au compteur pour deux marqués.
+  **C'est un défaut d'ordre, pas de tirage**, et c'est la même famille que les minutes du 01/10 et
+  le penalty du même jour : *ce que le film affirme doit être vrai au moment où il l'affirme*.
+  - **La cause** : le moteur attribue tes buts dans la fenêtre qu'il connaît
+    (`e.min >= entree && e.min <= sortie`), **puis** un fait de match referme cette fenêtre — la
+    cuisse qu'on écoute, un deuxième jaune — et les buts déjà posés restaient les tiens. Un rouge
+    tiré **avant** l'attribution était déjà traité (le moteur coupe `m.minutes`) ; celui qu'un
+    **fait** crée ne l'était pas du tout : ton match continuait après ton expulsion.
+  - **`finirTonMatch(m, min)` est la porte unique** : elle coupe tes minutes **et rend à un
+    coéquipier réellement sur le terrain** (`surLeBanc()`) les buts et les passes qui tombent après.
+    Les événements ne sont ni ajoutés ni retirés, donc **le score vaut toujours le film** : c'est le
+    buteur qui change, pas le but. `sortirDuMatch()` et le rouge né d'un fait y passent tous les deux.
+  - **Un expulsé ne se remplace pas, et ça m'a coûté une passe.** Le moteur choisit ses expulsés
+    parmi ceux qui devaient finir le match, donc il n'a jamais de changement à annuler ; un rouge né
+    d'un fait, si. Première version : le film montrait « tu sors à la 57ᵉ » pour un match arrêté à la
+    49ᵉ — **la sonde des sept invariants l'a trouvé en un passage** (1 match sur 850). Le changement
+    prévu est annulé et le nom entre dans `m.expulses`.
+  - **Mesuré avant, 20 794 matchs joués** : **117 matchs (0,6 %)** où un de tes buts ou une de tes
+    passes tombe après ta sortie — **96 buts et 41 passes** — et **17 matchs** qui continuaient après
+    ton propre rouge. Le pire cas trouvé : entré à la 56ᵉ, sorti à la 59ᵉ, un but crédité à la 76ᵉ.
+    **Mesuré après, 21 144 matchs : zéro sur les deux contrôles**, trois passages.
+  - **Rien d'autre ne bouge** : la distribution de tes notes est identique (un but 7,52 · doublé 8,41
+    · triplé 8,90 · quatre buts **9,20** ; moyenne 6,81, sous 5,0 11,7 %, au-dessus de 7,5 33,1 %,
+    9,5 et plus 1,9 %) — ce qui est attendu, puisque le correctif ne retire des buts qu'aux 0,6 % de
+    matchs où ils étaient faux.
+  - **Vérifié** : les sept invariants du tableau des notes à zéro écart **sur trois passages** de
+    850 matchs, **31 faits sur 31**, score = film **0 écart** sur 5 344 faits, les minutes à zéro
+    incohérence, dix-huit clubs dans les cinq championnats et zéro doublon ; 24 carrières entières
+    avec tous les écrans, zéro erreur ; `tests/simulate.js` → `ERRORS: none` ; le banc de la semaine
+    à **250 saisons par ligne** tient l'invariant aux trois croisements (académie·M matchs « le
+    mental » 22,2±0,50 / trace « ton poste » +7,3 ; quartier·D matchs « deux séances » 21,4±0,48 /
+    trace « le physique » +9,7 ; étranger·A matchs « le mental » 21,1±0,52 / trace « la technique »
+    +9,0) ; **aucune migration** (`VERSION` ne bouge pas, aucun champ de sauvegarde ne change) —
+    vérifié sur une vraie partie de joueur·euse et une d'entraîneur·euse de la version déployée,
+    reprises à la 17ᵉ journée, deux saisons entières jouées.
+  - **Ce que ça ne répare pas** : le match **déjà joué** de sa sauvegarde garde ses quatre buts — les
+    événements sont écrits. C'est au match suivant que le compte sera juste.
+
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).
 - Tout l'état d'une carrière est dans l'objet global `state` (sérialisé dans localStorage). `state.pendingChoice` désigne l'écran courant ; `render()` dans `ui.js` dispatche.
