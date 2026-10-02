@@ -2436,10 +2436,10 @@ function finirAnnexe(info, m){
       else if (Math.random() < { G:0, D:.10, M:.24, A:.18 }[S.moi.poste] * (m.minutes / 90)) m.passes++;
     }
     const duel = duelResultat(m.ecartForce);
-    m.note = Math.round(clamp(6.1 + poidsResultat(m.res, m.bn, m.be, derriere, m.ecartForce)
+    m.note = Math.round(plafonnerNote(6.1 + poidsResultat(m.res, m.bn, m.be, derriere, m.ecartForce)
       + cumul(m.buts, POIDS_BUT) + m.passes * PASSE_NOTE
       + (derriere ? (be === 0 ? .8 * duel : be >= 4 ? -.7 : 0) : 0)
-      + (niveauJour() - S.club.force) * .05 + poidsEtat() + poidsFaits(m) + poidsCartons(m) + aleaNote(), 3, 10) * 10) / 10;
+      + (niveauJour() - S.club.force) * .05 + poidsEtat() + poidsFaits(m) + poidsCartons(m) + aleaNote()) * 10) / 10;
     S.stats.matchs++; S.stats.buts += m.buts; S.stats.passes += m.passes;
     S.stats.minutes += m.minutes; S.stats.notes.push(m.note);
     if (m.statut === 'titulaire') S.stats.titus++;
@@ -2587,10 +2587,10 @@ function jouerSelection(){
       /* Une sélection se joue au-dessus de ton niveau de club : `niveauJour()` se
          compare au niveau de la nation, pas à celui de ton club — c'est pour ça
          qu'une première sélection est dure. */
-      m.note = Math.round(clamp(6.1 + poidsResultat(res, bn, be, derriere, nous - force)
+      m.note = Math.round(plafonnerNote(6.1 + poidsResultat(res, bn, be, derriere, nous - force)
         + cumul(m.buts, POIDS_BUT) + m.passes * PASSE_NOTE
         + (derriere ? (be === 0 ? .8 : be >= 4 ? -.7 : 0) : 0)
-        + (niveauJour() - nous) * .05 + poidsEtat() + aleaNote(), 3, 10) * 10) / 10;
+        + (niveauJour() - nous) * .05 + poidsEtat() + aleaNote()) * 10) / 10;
       f.notes.push(m.note); f.buts += m.buts; f.passes += m.passes;
     }
     f.matchs.push(m);
@@ -3583,6 +3583,32 @@ function poidsFaits(m){
    (±0,95 chez eux, ±0,85 chez toi, qui as déjà tes faits de match pour faire
    l'écart). */
 function aleaNote(){ return rnd(-.85, .85); }
+/* LE HAUT D'UNE NOTE SE COMPRIME, ET C'EST L'ENTRE-DEUX QU'IL DEMANDAIT (le
+   propriétaire, 02/10/2026, après le lot des quatre buts : « il faut trouver un
+   [milieu] entre 2 » — entre un quadruplé à 8,7 avec 1,9 % de notes à 9,5 et plus,
+   et un quadruplé à 9,4 avec 4,8 %).
+   **Le levier n'est pas celui que j'avais annoncé.** J'avais dit que c'était la
+   queue de `POIDS_BUT` (le troisième et le quatrième but) ; mesuré sur 45 carrières
+   entières par ligne, c'est faux : resserrer la queue à `[1,.6,.4,.25]` reprend le
+   quadruplé (9,36 → 9,18) et **ne descend les 9,5+ que de 4,2 % à 3,3 %**. Normal :
+   une soirée à trois ou quatre buts est rare, donc sa queue ne pèse presque rien
+   dans la distribution — les 9,5 se fabriquent sur des soirées à **un ou deux**
+   buts, quand tous les termes positifs tombent du même côté.
+   Donc on ne touche pas à ce qu'un but vaut : on comprime **le haut de la somme**,
+   ce qui est son propre principe du 27/09 (le rendement décroissant) appliqué au
+   total au lieu de chaque table. Au-dessus de `SEUIL_HAUT`, un dixième de plus n'en
+   vaut plus que `PENTE_HAUT`. Mesuré : le quadruplé garde **9,21**, les 9,5+
+   retombent à **1,7 %** (le niveau d'avant le lot) et **un 10 passe de 2,1 % à
+   0,3 %** — plus rare qu'il ne l'a jamais été.
+   **Elle s'applique à toute la liste des notes, la tienne et les leurs.** Ne
+   comprimer que la tienne rouvrirait exactement l'asymétrie fermée le matin même :
+   un coéquipier pourrait monter à 10 là où tu plafonnes à 9,8. Mesuré après : zéro
+   coéquipier à 9,5 et plus, et tu restes le meilleur des tiens 73 % des soirs où tu
+   marques deux fois (contre 75 % sans compression, 63 % avant le lot). */
+const SEUIL_HAUT = 8.6, PENTE_HAUT = .65;
+function plafonnerNote(x){
+  return clamp(x <= SEUIL_HAUT ? x : SEUIL_HAUT + (x - SEUIL_HAUT) * PENTE_HAUT, 3, 10);
+}
 /* CE QU'ON COMPARE APRÈS LE MATCH. Les liens, les lignes et la fraîcheur y étaient
    déjà ; les **axes** et le **corps** n'avaient aucun canal vers l'écran, donc un fait
    qui donnait un demi-point de poste ou qui réparait la cuisse ne se voyait nulle
@@ -3606,7 +3632,7 @@ function finirMatch(){
   if (m.minutes){
     const derriere = S.moi.poste === 'G' || S.moi.poste === 'D';
     const duel = duelResultat(m.ecartForce);
-    m.note = clamp(6.1 + poidsResultat(res, m.bn, m.be, derriere, m.ecartForce)
+    m.note = plafonnerNote(6.1 + poidsResultat(res, m.bn, m.be, derriere, m.ecartForce)
       + cumul(m.buts, POIDS_BUT) + m.passes * PASSE_NOTE
       + (derriere ? (m.be === 0 ? 1 * duel : m.be === 1 ? .35 * duel : m.be >= 4 ? -.7 : 0) : 0)
       /* Un fait de match pèse **un point de note**, pas trois dixièmes (demande du
@@ -3617,7 +3643,7 @@ function finirMatch(){
          soirs qu'on veut oublier. */
       + (niveauJour() - S.club.force) * .035 + poidsEtat()
       + poidsFaits(m) + poidsCartons(m)
-      - (m.perduLeFil ? .7 : 0) + (m.moments.some(f => f.tenu) ? .35 : 0) + aleaNote(), 3, 10);
+      - (m.perduLeFil ? .7 : 0) + (m.moments.some(f => f.tenu) ? .35 : 0) + aleaNote());
     m.note = Math.round(m.note * 10) / 10;
     S.sansJouer = 0;
     S.stats.matchs++; S.stats.minutes += m.minutes; S.stats.buts += m.buts; S.stats.passes += m.passes;
@@ -3873,7 +3899,7 @@ function notesEquipe(m){
     const n = 6.1 + (bonus + (x.niv - S.club.force) * .05 + rnd(-.95, .95)
       + (derriere ? (m.be === 0 ? .7 * duelE : m.be >= 4 ? -.7 : 0) : 0)) * a
       + cumul(f.b, POIDS_BUT_AUTRE) + f.p * PASSE_NOTE_AUTRE - f.j * .25 - f.r * 1.3 - (f.pm || 0) * 1.1;
-    x.ref.note = Math.round(clamp(n, 3, 10) * 10) / 10;
+    x.ref.note = Math.round(plafonnerNote(n) * 10) / 10;
     x.ref.sum = (x.ref.sum || 0) + x.ref.note; x.ref.nb = (x.ref.nb || 0) + 1;
     // une bonne note, c'est une place la semaine prochaine
     bougerForme(x.ref, (x.ref.note - 6.1) * .9 * a);

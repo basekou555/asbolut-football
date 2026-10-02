@@ -2649,6 +2649,58 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
   dix-huit ans (moyenne 5,8 au lieu de 6,8). Une sonde qui s'arrête en silence est pire qu'une sonde
   absente, comme celle qui ignorait son propre `NS` le 30/09.
 
+- **L'ENTRE-DEUX NE VENAIT PAS DE LA TABLE DES BUTS** (le propriétaire, 02/10/2026, après le lot des
+  quatre buts : « il faut trouver un [milieu] entre 2 » — entre l'ancien barème, où un quadruplé
+  valait 8,7 pour 1,9 % de notes à 9,5 et plus, et le nouveau, où il vaut 9,4 pour 4,8 %).
+  **Et le levier que je lui avais annoncé était le mauvais.** J'avais écrit que c'était la queue de
+  `POIDS_BUT` (le troisième et le quatrième but) ; mesuré sur 45 carrières entières par ligne :
+  | | ta note à 4 buts | 9,5 et plus | un 10 | meilleur des tiens à 2 buts et + |
+  |---|---|---|---|---|
+  | avant le lot `[.7,.5,.35,.25]` | 8,76 | 1,9 % | 0,5 % | 63 % |
+  | en ligne `[1,.75,.5,.35]` | 9,36 | 4,2 % | 1,7 % | 74 % |
+  | queue resserrée `[1,.6,.4,.25]` | 9,18 | **3,3 %** | 1,2 % | 70 % |
+  | queue resserrée `[1,.55,.35,.2]` | 8,98 | **3,3 %** | 1,1 % | 68 % |
+  Resserrer la queue **reprend le quadruplé sans rendre le 10 rare** : c'est le pire des deux
+  mondes. La raison est arithmétique — une soirée à trois ou quatre buts est rare, donc sa queue ne
+  pèse presque rien dans la distribution ; **les 9,5 se fabriquent sur des soirées à un ou deux
+  buts**, quand tous les termes positifs tombent du même côté.
+  - **Donc on ne touche pas à ce qu'un but vaut : on comprime le haut de la somme.** C'est son
+    propre principe du 27/09 (le rendement décroissant) appliqué **au total** au lieu de chaque
+    table : au-dessus de `SEUIL_HAUT` = 8,6, un dixième de plus n'en vaut plus que `PENTE_HAUT` =
+    0,65. Une seule fonction, `plafonnerNote()`, aux quatre endroits qui écrivent une note.
+  - **Elle s'applique à toute la liste, la tienne et les leurs.** Ne comprimer que la tienne
+    rouvrirait l'asymétrie fermée le matin même — un coéquipier monterait à 10 là où tu plafonnes à
+    9,8. Mesuré après : **zéro coéquipier à 9,5 et plus**, leur moyenne 6,36 → 6,33.
+  - **Mesuré après, 27 307 de tes notes** : un but 7,48 · un doublé 8,33 · un triplé 8,88 ·
+    **quatre buts 9,20** (médiane 9,3) ; **9,5 et plus 1,9 %** (le niveau d'avant le lot) et **un 10
+    à 0,3 %** contre 1,7 % — plus rare qu'il ne l'a jamais été depuis le 29/09. Tu restes le
+    meilleur des tiens **73 %** des soirs où tu marques deux fois (contre 75 % sans compression et
+    63 % avant le lot), rang médian **1**, écart au meilleur du match **0,18**. Et le reste de la
+    bande revient où elle était : moyenne 6,84, sous 5,0 **11,3 %**, au-dessus de 7,5 **33,9 %**.
+  - **Le monde ne bouge pas** : 120 carrières entières, **4,13 titres par carrière** contre 4,12
+    avant le lot des buts et 4,14 après — trois mesures dans le même point. 18 clubs dans les cinq
+    championnats, zéro doublon.
+  - **Un résidu mesuré, et il n'est pas de ce lot** : **20 % des soirées à trois buts et plus
+    finissent sous 8,5**, et la cause dominante est **un fait de match raté** (108 cas sur 160,
+    contre 46 pour ta forme et ta tête). Un premier fait raté coûte 1,8 quand un premier but paie 1 :
+    deux décisions manquées effacent un triplé (mesuré : 3 buts, 5-0, **note 6,6**, deux faits
+    ratés). C'est le calibrage de `ECHELLE_FAIT` du 29/09, inchangé ici — et déjà mesuré le 01/10 par
+    la note réelle à 1,5× et non 1,8×, parce qu'un fait réussi gagne aussi le match. Si cet écart
+    doit se réduire, le levier est **l'asymétrie de `ECHELLE_FAIT`** (payer un raté moins cher qu'un
+    réussi), et c'est son arbitrage, pas un réglage à faire dans son dos.
+  - **Vérifié** : les sept invariants du tableau des notes à zéro écart sur 850 matchs, **31 faits
+    sur 31**, score = film **0 écart** sur 5 245 faits, les minutes à zéro incohérence, zéro doublon
+    de nom ; 24 carrières entières de 18 à 38 ans avec tous les écrans, zéro erreur ; l'écran de
+    résultat relu sur des triplés et des quadruplés sans un `undefined` ; `tests/simulate.js` →
+    `ERRORS: none` ; le banc de la semaine à **250 saisons par ligne** tient l'invariant aux trois
+    croisements (académie·M matchs « le physique » 22,1±0,46 / trace « ton poste » +6,6 ; quartier·D
+    matchs « deux séances » 21,6±0,50 / trace « le physique » +9,8 ; étranger·A matchs « le
+    physique » 20,8±0,53 / trace « la technique » +9,1) et **« toujours lever le pied » ne prend les
+    matchs nulle part** ; **aucune migration** (`VERSION` ne bouge pas, aucun champ de sauvegarde ne
+    change) — vérifié sur une vraie partie de **joueur·euse** et une d'**entraîneur·euse** de la
+    version déployée, reprises à la 17ᵉ journée, deux saisons entières jouées, 22 joueurs, zéro
+    doublon.
+
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).
 - Tout l'état d'une carrière est dans l'objet global `state` (sérialisé dans localStorage). `state.pendingChoice` désigne l'écran courant ; `render()` dans `ui.js` dispatche.
