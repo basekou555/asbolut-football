@@ -257,3 +257,8 @@ button.chip.on{border-color:var(--gold);color:var(--gold);background:color-mix(i
 .rapVu{ font-size:11px; line-height:1.45; color:var(--muted); white-space:pre-wrap;
   word-break:break-word; max-height:300px; overflow:auto; margin:0;
   font-family:ui-monospace,Menlo,Consolas,monospace; }
+
+/* Une option hors de portée : visible, lisible, mais clairement pas cliquable. */
+.opt.off{ opacity:.52; cursor:default; }
+.opt.off:hover{ border-color:var(--line); background:var(--panel-2); }
+.opt .sub.manque{ color:var(--gold-dim); }

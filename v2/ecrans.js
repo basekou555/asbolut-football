@@ -27,9 +27,15 @@ function pills(dit){
   if (!dit || !dit.length) return '';
   return `<span class="pills">${dit.map(d => `<i class="pill ${d.c || 'neutre'}">${esc(d.t)}</i>`).join('')}</span>`;
 }
-function optHTML(ico, titre, sub, dit, onclick){
-  return `<button class="opt" onclick="${onclick}"><span class="ico">${ico}</span><span>`
-    + `<b>${esc(titre)}</b>${sub ? `<span class="sub">${esc(sub)}</span>` : ''}${pills(dit)}</span></button>`;
+/* `onclick` nul = hors de portée : le bouton s'éteint et `note` dit ce qui manque.
+   Montrer le prix de ce qu'on ne peut pas se payer est une information ; le cacher
+   laisserait croire que ça n'existe pas. */
+function optHTML(ico, titre, sub, dit, onclick, note){
+  const off = !onclick;
+  return `<button class="opt${off ? ' off' : ''}"${off ? ' disabled' : ` onclick="${onclick}"`}>`
+    + `<span class="ico">${ico}</span><span>`
+    + `<b>${esc(titre)}</b>${sub ? `<span class="sub">${esc(sub)}</span>` : ''}`
+    + `${note ? `<span class="sub manque">${esc(note)}</span>` : ''}${pills(dit)}</span></button>`;
 }
 
 /* ---------------- rendu ---------------- */
@@ -38,7 +44,7 @@ function rendre(){
   if (!S) { el.innerHTML = creationHTML(); window.scrollTo(0, 0); return; }
   const f = { semaine:ecranSemaine, arret:ecranArret, moment:ecranMoment,
     resultat:ecranResultat, bilan:ecranBilan, journal:ecranJournal,
-    ete:ecranEte, offres:ecranOffres, mercato:ecranMercato, vie:ecranVie,
+    ete:ecranEte, offres:ecranOffres, mercato:ecranMercato, vie:ecranVie, treve:ecranTreve,
     carriere:ecranCarriere, tirage:ecranTirage,
     /* Le mode entraîneur·euse a ses écrans, pas ses copies : tout ce qui est
        commun (le classement, l'effectif, le film du match, les notes, le journal)
@@ -428,6 +434,19 @@ function rapportDetail(){
       l.push(`  fenêtre : ${(m.in || []).length} arrivée(s), ${(m.out || []).length} départ(s)`);
     } else l.push(`mercato : ${(S.mercatoVu || []).length} mouvement(s) dans le monde`);
   }
+  /* LA TRÊVE ET LA BOUTIQUE : c'est là qu'un prix peut mentir, donc le rapport les
+     décrit au centime, comme il le fait du mercato. */
+  else if (S.ecran === 'treve'){
+    const t = S.treve || {};
+    l.push(`trêve : ${t.fait ? t.fait.id : 'pas encore choisi'} · ${S.journee}e journée`
+      + ` · fraîcheur ${Math.round(S.etats.fraicheur)} · corps ${Math.round(S.etats.corps)}`);
+    l.push(`  compte ${S.argent} · salaire ${S.salaire} (max ${(S.vie || {}).salaireMax})`
+      + ` · entretien ${(S.vie || {}).entretien || 0}`);
+    l.push(`  staff : ${((S.vie || {}).achats || []).join(', ') || 'rien'}`
+      + ` · prix : ${BOUTIQUE.map(c => `${c.id} ${coutAchat(c)}`).join(', ')}`);
+    l.push(`  chantiers : ${((S.vie || {}).chantiers || []).map(x => x.id).join(', ') || 'rien'}`
+      + ` · prix : ${CHANTIERS.map(c => `${c.id} ${coutChantier(c)}`).join(', ')}`);
+  }
   else if (S.ecran === 'vie' || S.ecran === 'cvie'){
     const v = S.vie || {};
     const ch = S.mode === 'coach' ? CCHANTIERS : CHANTIERS;
@@ -435,6 +454,8 @@ function rapportDetail(){
     l.push(`la vie : gagné ${v.gagne} cette saison${(v.primes || []).length ? ` (primes : ${v.primes.join(', ')})` : ''}`
       + ` · compte ${S.argent} · salaire ${S.salaire} (max ${v.salaireMax}) · proches ${Math.round(proches())}`);
     l.push(`  construit : ${(v.chantiers || []).map(x => x.id + (x.coule ? ' (coulé)' : '')).join(', ') || 'rien'}`);
+    if (S.mode !== 'coach') l.push(`  staff : ${(v.achats || []).join(', ') || 'rien'}`
+      + ` · entretien ${v.entretien || 0} · prix : ${BOUTIQUE.map(c => `${c.id} ${coutAchat(c)}`).join(', ')}`);
     l.push(`  possible : ${dispo.map(c => `${c.id} ${coutChantier(c)}`).join(', ') || 'rien'}`
       + ` · au catalogue : ${(ch || []).map(c => `${c.id} ${coutChantier(c)}`).join(', ')}`);
     if (v.fait) l.push(`  choisi : ${v.fait.id} → « ${v.suite} »`);
@@ -499,10 +520,28 @@ function situationHTML(ouvert){
     tire += celSit('\u2728', q.nom, `${motAxe(q.axe)} — ${q.dit}`, true); }
   if (S.moi.def.vu){ const f = DEFAUTS.find(x => x.id === S.moi.def.id);
     tire += celSit('\u26a0\ufe0f', f.nom, `${motAxe(f.axe)} — ${f.dit}`, true); }
+  /* ========== EN DEHORS DU TERRAIN ==========
+     « Je ne vois pas les pages des temps hors football » (le propriétaire, 02/10/2026).
+     Les trois écrans hors football existaient et sortaient bien — une fois par an, en
+     juin. Mais **pendant les trente-quatre journées, ton argent, ton staff et tes
+     chantiers n'apparaissaient nulle part** : seule la case « Les tiens » parlait
+     d'autre chose que de football. Trois cases de plus, lisibles chaque semaine, et
+     chacune dit ce qu'elle change — sinon ce serait trois chiffres de plus. */
+  const ach = (S.vie && S.vie.achats) || [];
+  const chs = ((S.vie && S.vie.chantiers) || []).filter(x => !x.coule);
+  const hors = celSit('\u{1F4B0}', "Ton compte", `${sous(S.argent || 0)} de côté. `
+      + (S.vie && S.vie.entretien ? `Ton staff coûte ${sous(S.vie.entretien)} par an.`
+        : `La boutique ouvre à la trêve d'hiver et en juin.`))
+    + (ach.length ? celSit('\u{1F6CE}\ufe0f', "Ton staff", ach.map(id => {
+        const c = BOUTIQUE.find(x => x.id === id); return c ? `${c.ico} ${c.nom.toLowerCase()} — ${c.quoi}` : ''; })
+        .filter(Boolean).join(' · '), true) : '')
+    + (chs.length ? celSit('\u{1F3D7}\ufe0f', "Ce que tu as bâti", chs.map(x =>
+        `${x.nom.toLowerCase()} (${x.annee})`).join(' · '), true) : '');
   return `<details class="fold sit-fold"${ouvert ? ' open' : ''}><summary>Ta situation</summary>
     <h3>Autour de toi</h3><div class="sit">${gens}${maLigne}${grp}</div>
     ${concurrenceHTML()}
     <h3>Toi</h3><div class="sit">${toi}${tire}</div>
+    <h3>En dehors du terrain</h3><div class="sit">${hors}</div>
     <p class="narr" style="margin-top:12px">${esc(direStaff())}</p>
     <p class="sub">${S.stats.matchs} match${S.stats.matchs > 1 ? 's' : ''} jou\u00e9${S.stats.matchs > 1 ? 's' : ''}${S.stats.titus ? `, dont ${S.stats.titus} comme titulaire` : ''}${S.stats.buts ? ` \u00b7 ${S.stats.buts} but${S.stats.buts > 1 ? 's' : ''}` : ''}${S.stats.notes.length ? ` \u00b7 moyenne ${virg(moyenneNotes())}` : ''}.</p>
   </details>`;
@@ -965,6 +1004,64 @@ function ecranMercato(){
    ici que l'argent devient quelque chose : ce que la saison a rapporté, ce qu'il y a
    sur le compte, ce qu'on en fait — et les chantiers, qui sont la seule chose du jeu
    qui survit à la carrière. */
+/* ========== LA BOUTIQUE, À L'ÉCRAN ==========
+   Un seul bloc, deux endroits : l'été (l'écran de la vie) et la trêve d'hiver. Il montre
+   ce qu'on a déjà — parce que c'est ça qu'on ne voyait nulle part — puis ce qui est en
+   vente, et il grise ce qu'on ne peut pas se payer au lieu de le cacher : savoir qu'une
+   école de foot coûte trois fois ce qu'on a est une information. */
+function boutiqueHTML(){
+  const a = (S.vie && S.vie.achats) || [];
+  const ch = (S.vie && S.vie.chantiers) || [];
+  const peut = q => q <= (S.argent || 0);
+  const ligne = (c, q, prise, onclick, suffixe) => prise
+    ? `<div class="mvts"><div class="in"><span class="i">${esc(c.ico)}</span>
+        <span><b>${esc(c.nom)}</b> <i>${esc(suffixe || c.quoi || '')}</i></span></div></div>`
+    : optHTML(c.ico, c.nom, `${c.sub} — ${sous(q)}`, c.dit,
+        peut(q) ? onclick : null,
+        peut(q) ? '' : `Il te manque ${sous(Math.round((q - (S.argent || 0)) * 1000) / 1000)}.`);
+  return `<h3>La boutique</h3>
+    <p class="sub">${esc(sous(S.argent || 0))} de côté. ${a.length || ch.length
+      ? `Tu as déjà ${[a.length ? `${a.length} chose${a.length > 1 ? 's' : ''} pour le football` : '',
+          ch.length ? `${ch.length} chantier${ch.length > 1 ? 's' : ''}` : ''].filter(Boolean).join(' et ')}.`
+      : `Rien d'acheté pour l'instant.`}</p>
+    <h4 class="sub" style="margin:10px 0 4px">Pour le football — ça dure toute la carrière</h4>
+    ${BOUTIQUE.map(c => ligne(c, coutAchat(c), aAchat(c.id), `acheter('${c.id}')`)).join('')}
+    <h4 class="sub" style="margin:12px 0 4px">Ce qui restera après — la seule chose qui survit à la carrière</h4>
+    ${CHANTIERS.map(c => { const d = ch.find(x => x.id === c.id);
+      return ligne(c, coutChantier(c), !!d, `choisirVie('${c.id}')`,
+        d ? `depuis ${d.annee}${d.coule ? ' — a coulé' : ''}` : null); }).join('')}`;
+}
+
+/* ========== LA TRÊVE D'HIVER ==========
+   Le temps où l'on souffle au milieu de la saison. Il n'existait pas : trente-quatre
+   journées d'affilée et un seul bilan en juin. On y lit la demi-saison, la boutique
+   ouvre, et on décide de quinze jours. */
+function ecranTreve(){
+  const t = S.treve || {};
+  const fait = !!t.fait;
+  const cl = classementTrie();
+  const pos = cl.findIndex(e => e.nom === S.club.nom) + 1;
+  const moy = moyenneNotes();
+  return `<div class="card no-sticky">
+    <div class="step">Trêve ${S.annee + 1} · ${S.journee}ᵉ journée sur ${JOURNEES} · ${S.moi.age} ans</div>
+    <div class="big-ico">${fait ? '🧳' : '❄️'}</div>
+    <h2>${fait ? esc(t.fait.nom) : "Quinze jours sans match"}</h2>
+    ${fait ? `<p class="narr">${esc(t.suite)}</p>`
+      : `<p class="narr">Le championnat s'arrête. Les terrains gèlent, le centre se vide, et pour la
+         première fois depuis août personne ne te demande rien.</p>`}
+    <div class="stats">
+      <div><div class="v">${S.stats.matchs}</div><div class="k">matchs</div></div>
+      <div><div class="v">${S.stats.titus}</div><div class="k">titulaire</div></div>
+      <div><div class="v">${S.stats.notes.length ? virg(Math.round(moy * 10) / 10) : '—'}</div><div class="k">moyenne</div></div>
+      <div><div class="v">${pos || '—'}<span class="sur">ᵉ</span></div><div class="k">${esc(nomDivision())}</div></div>
+    </div>
+    ${t.suiteAchat ? `<p class="sub">${esc(t.suiteAchat)}</p>` : ''}
+    ${fait ? `${boutiqueHTML()}
+        <div class="btn-row"><button class="btn" onclick="finirTreve()">La reprise →</button></div>`
+      : `<h3>Ces quinze jours</h3>
+        ${TREVE.map(c => optHTML(c.ico, c.nom, c.sub, c.dit, `choisirTreve('${c.id}')`)).join('')}`}
+  </div>${liensJournal()}`;
+}
 function ecranVie(){
   const v = S.vie || { chantiers:[] };
   const fait = !!v.fait;
@@ -985,10 +1082,11 @@ function ecranVie(){
     ${(v.chantiers || []).length ? `<h3>Ce que tu as déjà construit</h3>
       <div class="mvts">${v.chantiers.map(c => `<div class="in"><span class="i">${esc((CHANTIERS.find(x => x.id === c.id) || {}).ico || '✅')}</span>
         <span><b>${esc(c.nom)}</b> <i>${c.annee ? `depuis ${c.annee}` : ''}${c.coule ? ' — a coulé' : ''}</i></span></div>`).join('')}</div>` : ''}
-    ${fait ? `<div class="btn-row"><button class="btn" onclick="finirVie()">La saison qui vient →</button></div>`
-      : `${dispo.length ? `<h3>Construire quelque chose</h3>
-          ${dispo.map(c => optHTML(c.ico, c.nom, `${c.sub} — ${esc(sous(coutChantier(c)))}`, c.dit, `choisirVie('${c.id}')`)).join('')}` : ''}
-        <h3>Ou simplement cette année</h3>
+    ${v.suiteAchat ? `<p class="sub">${esc(v.suiteAchat)}</p>` : ''}
+    ${fait ? `${boutiqueHTML()}
+        <div class="btn-row"><button class="btn" onclick="finirVie()">La saison qui vient →</button></div>`
+      : `${boutiqueHTML()}
+        <h3>Et cette année</h3>
         ${VIE_CHOIX.map(c => optHTML(c.ico, c.nom, c.sub, c.dit, `choisirVie('${c.id}')`)).join('')}`}
   </div>`;
 }

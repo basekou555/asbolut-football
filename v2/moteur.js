@@ -356,7 +356,7 @@ function nouvellePartie(c){
        premier appel passe par l'arrêt `selection` ; ensuite les fenêtres se jouent
        d'elles-mêmes, et on peut ne plus être rappelé. */
     selec: { dedans:false, caps:0, buts:0, passes:0, notes:[] }, selecVue: null,
-    vie: { proches: 58, chantiers: [], gagne: 0, gagneAvant: 0, salaire0: 0, grosFait: false, prochesPlancher: 0 },
+    vie: { proches: 58, chantiers: [], achats: [], gagne: 0, gagneAvant: 0, salaire0: 0, grosFait: false, prochesPlancher: 0 },
     moi: { nom: c.nom, poste: poste.id, posteNom: poste.nom, specNom: poste.spec,
       age: 18, base, boost: { tech:0, phys:0, ment:0, spec:0 }, plafond, socle,
       u0: c.origine.u0, origine: c.origine.id, ambition: c.ambition.id, pic,
@@ -1248,8 +1248,11 @@ function chargePhys(){ return clamp(1 - (physique() - 50) * .006, .62, 1.24); }
    vivant — et c'est vrai du football. */
 const RECUP_SEANCE = .135, RECUP_SEANCE_MAX = .34;
 function recupPhys(){
-  return clamp(1 + (S.moi.base.phys - 50) * .016
-    + Math.min(S.moi.boost.phys * RECUP_SEANCE, RECUP_SEANCE_MAX), .62, 1.5);
+  /* 2/5 : un préparateur personnel ajoute un cran à la récupération — le même canal
+     que la séance physique, donc on sait exactement ce qu'il vaut. */
+  return clamp((1 + (S.moi.base.phys - 50) * .016
+    + Math.min(S.moi.boost.phys * RECUP_SEANCE, RECUP_SEANCE_MAX))
+    * (aAchat('prepa') ? 1.14 : 1), .62, 1.6);
 }
 function choisirSemaine(id){
   const s = SEMAINES.find(x => x.id === id); if (!s) return;
@@ -1601,13 +1604,74 @@ const ARRETS = [
       { l:"Attendre juin", liens:{ agent:6, club:-8 }, pasProlonge:true,
         dit:[{c:'foot',t:"🤝 il a les mains libres"},{c:'foot',t:"⏳ de meilleures offres cet été"},{c:'risk',t:"🏟️ le club peut ne pas prolonger du tout"}] },
     ] },
+  /* ========== LES PROJETS VIVENT ==========
+     « Je pensais qu'il y aurait des arrêts pour les projets, pour l'image »
+     (le propriétaire, 02/10/2026). Un chantier était un achat et une ligne au bilan de
+     carrière : il ne se passait plus rien après. Ces quatre familles ne se déclenchent
+     que si tu **possèdes** la chose, donc elles sont la suite de ce que tu as payé —
+     et chacune peut te la faire perdre ou la faire grandir. */
+  { id:'projetEcole',
+    quand: () => aChantier('ecole') && ((S.vuArrets || {}).projetEcole || 0) < 2,
+    titre:"L'école de foot",
+    texte:"L'éducateur que tu payes a reçu une offre d'un club. Il part en juin, et les gamins l'appellent par son prénom. Il y a quarante inscriptions à traiter et personne pour le remplacer.",
+    options:[
+      { l:"Y passer tes lundis", debours:.4, liens:{ supporters:7, proches:5 }, axes:{ spec:-.8 }, fit:-5,
+        dit:[{c:'vie',t:"⚽ l'école tient, et grandit"},{c:'foot',t:"📣 le quartier le sait"},{c:'risk',t:"🎯 tes lundis n'y sont plus"},{c:'risk',t:"💰 tu remets de l'argent"}] },
+      { l:"Déléguer et payer quelqu'un", debours:.9, liens:{ supporters:2 },
+        dit:[{c:'foot',t:"🫁 ta semaine est à toi"},{c:'risk',t:"💰 presque un mois de salaire"},{c:'risk',t:"🏡 ce n'est plus vraiment la tienne"}] },
+    ] },
+  /* UNE AFFAIRE NE S'AGRANDIT QU'UNE FOIS. `vuArrets` est remis à zéro chaque saison :
+     le choix « remettre de l'argent et agrandir » multipliait donc le rendement par 1,6
+     **deux fois par saison, vingt saisons de suite** — mesuré, une carrière a terminé à
+     **3 937 M€ de gains** contre 51 de médiane. C'est la même cause que l'examen du
+     diplôme, et c'est le piège de ce lot : une porte qui compose doit avoir un compteur
+     de carrière, jamais de saison. */
+  { id:'projetAffaire',
+    quand: () => aChantier('commerce') && !((S.vie.chantiers || [])
+        .find(x => x.id === 'commerce') || {}).grandi
+      && ((S.vuArrets || {}).projetAffaire || 0) < 1,
+    titre:"L'affaire",
+    texte:"Ton beau-frère appelle un mardi soir : il y a une ardoise, un fournisseur qui menace, et une occasion de reprendre le local d'à côté. Il te demande de trancher ce week-end.",
+    options:[
+      { l:"Remettre de l'argent et agrandir", debours:1.3, affaire:'grandir', ment:-1.5,
+        dit:[{c:'foot',t:"💰 ça rapportera davantage"},{c:'risk',t:"💰 un mois et demi de salaire"},{c:'risk',t:"🧠 tu y penseras samedi"}] },
+      { l:"Lui dire d'arrêter les frais", affaire:'serrer', liens:{ proches:-8 },
+        dit:[{c:'foot',t:"💰 tu ne remets rien"},{c:'foot',t:"🧠 la tête libre"},{c:'risk',t:"🏡 c'est ta famille, et elle l'entend mal"}] },
+    ] },
+  /* `vuArrets` est remis à zéro chaque saison : sans compteur de carrière, l'examen
+     revenait **1,3 fois par saison jusqu'à la retraite** (mesuré). Un diplôme se finit :
+     deux dossiers rendus et on n'en parle plus. */
+  { id:'projetDiplome',
+    quand: () => !!(S.vie && S.vie.diplome) && (S.vie.diplomeAvance || 0) < 2
+      && ((S.vuArrets || {}).projetDiplome || 0) < 1,
+    titre:"L'examen",
+    texte:"Le dossier est à rendre jeudi, et il y a un déplacement mercredi. Personne au club ne sait que tu passes un examen cette semaine.",
+    options:[
+      { l:"Rendre le dossier", axes:{ spec:-1.1 }, fit:-6, liens:{ proches:4 }, diplome:'avance',
+        dit:[{c:'vie',t:"🎓 tu avances, et tu finiras"},{c:'risk',t:"🫁 la semaine y passe"},{c:'risk',t:"🎯 pas pour ton poste"}] },
+      { l:"Demander un report", liens:{ coach:3 }, fit:2, ment:-1.2,
+        dit:[{c:'foot',t:"🎽 ta semaine est entière"},{c:'risk',t:"🧠 ça traîne, et tu le sais"}] },
+    ] },
+  { id:'projetImage',
+    quand: () => aAchat('presse') && ((S.vuArrets || {}).projetImage || 0) < 2,
+    titre:"Ton attaché de presse",
+    texte:"« J'ai une grande marque, sur un an. Beaucoup d'argent. Mais ils veulent un personnage : le gamin du quartier qui a réussi, et ils écriront l'histoire à leur façon. »",
+    options:[
+      { l:"Signer et jouer le personnage", prime:1.1, presse:1.5, liens:{ supporters:12, proches:-9 }, ment:-1.4,
+        dit:[{c:'foot',t:"💰 beaucoup d'argent"},{c:'foot',t:"📣 le stade t'adore"},{c:'risk',t:"🏡 chez toi on ne se reconnaît pas"},{c:'risk',t:"🧠 ce n'est pas toi"}] },
+      { l:"Refuser cette histoire-là", liens:{ supporters:-4, proches:6 },
+        dit:[{c:'vie',t:"🏡 tu restes celui qu'ils connaissent"},{c:'risk',t:"📣 le stade n'en saura rien"},{c:'risk',t:"💰 l'argent part ailleurs"}] },
+    ] },
+  /* 4/5 : avec un attaché de presse, les marques viennent **plus souvent** (trois fois
+     par saison au lieu de deux, et sans attendre d'être connu) et elles paient la moitié
+     de plus. C'est le seul achat qui se rembourse. */
   { id:'sponsor',
-    quand: () => S.journee >= 5 && ((S.vuArrets || {}).sponsor || 0) < 2
-      && (S.liens.supporters >= 55 || niveau() >= S.club.force + 4),
+    quand: () => S.journee >= 5 && ((S.vuArrets || {}).sponsor || 0) < (aAchat('presse') ? 3 : 2)
+      && (aAchat('presse') || S.liens.supporters >= 55 || niveau() >= S.club.force + 4),
     titre:"Le sponsor",
     texte:"Une marque veut ton visage sur une affiche. Une journée de tournage. Mercredi. En pleine semaine.",
     options:[
-      { l:"Y aller", prime:1/6, liens:{ supporters:6, coach:-3 }, fit:-7,
+      { l:"Y aller", prime:1/6, presse:1.5, liens:{ supporters:6, coach:-3 }, fit:-7,
         dit:[{c:'foot',t:"💰 deux mois de salaire"},{c:'foot',t:"📣 ton visage partout"},{c:'risk',t:"🫁 mercredi y passe"},{c:'risk',t:"🎽 il apprendra où tu étais"}] },
       { l:"Refuser", liens:{ coach:3, agent:-5 }, fit:2,
         dit:[{c:'foot',t:"🎽 le coach apprécie"},{c:'foot',t:"🫁 ta semaine est à toi"},{c:'risk',t:"🤝 c'est lui qui avait monté le coup"}] },
@@ -1807,12 +1871,35 @@ function appliquer(o){
      c'est cette phrase que « Ta semaine » affiche sous ton choix. */
   let suite = '';
   // l'argent, en mois de salaire : une prime qui rentre, une somme qui sort
-  if (o.prime){ S.argent += S.salaire * o.prime;
-    suite = `La prime est tombée : ${sous(S.salaire * o.prime)}.`; }
+  if (o.prime){
+    /* `o.presse` : l'attaché de presse négocie cette prime-là. Une option qui ne le
+       porte pas n'est pas concernée — il vend de l'image, pas des primes de match. */
+    const mult = o.presse && aAchat('presse') ? o.presse : 1;
+    const q = S.salaire * o.prime * mult;
+    S.argent += q;
+    suite = `La prime est tombée : ${sous(q)}.`
+      + (mult > 1 ? ` Ton attaché de presse avait négocié la moitié de plus.` : ''); }
   if (o.debours){ S.argent -= S.salaire * o.debours;
     suite = `Tu as sorti ${sous(S.salaire * o.debours)}. Tu ne le regrettes pas.`; }
   if (o.brassard){ S.brassard = o.brassard;
     suite = `Tu le porteras ${o.brassard} journées. Chaque mauvais soir pèsera double.`; }
+  /* L'AFFAIRE GRANDIT OU SE SERRE, et c'est le chantier lui-même qui change : son
+     rendement annuel est déjà lu par le bilan, donc il n'y a rien à inventer. */
+  if (o.affaire){
+    const a = (S.vie.chantiers || []).find(x => x.id === 'commerce');
+    if (a){
+      if (o.affaire === 'grandir'){
+        a.grandi = true;
+        a.rend = Math.round((a.rend || 0) * 1.6 * 1000) / 1000;
+        suite = `Le local d'à côté est à toi. Si ça tient, ça rapportera davantage.`; }
+      else { a.rend = Math.round((a.rend || 0) * .8 * 1000) / 1000; a.serre = true;
+        suite = `Tu as dit non. Il a raccroché le premier.`; }
+    }
+  }
+  if (o.diplome){ S.vie.diplomeAvance = (S.vie.diplomeAvance || 0) + 1;
+    suite = (S.vie.diplomeAvance >= 2)
+      ? `Dossier rendu jeudi à 23 h 50. Tu l'as, ton diplôme.`
+      : `Dossier rendu jeudi à 23 h 50. Il en reste un.`; }
   if (o.piqure){ S.piqure = true;
     suite = `Tu ne sentiras plus rien samedi. Ton corps ne remontera plus cette saison.`; }
   if (o.promesse) S.promesses = [...(S.promesses || []), { k:o.promesse }];
@@ -3308,6 +3395,9 @@ function choisirMoment(i){
   const bonus = (f.axe === 'tech' ? (techV - 50) * .009
       : (axeV - 50) * .006 + (techV - 50) * .005)
     + aide + (gk && gk.p ? gk.p : 0)
+    /* 3/5 : l'analyste vidéo. Il ne change pas ce que tu vaux, il change ce que tu
+       reconnais — donc la réussite d'un fait, et rien d'autre. */
+    + (aAchat('video') ? .06 : 0)
     + (S.etats.fraicheur - 80) * .001 - pression;
   const reussi = Math.random() < clamp(o.p + bonus, .05, .95);
   const r = reussi ? o.ok : o.ko;
@@ -3560,7 +3650,11 @@ function finirMatch(){
        les matchs — et c'est la seule porte de sortie du cercle, puisque l'infirmerie
        rend enfin le temps de remonter. */
     const risqueDette = Math.max(0, -S.etats.fraicheur) * .0045;
-    if (Math.random() < risqueBase + risqueIschios + risqueVide + risqueDette){
+    /* CE QUE LA BOUTIQUE CHANGE, 1/5 : un kiné à toi voit venir ce qui casse, et le
+       soin de la trêve d'hiver tient jusqu'en juin. Les deux se multiplient au tirage
+       entier, pas à un seul de ses termes : ce qu'on achète, c'est le risque. */
+    const soin = (aAchat('kine') ? .66 : 1) * (S.treveSoin ? .85 : 1);
+    if (Math.random() < (risqueBase + risqueIschios + risqueVide + risqueDette) * soin){
       m.blessure = ri(1, 5);
       S.etats.corps = clamp(S.etats.corps - 1.5, 0, 100);
       m.pourquoi = risqueDette >= Math.max(risqueBase, risqueIschios, risqueVide)
@@ -3951,6 +4045,67 @@ function apresMatch(){
   S.journee++;
   if (S.journee >= JOURNEES) return finSaison();
   S.arrets = 0; S.semaine = null; S.seance = null; S.match = null;
+  /* LA TRÊVE D'HIVER (le propriétaire, 02/10/2026 : « je pensais qu'il y aurait des
+     pauses dans les trêves »). Il n'y en avait aucune : trente-quatre journées
+     d'affilée, et le seul temps où l'on souffle était en juin. La moitié de saison
+     s'arrête donc ici — on lit où on en est, la boutique ouvre, et on décide de ces
+     quinze jours. C'est aussi le seul moment de la saison où l'argent sert. */
+  if (S.journee === J_TREVE && !S.treveFaite) return ouvrirTreve();
+  S.ecran = 'semaine'; sauver(); rendre();
+}
+const J_TREVE = 17;
+/* Quatre façons de passer quinze jours, et aucune n'a le beurre et l'argent du beurre. */
+const TREVE = [
+  { id:'soleil', ico:'🏝️', nom:"Dix jours au soleil",
+    sub:"Tu coupes pour de bon. Personne ne t'appelle, et tu ne regardes pas les résultats.",
+    dit:[{c:'foot',t:"🫁 tu repars avec des jambes"},{c:'vie',t:"🧠 la tête se répare"},{c:'risk',t:"🎽 le coach te trouvera en retard"}] },
+  { id:'travail', ico:'🎯', nom:"Rester au centre",
+    sub:"Les terrains sont vides, les portes sont ouvertes, et tu y es tous les matins.",
+    dit:[{c:'foot',t:"📈 ton axe le plus loin de son plafond monte"},{c:'foot',t:"🎽 il voit qui est là"},{c:'risk',t:"🫁 tu ne te reposes pas"},{c:'risk',t:"🏡 les tiens t'attendaient"}] },
+  { id:'chez', ico:'🏡', nom:"Rentrer chez toi",
+    sub:"Quinze jours là où personne ne parle de football, et où on t'appelle par ton prénom.",
+    dit:[{c:'vie',t:"🏡 les tiens, vraiment"},{c:'vie',t:"🧠 tu reviens entier"},{c:'risk',t:"🫁 tu n'as rien travaillé"}] },
+  { id:'soigner', ico:'🩹', nom:"Te faire soigner",
+    sub:"Ce qui traîne depuis septembre, on s'en occupe maintenant et on serre les dents.",
+    dit:[{c:'foot',t:"🩼 le corps se répare"},{c:'foot',t:"🩹 moins de blessures d'ici juin"},{c:'risk',t:"🫁 ce ne sont pas des vacances"}] },
+];
+function ouvrirTreve(){
+  if (!S.vie) S.vie = { proches: 50, chantiers: [], achats: [], gagne: 0 };
+  S.treve = { fait: null, suite: null, suiteAchat: null };
+  S.ecran = 'treve'; sauver(); rendre();
+}
+function choisirTreve(id){
+  const t = TREVE.find(x => x.id === id); if (!t || (S.treve && S.treve.fait)) return;
+  let suite = '';
+  if (id === 'soleil'){
+    S.etats.fraicheur = clampFr(S.etats.fraicheur + 26);
+    if (S.moi.base.ment < S.moi.pic.ment) bougerAxe('ment', Math.min(4, S.moi.pic.ment - S.moi.base.ment));
+    S.liens.coach = clamp(S.liens.coach - 5);
+    suite = `Tu es rentré noir et reposé. À la reprise, il a regardé ta montre et il n'a rien dit.`;
+  } else if (id === 'travail'){
+    const a = AXES.slice().sort((x, y) => (plafondReel(y) - S.moi.base[y]) - (plafondReel(x) - S.moi.base[x]))[0];
+    bougerAxe(a, 2.4);
+    S.liens.coach = clamp(S.liens.coach + 5);
+    S.etats.fraicheur = clampFr(S.etats.fraicheur - 6);
+    bougerProches(-8);
+    suite = `Quinze jours de janvier sur un terrain gelé, presque seul. ${axeNom(a)} y a gagné quelque chose, et il t'a vu.`;
+  } else if (id === 'chez'){
+    bougerProches(18);
+    if (S.moi.base.ment < S.moi.pic.ment) bougerAxe('ment', Math.min(3, S.moi.pic.ment - S.moi.base.ment));
+    S.etats.fraicheur = clampFr(S.etats.fraicheur + 8);
+    suite = `Quinze jours sans un ballon. Ta mère a fait à manger pour douze, et tu as dormi.`;
+  } else {
+    S.etats.corps = clamp(S.etats.corps + 11);
+    S.treveSoin = true;
+    S.etats.fraicheur = clampFr(S.etats.fraicheur + 4);
+    suite = `Table de massage, piscine, et une aiguille dans le genou un matin. Ça tient, pour l'instant.`;
+  }
+  S.treve.fait = { id, nom:t.nom }; S.treve.suite = suite;
+  jrn('treve', `Trêve : ${t.nom.toLowerCase()}.`);
+  sauver(); rendre();
+}
+function finirTreve(){
+  S.treveFaite = true; S.treve = null;
   S.ecran = 'semaine'; sauver(); rendre();
 }
 function avancerVite(n){
@@ -4174,7 +4329,10 @@ const CHANTIERS = [
     dit:[{c:'vie',t:"🎓 quelque chose après"},{c:'risk',t:"🎯 tu as la tête ailleurs cette saison"}] },
   { id:'ecole', ico:'⚽', nom:"Une école de foot dans ton quartier",
     sub:"Deux terrains, un éducateur payé, et des gamins qui portent ton nom sur le dos.",
-    cout: 6.5, trace:"Des centaines de gamins ont appris à jouer là où tu as appris.",
+    /* 6,5 fois le meilleur salaire : jamais construite une seule fois sur dix carrières,
+       parce que la boutique passait devant. À 5 elle reste la plus chère de loin, et elle
+       devient atteignable pour qui renonce à se payer un staff. */
+    cout: 5, trace:"Des centaines de gamins ont appris à jouer là où tu as appris.",
     dit:[{c:'foot',t:"📣 ton nom, partout"},{c:'vie',t:"🏡 les tiens en sont fiers"},{c:'risk',t:"💰 très cher"}] },
   { id:'commerce', ico:'🏪', nom:"Monter une affaire",
     sub:"Un restaurant, une salle, une concession. Ton beau-frère dit que c'est béton.",
@@ -4196,6 +4354,63 @@ function chantierFait(id){ return (S.vie && S.vie.chantiers || []).some(x => x.i
 
 /* CE QUE TU FAIS DE CE QUE TU AS GAGNÉ. Quatre options, et la règle du jeu : chacune
    donne quelque chose tout de suite **ou** quelque chose qui dure, jamais les deux. */
+/* ========== LA BOUTIQUE ==========
+   « Où est la boutique ? » (le propriétaire, 02/10/2026). L'argent n'avait que quatre
+   choses à acheter — les quatre chantiers — une fois par an, rangées comme des options
+   parmi d'autres. Il n'y avait donc pas de **lieu** où dépenser, et rien qui transforme
+   un compte en football.
+   Ce qui est en vente ici n'est pas décoratif : chaque ligne branche une mécanique qui
+   existait déjà, et chacune se paie une fois, cher. **L'arbitrage est entre le football
+   et la trace** : deux achats valent une maison, trois valent une école de foot. On ne
+   peut pas avoir les deux, et c'est le sujet du jeu.
+   `S.vie.achats` est la liste des identifiants possédés ; `aAchat(id)` est la seule porte
+   de lecture, pour qu'un achat ne puisse pas être promis sans être branché. */
+const BOUTIQUE = [
+  { id:'kine', ico:'🩹', nom:"Un kiné à toi",
+    sub:"Il te suit, il te connaît, il te voit avant que ça casse.",
+    cout: 2.2, quoi:"tu te blesses beaucoup moins",
+    dit:[{c:'foot',t:"🩼 un tiers de blessures en moins"},{c:'risk',t:"💰 deux ans de salaire"}] },
+  { id:'prepa', ico:'💪', nom:"Un préparateur personnel",
+    sub:"Il vient chez toi le dimanche, et il ne parle que de récupération.",
+    cout: 1.8, quoi:"tu récupères plus vite entre deux journées",
+    dit:[{c:'foot',t:"🫁 récupération d'un cran"},{c:'risk',t:"💰 deux ans de salaire"}] },
+  { id:'video', ico:'🎥', nom:"Ton analyste vidéo",
+    sub:"Il découpe tes matchs image par image et t'attend le lundi avec trois séquences.",
+    cout: 1.6, quoi:"tu fais plus souvent le bon geste au bon moment",
+    dit:[{c:'foot',t:"⚽ les faits de match réussissent plus"},{c:'risk',t:"💰 un an et demi de salaire"}] },
+  { id:'presse', ico:'📣', nom:"Un attaché de presse",
+    sub:"Il choisit ce qui sort de toi, et il décroche ce que ton agent n'ose pas demander.",
+    cout: 2, quoi:"les marques viennent plus souvent, et elles paient mieux",
+    dit:[{c:'foot',t:"📣 le stade et les sponsors"},{c:'risk',t:"💰 deux ans de salaire"}] },
+  { id:'agentPro', ico:'🤝', nom:"L'agent qui compte",
+    sub:"Celui dont les présidents prennent les appels. Il ne travaille pas pour rien.",
+    cout: 2.6, quoi:"les clubs te regardent de plus haut en juin",
+    dit:[{c:'foot',t:"📞 ta cote aux offres"},{c:'risk',t:"💰 deux ans et demi de salaire"}] },
+];
+/* L'ENTRETIEN, CALIBRÉ EN DEUX PASSES. À 30 % du prix par an, **plus rien ne tenait** :
+   mesuré sur dix carrières, zéro achat possédé à la fin, le compte à sec et aucun
+   chantier construit — les cinq achats valaient trois fois un salaire annuel d'entretien.
+   À 12 %, garder les cinq coûte encore plus que ce qu'une saison rapporte (1,2 fois),
+   mais **un ou deux se tiennent** pour le prix d'un demi-chantier par an. C'est la bande
+   qu'on veut : on s'offre un staff, pas tout un staff. */
+const ENTRETIEN = .12;
+function aAchat(id){ return !!(S.vie && (S.vie.achats || []).includes(id)); }
+function aChantier(id){ return !!(S.vie && (S.vie.chantiers || []).some(x => x.id === id && !x.coule)); }
+function coutAchat(c){
+  const ref = Math.max(.05, (S.vie && S.vie.salaireMax) || S.salaire || .05);
+  return Math.round(c.cout * ref * 1000) / 1000;
+}
+function acheter(id){
+  const c = BOUTIQUE.find(x => x.id === id); if (!c || aAchat(id)) return;
+  const q = coutAchat(c);
+  if (q > S.argent) return;
+  S.argent = Math.round((S.argent - q) * 1000) / 1000;
+  S.vie.achats = (S.vie.achats || []).concat(id);
+  S.vie.suiteAchat = `${c.nom} : ${sous(q)}. ${c.sub}`;
+  jrn('vie', `${c.nom} — ${sous(q)}.`);
+  sauver(); rendre();
+}
+
 const VIE_CHOIX = [
   { id:'cote', ico:'🏦', nom:"Mettre de côté",
     sub:"Tu ne touches à rien. Ton conseiller appelle ça être raisonnable.",
@@ -4354,6 +4569,27 @@ function encaisserLaSaison(){
     else { S.argent = Math.round((S.argent + co.rend) * 1000) / 1000;
       S.vie.gagne = Math.round((S.vie.gagne + co.rend) * 1000) / 1000; }
   }
+  /* CE QU'ON A ACHETÉ SE PAIE CHAQUE ANNÉE. Mesuré sans entretien, dix carrières :
+     **les cinq achats étaient pris dans dix carrières sur dix** et l'école de foot
+     n'était **jamais** construite — donc la boutique n'était pas un arbitrage, c'était
+     une liste de courses qu'on finit par cocher entièrement, et elle mangeait la seule
+     chose qui survit à la carrière. Un kiné à soi, un préparateur, un attaché de presse
+     sont des salaires : ils reviennent tous les ans, et le jour où tu ne peux plus
+     payer, ils vont ailleurs. Les chantiers, eux, ne coûtent rien après : c'est ce qui
+     les distingue. */
+  const garde = [];
+  (S.vie.achats || []).forEach(id => {
+    const c = BOUTIQUE.find(x => x.id === id); if (!c) return;
+    const q = Math.round(coutAchat(c) * ENTRETIEN * 1000) / 1000;
+    if (q <= S.argent){ S.argent = Math.round((S.argent - q) * 1000) / 1000; garde.push(id); }
+    else jrn('argent', `Tu n'as plus de quoi payer ${c.nom.toLowerCase()}. Il est parti ailleurs.`);
+  });
+  S.vie.achats = garde;
+  /* L'entretien affiché est celui de ce qu'on **garde**, pas de ce qu'on vient de perdre :
+     il se calcule donc après le tri, sinon l'écran de la semaine annoncerait le prix d'un
+     kiné qui est déjà parti. */
+  S.vie.entretien = Math.round(garde.reduce((a, id) => {
+    const c = BOUTIQUE.find(x => x.id === id); return a + (c ? coutAchat(c) * ENTRETIEN : 0); }, 0) * 1000) / 1000;
   jrn('argent', `La saison a rapporté ${sous(S.vie.gagne)}.`);
   bougerProches(-2.2 - Math.max(0, (S.moi.age - 27)) * .18);
 }
@@ -4447,7 +4683,10 @@ function genererOffres(){
   const cote = n + (joue ? 2 : -3) + (bonne ? 2.5 : 0) + (S.ete ? S.ete.offres : 0)
     + (S.bonusOffres || 0)
     + (S.liens.agent - 50) * .06 + (S.moi.age >= 33 ? -4 : 0)
-    + (S.liens.supporters - 50) * .03 + (S.liens.selection || 0) * .035;
+    + (S.liens.supporters - 50) * .03 + (S.liens.selection || 0) * .035
+    /* 5/5 : l'agent qui compte. Trois points de cote, c'est deux fois ce que vaut le
+       stade d'un bout à l'autre — il se paie, et il se voit en juin. */
+    + (aAchat('agentPro') ? 3 : 0);
   /* Calibré : à .05 et .055, la cote médiane montait de deux points et demi et tes
      titres par carrière de 5,2 à 6,7 (mesuré, 12 carrières de vingt saisons) — ce
      n'était plus un coup de pouce, c'était une promotion. À .03 et .035 le stade et
@@ -4694,7 +4933,13 @@ function finirMercato(){
    **toi**. C'est là que l'argent sert à quelque chose et que se décide ce qu'il
    restera de tout ça. */
 function ouvrirVie(){
-  S.vie.fait = null; S.vie.suite = null;
+  /* Trouvé en cherchant pourquoi il ne voyait pas les pages hors football : une
+     sauvegarde sans objet `vie` faisait **planter le bouton du mercato en silence**,
+     donc on ne pouvait jamais atteindre cet écran. Seule une partie d'avant la vie et
+     l'argent peut être dans cet état, mais le plantage était réel. */
+  if (!S.vie) S.vie = { proches: 50, chantiers: [], achats: [], gagne: 0, gagneAvant: 0 };
+  S.vie.achats = S.vie.achats || [];
+  S.vie.fait = null; S.vie.suite = null; S.vie.suiteAchat = null;
   S.ecran = 'vie'; sauver(); rendre();
 }
 function chantiersDispos(){
@@ -4820,6 +5065,8 @@ function jugerAmbition(){
    ce qui se compte remis à zéro — et rien de ce qui se construit. */
 function demarrerSaison(club, reste){
   S.raccroche = 0;
+  /* La trêve est une fois par saison, et le soin d'hiver ne passe pas l'été. */
+  S.treveFaite = false; S.treveSoin = false; S.treve = null;
   /* Tout ce qui concerne le monde s'est déjà joué : les divisions se sont échangées,
      les deux championnats ont vieilli, le marché est passé et ton vestiaire a été
      relu. Ici on ne fait plus que remettre à zéro ce qui ne dure qu'une saison. */

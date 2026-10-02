@@ -2091,6 +2091,104 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     15 : une sauvegarde v15 n'a pas de `pays`, ce qui vaut la France, ni de `mondes`) —
     vérifié sur une vraie partie de joueur·euse **et** d'entraîneur·euse de la version
     déployée, reprises à la 17ᵉ journée, saison finie, trêve passée, deuxième saison jouée.
+- **LA TRÊVE, LA BOUTIQUE, ET LES PROJETS QUI VIVENT** (le propriétaire, 02/10/2026 :
+  « je ne vois pas les pages des temps hors football », puis, à la question : « où est la
+  boutique ? Je pensais qu'il y aurait des arrêts pour les projets, pour l'image, etc. Je
+  pensais qu'il y aurait des pauses dans les trêves »). **Mesuré avant de rien toucher**,
+  20 saisons jouées d'affilée : les trois écrans hors football existaient et sortaient
+  bien — l'été, le mercato, la vie, **un par saison** — plus **5,8 arrêts hors football
+  par saison** (31 % des arrêts : la famille, la rumeur, le sponsor, le père au stade).
+  Rien ne manquait de ce côté-là. Ce qui manquait, ce sont **ses trois mots** :
+  1. **Une boutique.** L'argent n'avait que quatre choses à acheter — les quatre
+     chantiers — une fois par an, rangées comme des options parmi d'autres. Il n'y avait
+     pas de **lieu** où dépenser, et rien qui transforme un compte en football.
+  2. **Des arrêts pour les projets.** Un chantier était un achat et une ligne au bilan de
+     carrière : après, il ne se passait plus rien.
+  3. **Des pauses dans les trêves.** Il n'y en avait **aucune** : trente-quatre journées
+     d'affilée, et le seul temps où l'on souffle était en juin.
+  - **LA TRÊVE D'HIVER** (`J_TREVE` = 17) coupe la saison en deux : on y lit sa
+    demi-saison (matchs, titularisations, moyenne, place), **la boutique ouvre**, et on
+    décide de quinze jours — dix jours au soleil (des jambes et la tête, mais le coach te
+    trouve en retard), rester au centre (ton axe le plus loin de son plafond, et il voit
+    qui est là), rentrer chez toi (les tiens, vraiment), te faire soigner (le corps, et
+    moins de blessures jusqu'en juin). Aucune n'a le beurre et l'argent du beurre.
+  - **LA BOUTIQUE** : cinq achats, chacun branché sur une mécanique **qui existait déjà**,
+    donc chacun mesurable — un kiné à toi (le tirage de blessure, ×0,66), un préparateur
+    personnel (`recupPhys()`, +14 %), un analyste vidéo (la réussite des faits, +6 points),
+    un attaché de presse (le sponsor vient trois fois au lieu de deux et paie la moitié de
+    plus), l'agent qui compte (+3 de cote aux offres, deux fois ce que vaut le stade d'un
+    bout à l'autre). Et les quatre chantiers au même endroit, sous **ce qui restera après**.
+    Ce qu'on ne peut pas se payer **s'affiche quand même**, éteint, avec ce qui manque au
+    centime : savoir qu'une école de foot coûte trois fois ce qu'on a est une information.
+  - **CE QU'ON ACHÈTE SE PAIE CHAQUE ANNÉE** (`ENTRETIEN`), et c'est la correction qui a
+    fait le lot. Mesuré sans entretien, dix carrières : **les cinq achats étaient pris dans
+    dix carrières sur dix** et l'école de foot n'était **jamais** construite — la boutique
+    n'était pas un arbitrage, c'était une liste de courses qu'on finit par cocher, et elle
+    mangeait la seule chose qui survit à la carrière. Un kiné, un préparateur, un attaché de
+    presse sont des **salaires** : ils reviennent tous les ans, et le jour où tu ne peux
+    plus payer, ils vont ailleurs. Les chantiers, eux, ne coûtent rien après : c'est ce qui
+    les distingue. Calibré en deux passes — à 30 % du prix par an **plus rien ne tenait**
+    (zéro achat possédé à la fin, le compte à sec, aucun chantier), à **12 %** garder les
+    cinq coûte plus qu'une saison ne rapporte mais **un ou deux se tiennent**.
+  - **QUATRE FAMILLES D'ARRÊTS QUI N'EXISTENT QUE SI TU POSSÈDES LA CHOSE** : l'école de
+    foot (ton éducateur part), l'affaire (une ardoise et le local d'à côté), l'examen du
+    diplôme (le dossier à rendre la semaine d'un déplacement), ton attaché de presse (une
+    grande marque veut écrire ton histoire à sa façon). Chacune peut faire grandir ou perdre
+    ce que tu as payé.
+  - **LE PIÈGE DE CE LOT, ET IL A COÛTÉ CHER : UNE PORTE QUI COMPOSE A BESOIN D'UN COMPTEUR
+    DE CARRIÈRE, JAMAIS DE SAISON.** `S.vuArrets` est remis à zéro chaque saison. Le choix
+    « remettre de l'argent et agrandir » multipliait donc le rendement de l'affaire par 1,6
+    **deux fois par saison, vingt saisons de suite** : mesuré, une carrière a terminé à
+    **3 937 M€ de gains** contre 37 de médiane. Même cause pour l'examen du diplôme, qui
+    revenait **1,3 fois par saison jusqu'à la retraite** au lieu de se finir. L'affaire ne
+    s'agrandit plus qu'une fois (`grandi`), et le diplôme se termine en deux dossiers.
+  - **ET CE QUI MANQUAIT VRAIMENT, C'ÉTAIT PENDANT LA SAISON.** Les pages hors football
+    arrivaient en juin puis disparaissaient : pendant les trente-quatre journées, **ton
+    argent, ton staff et tes chantiers n'apparaissaient nulle part** — seule la case « Les
+    tiens » parlait d'autre chose que de football. « Ta situation » a maintenant une section
+    **En dehors du terrain** : ton compte et ce que ton staff coûte par an, ton staff avec
+    ce que chaque chose change, et ce que tu as bâti avec l'année.
+  - **Un plantage trouvé en cherchant** : `ouvrirVie()` écrivait dans `S.vie.fait` sans
+    garde, donc une sauvegarde sans objet `vie` faisait **planter le bouton du mercato en
+    silence** — et on ne pouvait alors jamais atteindre la page de la vie, exactement le
+    symptôme qu'il décrivait. Seule une partie d'avant la vie et l'argent peut être dans cet
+    état, mais le plantage était réel.
+  - **Mesuré, dix carrières par politique** — et les deux donnent deux carrières
+    différentes, ce qui est le test :
+    | | on achète tout ce qu'on peut | on s'offre une chose et on la garde |
+    |---|---|---|
+    | staff encore là à la fin | 3 achats sur 10 carrières | **le kiné dans 9 sur 10** |
+    | chantiers construits | le diplôme seul | diplôme 9, **maison 8** |
+    | titres par carrière | **3,30** | 2,10 |
+    | reste à la fin | 1 (à sec) | 5 |
+    Le football aidé gagne des titres et ne laisse rien ; une carrière qui bâtit gagne moins.
+    C'est l'arbitrage, et il est net. Sur une politique de vie réaliste (24 carrières) :
+    gains médians **37,5** (contre 25,9 avant la boutique, 51 avec le bug), et les chantiers
+    **diplôme 23 · maison 22 · affaire 13 · école 11** sur 24.
+  - **Les sondes et le banc d'essai ont dû apprendre l'écran** : `labo.html` s'arrêtait à la
+    17ᵉ journée et toutes les lignes affichaient une demi-saison. Le banc **rentre chez lui**
+    à la trêve — le choix qui ne touche pas le football, le même sur les neuf lignes, donc il
+    ne biaise pas la comparaison des semaines, qui est la seule chose qu'il mesure.
+  - **L'invariant de la semaine tient**, banc à 120 saisons par ligne : les matchs et la
+    trace restent sur deux lignes différentes aux trois croisements (académie·M matchs
+    physique et mental 22,4 à égalité / trace poste +7,0 ; quartier·D matchs « lever le
+    pied » 21,4 / trace physique +10,1 ; étranger·A matchs physique 20,7 / trace technique
+    +9,3).
+  - **Ce qui n'est pas là, et c'est le prochain lot** : **le mode entraîneur·euse n'a ni
+    trêve ni boutique.** Il a ses quatre chantiers et son écran de vie en juin, rien de plus.
+    Et l'« image » n'est pas devenue une jauge : `supporters` l'est déjà, et une cinquième
+    jauge sans conséquence propre serait un chiffre de plus — ce que la règle du projet
+    interdit. L'image passe donc par l'attaché de presse et par l'arrêt qu'il ouvre.
+  - **Vérifié** : les sept invariants du tableau des notes à zéro écart, **31 faits sur 31**,
+    score = film **0 écart** sur 5 192 faits, les minutes à zéro incohérence ; 24 carrières
+    entières avec tous les écrans, zéro erreur ; les quatre écrans nouveaux ou changés rendus
+    sur vingt saisons (la trêve avant et après le choix, la boutique, la vie, la semaine),
+    **zéro `undefined`**, le rapport de bug ouvert sur la trêve et décrivant les prix au
+    centime ; `tests/simulate.js` → `ERRORS: none` ; **aucune migration** (`VERSION` reste à
+    15 : une sauvegarde v15 n'a ni `treve` ni `achats`, et les deux valent « rien ») —
+    vérifié sur une vraie partie de joueur·euse de la version déployée reprise à la 17ᵉ
+    journée (la trêve de cette saison-là est déjà passée, elle vient la suivante), sur une
+    partie d'entraîneur·euse, et sur une sauvegarde prise **en plein match**.
 - **Ce qui n'est pas encore là** : rien du 2.0. (Les deux modes, les trente et un faits de match, les
   vingt-neuf arrêts, les quatorze familles et dix situations de match du coach, la sélection, les deux
   mercatos, la vie et l'argent des deux côtés, la trêve, les offres, la progression d'une saison sur
