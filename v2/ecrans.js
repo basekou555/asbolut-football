@@ -195,7 +195,13 @@ function liensVus(){
 }
 const LIEN_ICO = { coach:"🎽", vestiaire:"✊", club:"🏟️", supporters:"📣", agent:"🤝", selection:"🇫🇷",
   fraicheur:"🫁", blessure:"🩼", suspension:"🟥",
-  def:"🛡️", mil:"🧭", att:"🎯", reserve:"🧱" };
+  def:"🛡️", mil:"🧭", att:"🎯", reserve:"🧱",
+  /* Chaque axe porte l'icône de la séance qui le nourrit — la règle du 27/09/2026,
+     pour qu'on n'ait jamais à deviner ce qu'une icône représente. Le corps prend
+     celle de « Ton corps » dans la fiche. */
+  tech:"⚽", phys:"💪", ment:"🧠", spec:"🎯", corps:"💪",
+  /* `mental` et `promesse` tombaient sur la puce par défaut depuis le début. */
+  mental:"🧠", promesse:"🤞" };
 
 function topHTML(){
   // hors saison, la journée et le classement sont ceux de l'année d'avant : on ne
@@ -770,6 +776,8 @@ function ecranBilan(){
       <div><div class="v">${S.stats.buts}</div><div class="k">buts</div></div>
       <div><div class="v">${S.stats.passes}</div><div class="k">passes déc.</div></div>
       <div><div class="v">${S.stats.notes.length ? virg(b.note) : '—'}</div><div class="k">moyenne</div></div>
+      ${b.faits ? `<div><div class="v">${b.faitsOk}<span class="sur">/${b.faits}</span></div>
+        <div class="k">faits de match</div></div>` : ''}
       <div><div class="v">${b.pos}<sup>${b.pos === 1 ? 're' : 'e'}</sup></div><div class="k">${esc(S.club.nom)}</div></div>
     </div>
     <div class="bloc gagne"><span class="i">✅</span><div><h4>Ce que tu as gagné</h4>
@@ -1029,6 +1037,8 @@ function ecranCarriere(){
       <div><div class="v">${c.buts}</div><div class="k">buts</div></div>
       <div><div class="v">${c.passes}</div><div class="k">passes déc.</div></div>
       <div><div class="v">${moy == null ? '—' : virg(Math.round(moy * 100) / 100)}</div><div class="k">moyenne</div></div>
+      ${c.faits ? `<div><div class="v">${c.faitsOk}<span class="sur">/${c.faits}</span></div>
+        <div class="k">faits de match</div></div>` : ''}
       <div><div class="v">${c.titres}${c.coupes ? `+${c.coupes}` : ''}${c.europes ? `+${c.europes}` : ''}</div>
         <div class="k">${[c.titres ? 'championnat' : '', c.coupes ? 'coupe' : '', c.europes ? 'europe' : ''].filter(Boolean).join(' · ') || 'trophée'}</div></div>
       ${c.caps ? `<div><div class="v">${c.caps}${c.butsSelec ? `·${c.butsSelec}` : ''}</div>

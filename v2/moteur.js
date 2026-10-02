@@ -373,7 +373,7 @@ function nouvellePartie(c){
     coupe: { vivant:true, tour:0, hist:[], gagnee:false },
     euro: { engage:false, vivant:true, tour:0, pts:0, hist:[], gagnee:false },
     semaine: null, seance: null, match: null, dernier: null, arret: null,
-    stats: { matchs:0, titus:0, buts:0, passes:0, notes:[], minutes:0 },
+    stats: { matchs:0, titus:0, buts:0, passes:0, notes:[], minutes:0, faits:0, faitsOk:0 },
     journal: [], ecran: 'semaine',
   };
   /* Ton club n'a qu'un effectif, et c'est le tien : on écrase celui que la ligue
@@ -2374,7 +2374,15 @@ function lancerMatch(){
   const bn = poisson(tameXG(1.35 * Math.exp(diff / 19)));
   const be = poisson(tameXG(1.35 * Math.exp(-(diff + aide) / 19)));
 
+  /* LA PHOTO D'AVANT-MATCH SE PREND AU COUP D'ENVOI. Elle était prise dans
+     `finirMatch()`, c'est-à-dire **après** que les faits de match ont appliqué leurs
+     effets : « Ce que ça change » comparait donc un état d'après à un état d'après, et
+     tout ce qu'un fait avait fait bouger disparaissait de la comparaison. Mesuré sur
+     449 faits joués, 490 effets appliqués : **52 % n'arrivaient jamais à l'écran**.
+     Elle est posée sur `m` et non dans une variable locale, pour qu'une sauvegarde
+     prise **en plein match** la retrouve au rechargement. */
   const m = { adv, statut, bn, be, faits: [], minutes: 0, buts:0, passes:0, note:null, moments:[], jaune:0, blessure:0,
+    av: photoAvantMatch(),
     onze: eq.onze, banc: eq.banc, reserve: eq.reserve,
     absents: eq.absents.map(x => ({ nom:x.nom, poste:x.poste,
       raison: (x.ref.susp > 0 ? 'susp' : 'blesse') })), ecartOnze: eq.ecart, porte,
@@ -3125,6 +3133,13 @@ function choisirMoment(i){
   if (r.mins != null && m.comp && m.minutes) m.minutes = Math.max(f.min, Math.min(90, r.mins));
   f.choix = o.l; f.reussi = reussi; f.txt = r.t;
   f.choixMoi = i === 0;
+  /* TES FAITS DE MATCH N'ÉTAIENT COMPTÉS NULLE PART (le propriétaire, 02/10/2026 :
+     « pourquoi mon fait de match n'est pas comptabilisé dans résultat et dans mes
+     stat »). Le but d'un penalty entrait bien dans le score et dans tes buts, mais le
+     fait lui-même ne laissait aucune trace chiffrée : ni dans la saison, ni dans la
+     carrière. C'est pourtant la décision du jeu. */
+  S.stats.faits = (S.stats.faits || 0) + 1;
+  if (reussi) S.stats.faitsOk = (S.stats.faitsOk || 0) + 1;
   /* Et quand ça casse dans un moment chaud, on sort du match. Ça porte un nom,
      ça s'écrit dans le film, et ça coûte. Le mental décide si ça arrive. */
   if (!reussi && f.chaud && !m.perduLeFil && Math.random() < .5 - encaisse() * .42){
@@ -3263,10 +3278,25 @@ function poidsFaits(m){
    (±0,95 chez eux, ±0,85 chez toi, qui as déjà tes faits de match pour faire
    l'écart). */
 function aleaNote(){ return rnd(-.85, .85); }
+/* CE QU'ON COMPARE APRÈS LE MATCH. Les liens, les lignes et la fraîcheur y étaient
+   déjà ; les **axes** et le **corps** n'avaient aucun canal vers l'écran, donc un fait
+   qui donnait un demi-point de poste ou qui réparait la cuisse ne se voyait nulle
+   part — mesuré, 98 effets sur 98 invisibles pour `tech`, `phys`, `spec` et `corps`. */
+function photoAvantMatch(){
+  /* On photographie la **base** et non `base + boost` : le boost se divise par deux à
+     chaque match par construction, donc le comparer ferait sortir « ton poste t'en a
+     pris un peu » à **chaque** match, fait ou pas — vu à l'écran sur trois matchs de
+     suite. La base est la trace, et c'est elle qu'un fait déplace (`bougerAxe`). */
+  return { liens: { ...S.liens }, lignes: { ...S.lignes },
+    fraicheur: S.etats.fraicheur, corps: S.etats.corps, axes: { ...S.moi.base } };
+}
 function moyenneNotes(){ const n = S.stats.notes; return n.length ? n.reduce((a, b) => a + b, 0) / n.length : 6; }
 function finirMatch(){
   const m = S.match, res = m.bn > m.be ? 'V' : m.bn < m.be ? 'D' : 'N';
-  const g0 = { ...S.liens }, e0 = { ...S.etats }, l0 = { ...S.lignes };
+  /* Une sauvegarde v15 prise en plein match n'a pas de photo : on retombe alors sur
+     l'ancien comportement (l'état du moment) plutôt que de planter. */
+  const av = m.av || photoAvantMatch();
+  const g0 = av.liens, l0 = av.lignes;
   m.semaine = S.semaine; m.seance = S.seance;
   if (m.minutes){
     const derriere = S.moi.poste === 'G' || S.moi.poste === 'D';
@@ -3418,7 +3448,27 @@ function finirMatch(){
     if (Math.abs(d) >= .8) m.mvt.push({ k, up: d > 0, mot: dire(k) }); });
   LIGNES.forEach(k => { const d = S.lignes[k] - l0[k];
     if (Math.abs(d) >= .8) m.mvt.push({ k, up: d > 0, mot: `${LIGNE_NOM[k]} \u2014 ${direLigne(k)}` }); });
-  if (S.etats.fraicheur - e0.fraicheur <= -8) m.mvt.push({ k:'fraicheur', up:false, mot:direJambes() });
+  if (S.etats.fraicheur - av.fraicheur <= -8) m.mvt.push({ k:'fraicheur', up:false, mot:direJambes() });
+  /* Les axes et le corps, enfin dits. Le seuil est plus bas que celui des jauges
+     parce qu'un fait de match donne volontairement peu sur un axe, et il peut l'être
+     sans risque : entre le coup d'envoi et la fin, **seuls les faits** touchent la
+     technique, le physique et le poste (la séance, elle, est d'avant la photo), donc
+     il n'y a aucun bruit à filtrer. Le mental garde .4 : il se mélange à ce que la
+     soirée coûte (`coutMental`), et un net proche de zéro ne doit pas s'annoncer comme
+     un gain. Mesuré : les invisibles passent de **52 % à 22 %**, et le reste n'est pas
+     un défaut d'affichage — c'est un effet qui n'a réellement rien fait : un axe déjà
+     à son plafond (`bougerAxe` ne monte plus), une jauge à 100, ou un net annulé par
+     le match lui-même (un fait qui donne +0,4 de mental dans une soirée qui en coûte
+     1,7 n'a pas à s'annoncer comme un gain). */
+  AXES.forEach(a => { const d = S.moi.base[a] - av.axes[a];
+    /* Le mental n'entre ici **qu'en gain** : ce qu'il perd est déjà écrit juste en
+       dessous avec sa raison (« Tu rumines : … »), et deux lignes pour la même chose
+       se lisent comme un doublon — vu à l'écran sur un penalty manqué. */
+    if (a === 'ment' && d < 0) return;
+    if (Math.abs(d) >= (a === 'ment' ? .4 : .25)) m.mvt.push({ k:a, up: d > 0, mot: `${axeNom(a)} — ${d > 0
+      ? "ce que tu viens de faire reste." : "ce match t'en a pris un peu."}` }); });
+  if (Math.abs(S.etats.corps - av.corps) >= 1.5)
+    m.mvt.push({ k:'corps', up: S.etats.corps > av.corps, mot: direCorps() });
   /* LES PROMESSES SE RÈGLENT ICI, et pas dans `apresMatch()` où je les avais mises
      d'abord : `m.mvt` est ce que l'écran de résultat affiche, or `apresMatch()`
      tourne **après** cet écran. Le joueur n'aurait donc jamais vu une promesse se
@@ -3744,6 +3794,7 @@ function finSaison(){
     montee: div === 2 && pos <= MONTEES,
     note: note == null ? null : Math.round(note * 100) / 100,
     gagne: bilanGagne(note, pos), perdu: bilanPerdu(note), suite: bilanSuite(pos, note),
+    faits: S.stats.faits || 0, faitsOk: S.stats.faitsOk || 0,
   };
   /* L'ordre compte : la place, puis ce que la saison a rapporté, puis le jugement de
      ton ambition — qui lit les deux. Compter l'argent dans `vieillir()` le faisait
@@ -4112,6 +4163,8 @@ function vieillir(){
   c.saisons++; c.matchs += S.stats.matchs; c.titus += S.stats.titus;
   c.gagne = Math.round(((c.gagne || 0) + (S.vie.gagne || 0)) * 1000) / 1000;
   c.buts += S.stats.buts; c.passes += S.stats.passes;
+  c.faits = (c.faits || 0) + (S.stats.faits || 0);
+  c.faitsOk = (c.faitsOk || 0) + (S.stats.faitsOk || 0);
   S.stats.notes.forEach(n => { c.sum += n; c.nbNotes++; });
   /* Un titre est un titre de l'élite. Gagner l'échelon inférieur est une **montée**,
      et ça se compte ailleurs : sans ça le bilan de carrière annonçait des titres qui
@@ -4483,7 +4536,7 @@ function demarrerSaison(club, reste){
   S.etats = { fraicheur: S.ete ? S.ete.fraicheur : 100, forme:60, blessure:0, suspension:0,
     corps: clamp((S.etats.corps || 88) + (S.ete ? S.ete.corps : 0), 0, cibleCorps()),
   };
-  S.stats = { matchs:0, titus:0, buts:0, passes:0, notes:[], minutes:0 };
+  S.stats = { matchs:0, titus:0, buts:0, passes:0, notes:[], minutes:0, faits:0, faitsOk:0 };
   S.promesses = []; S.brassard = 0; S.piqure = false; S.prolonge = false; S.reprise = 0;
   S.selecVue = null;
   S.selec = S.selec || { dedans:false, caps:0, buts:0, passes:0, notes:[] };
