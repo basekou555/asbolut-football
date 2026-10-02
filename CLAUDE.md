@@ -1951,6 +1951,44 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     cinq mille, de la même famille que l'écart « un match sur seize mille » déjà noté le
     27/09. `planChangements()` ne garantit pas deux minutes entre l'entrée et la sortie d'un
     même joueur là où `sortirDuMatch()` le fait.
+- **RACCROCHER QUAND ON L'A DÉCIDÉ** (le propriétaire, 02/10/2026 : « il faut un bouton pour
+  mettre fin à la carrière quand on veut prendre la retraite, un bouton suffit »). Une carrière
+  ne s'arrêtait que de trois façons, et **aucune n'était la sienne** : l'âge (`FIN_CARRIERE`),
+  le téléphone qui ne sonne plus (`finCarriere("personne")`), ou le renvoi suivi du silence
+  côté entraîneur·euse. On pouvait donc être au sommet à trente ans et n'avoir aucun moyen de
+  dire stop — alors que savoir s'arrêter est une décision de carrière, c'est-à-dire exactement
+  le sujet du jeu.
+  - **Où le bouton vit** : sur l'**écran des offres**, dans les deux modes, parce que c'est le
+    seul moment où l'on choisit déjà où l'on joue l'année suivante. Pas sur l'écran de la
+    semaine : on ne raccroche pas un lundi de février, et l'y mettre aurait posé un bouton de
+    fin de partie à côté de trente-quatre décisions de séance par saison.
+  - **Deux temps sur le même bouton**, et aucune boîte de dialogue : « 🏁 Raccrocher » affiche
+    ce qu'il va se passer, puis « 🏁 Oui, j'arrête ma carrière » le fait. Vingt saisons ne
+    s'effacent pas sur un clic de travers, et ça reste un bouton, comme demandé.
+  - **N'importe quoi d'autre annule** : `S.raccroche` est remis à zéro à l'ouverture des offres,
+    en refusant une proposition, en ouvrant le mercato et en démarrant la saison — donc une
+    confirmation armée ne peut pas traîner jusqu'à l'été suivant et partir au premier clic.
+    Mesuré : armée puis signature → éteinte ; l'été suivant → l'écran se rend sans confirmation.
+  - **Le bilan de carrière le dit** : les deux écrans de fin ont leur phrase pour cette raison-là
+    (« Tu t'es arrêté au moment que tu avais choisi. Tout le monde n'a pas ce luxe. » /
+    « Tu as rendu le survêtement au moment que tu avais choisi. »), sinon on lirait « il y a un
+    âge où le corps tranche à ta place » après avoir tranché soi-même.
+  - **Pas de doublon** : sur la branche « plus personne n'appelle », où l'on est libre et où
+    « Arrêter là » **est** la fin de carrière, le bouton ne s'affiche pas. Vérifié à l'écran.
+  - **Aucun chiffre du moteur ne peut avoir bougé** : `S.raccroche` n'est lu que par
+    `raccrocher()`, `cRaccrocher()` et `raccrocherHTML()` — rien d'autre dans les quatre
+    fichiers. C'est un lot d'écran.
+  - **Vérifié** : les trois branches de l'écran des offres et les deux écrans de fin rendus dans
+    les deux modes, zéro `undefined`, le premier clic ne quitte pas l'écran et le second termine
+    la carrière avec la bonne raison ; une sauvegarde prise **avec la confirmation armée** se
+    recharge dessus et le clic suivant fonctionne ; les sept invariants du tableau des notes à
+    zéro écart sur 1 700 matchs, 31 faits sur 31, score = film **0 écart** sur 5 620 faits, les
+    minutes à zéro incohérence sur 2 003 faits ; 24 carrières entières de 18 à 38 ans avec tous
+    les écrans, zéro erreur ; `tests/simulate.js` → `ERRORS: none` ; **aucune migration**
+    (`VERSION` ne bouge pas : une sauvegarde v15 n'a pas de `raccroche`, ce qui vaut « pas de
+    confirmation en attente ») — vérifié sur une vraie partie de joueur·euse **et** une vraie
+    partie d'entraîneur·euse de la version déployée, reprises à la 17ᵉ journée, saison finie,
+    trêve passée, deuxième saison jouée.
 - **Ce qui n'est pas encore là** : rien du 2.0. (Les deux modes, les trente et un faits de match, les
   vingt-neuf arrêts, les quatorze familles et dix situations de match du coach, la sélection, les deux
   mercatos, la vie et l'argent des deux côtés, la trêve, les offres, la progression d'une saison sur

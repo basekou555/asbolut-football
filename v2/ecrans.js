@@ -861,6 +861,18 @@ function motSalaire(v){
     : r > .85 ? "Côté salaire, ce sera à peu près pareil."
     : "Tu y perdrais de l'argent, et ils le savent.";
 }
+/* Le bouton pour arrêter quand on l'a décidé. Il vit sur l'écran des offres parce que
+   c'est le seul moment où l'on choisit déjà où l'on joue l'année suivante — et il est en
+   deux temps, sur le même bouton, pour qu'une carrière ne parte pas sur un clic de
+   travers. `fn` est `raccrocher` ou `cRaccrocher` selon le mode. */
+function raccrocherHTML(fn){
+  if (!S.raccroche) return `<div class="btn-row">
+    <button class="btn ghost" onclick="${fn}()">🏁 Raccrocher</button></div>`;
+  return `<p class="sub">Encore un clic et c'est fini : la carrière s'arrête là et tu lis
+    ce qu'il en reste. N'importe quoi d'autre sur cet écran annule.</p>
+    <div class="btn-row">
+      <button class="btn ghost" onclick="${fn}()">🏁 Oui, j'arrête ma carrière</button></div>`;
+}
 function ecranOffres(){
   const o = offreCourante();
   const reste = (S.offres || []).length - (S.offreIdx || 0);
@@ -875,6 +887,7 @@ function ecranOffres(){
     <div class="btn-row">${S.libre
       ? `<button class="btn" onclick="finCarriere('personne')">Arrêter là</button>`
       : `<button class="btn" onclick="resterAuClub()">La saison qui vient →</button>`}</div>
+    ${S.libre ? '' : raccrocherHTML('raccrocher')}
   </div>`;
   return `<div class="card">
     <div class="step">Mercato ${S.annee} · ${S.moi.age} ans · ${reste > 1 ? "une proposition parmi d'autres" : 'une proposition'}</div>
@@ -889,6 +902,7 @@ function ecranOffres(){
       <button class="btn ghost" onclick="passerOffre()">Refuser</button>
       <button class="btn" onclick="signerOffre()">Signer</button></div>
     ${S.libre ? '' : `<div class="btn-row"><button class="btn ghost" onclick="resterAuClub()">Rester à ${esc(S.club.nom)}</button></div>`}
+    ${raccrocherHTML('raccrocher')}
   </div>`;
 }
 /* ================== L'ÉCRAN DU MERCATO ==================
@@ -1028,7 +1042,9 @@ function ecranCarriere(){
     <div class="step">${S.annee} · ${S.moi.age} ans · c'est fini</div>
     <div class="big-ico">🏁</div>
     <h2>Ce qu'il restera</h2>
-    <p class="narr">${S.fin && S.fin.raison === 'personne'
+    <p class="narr">${S.fin && S.fin.raison === 'tu as raccroché'
+      ? "Tu t'es arrêté au moment que tu avais choisi. Tout le monde n'a pas ce luxe."
+      : S.fin && S.fin.raison === 'personne'
       ? "Personne n'a rappelé. On ne décide pas toujours du moment."
       : "Tu as fait le tour. Il y a un âge où le corps tranche à ta place."}</p>
     <div class="stats">

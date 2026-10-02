@@ -1317,6 +1317,7 @@ function cOuvrirEte(){
   faireVivreLigue();
   cLireEffectif();
   cGenererOffres();
+  S.raccroche = 0;
   S.ecran = 'coffres'; sauver(); rendre();
 }
 /* QUI T'APPELLE. Une proposition à la fois, comme pour le joueur·euse : refuser la
@@ -1379,7 +1380,7 @@ function cGenererOffres(){
   S.offres = l; S.offreIdx = 0; S.libre = libre; S.bonusOffres = 0;
 }
 function cOffreCourante(){ return (S.offres || [])[S.offreIdx || 0] || null; }
-function cPasserOffre(){ S.offreIdx = (S.offreIdx || 0) + 1;
+function cPasserOffre(){ S.raccroche = 0; S.offreIdx = (S.offreIdx || 0) + 1;
   if (!cOffreCourante() && S.libre) return cFinCarriere("personne n'a rappelé");
   sauver(); rendre(); }
 function cSignerOffre(){
@@ -1410,7 +1411,13 @@ function cFinCarriere(raison){
   jrn('fin', `Fin du parcours : ${raison}.`);
   S.ecran = 'ccarriere'; sauver(); rendre();
 }
+/* Voir `raccrocher()` côté joueur·euse : deux temps sur le même bouton. */
+function cRaccrocher(){
+  if (!S.raccroche){ S.raccroche = 1; sauver(); return rendre(); }
+  cFinCarriere('tu as raccroché');
+}
 function cDemarrerSaison(){
+  S.raccroche = 0;
   /* Le marché se joue APRÈS ta signature : un club construit autour de l'entraîneur
      qu'il vient de prendre, et tu lis ce qu'il a fait. */
   const mv = mercato();

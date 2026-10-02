@@ -4065,6 +4065,7 @@ function choisirEte(id){
   promotionsRelegations();
   faireVivreLigue();
   genererOffres();
+  S.raccroche = 0;
   S.ecran = 'offres'; sauver(); rendre();
 }
 
@@ -4264,6 +4265,7 @@ function genererOffres(){
 }
 function offreCourante(){ return (S.offres || [])[S.offreIdx || 0] || null; }
 function passerOffre(){
+  S.raccroche = 0;
   S.offreIdx = (S.offreIdx || 0) + 1;
   if (S.offreIdx >= (S.offres || []).length && S.libre) return finCarriere("personne");
   sauver(); rendre();
@@ -4313,6 +4315,7 @@ const MERCATO_CHOIX = [
     dit:[{c:'foot',t:"🧑‍🤝‍🧑 les trois lignes"},{c:'neutre',t:"↔️ rien pour toi"}] },
 ];
 function ouvrirMercato(reste){
+  S.raccroche = 0;
   const mouv = mercato();
   const r = relireClubSq();
   S.ligneRef = { ...S.lignes };
@@ -4527,6 +4530,7 @@ function jugerAmbition(){
 /* La saison suivante commence : nouveau championnat, effectif renouvelé, tout
    ce qui se compte remis à zéro — et rien de ce qui se construit. */
 function demarrerSaison(club, reste){
+  S.raccroche = 0;
   /* Tout ce qui concerne le monde s'est déjà joué : les divisions se sont échangées,
      les deux championnats ont vieilli, le marché est passé et ton vestiaire a été
      relu. Ici on ne fait plus que remettre à zéro ce qui ne dure qu'une saison. */
@@ -4570,6 +4574,15 @@ function finCarriere(raison){
   S.fin = { raison, age: S.moi.age, annee: S.annee };
   jrn('fin', `Fin de carrière à ${S.moi.age} ans.`);
   S.ecran = 'carriere'; sauver(); rendre();
+}
+/* Raccrocher quand on l'a décidé. L'âge et le téléphone qui ne sonne plus tranchaient
+   déjà à sa place ; ici il tranche seul. **Deux temps sur le même bouton** — une
+   carrière de vingt saisons ne s'efface pas sur un clic de travers — et aucune boîte
+   de dialogue : un bouton suffit. Tout autre geste de l'écran annule (`S.raccroche`
+   est remis à zéro à l'ouverture des offres, en refusant, et en démarrant la saison). */
+function raccrocher(){
+  if (!S.raccroche){ S.raccroche = 1; sauver(); return rendre(); }
+  finCarriere('tu as raccroché');
 }
 function moyCarriere(){ const c = S.carriere; return c && c.nbNotes ? c.sum / c.nbNotes : null; }
 
