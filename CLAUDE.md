@@ -2841,6 +2841,72 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     scores du jeu, donc ça se mesure avant d'y toucher. Et le mode entraîneur·euse n'a toujours ni
     trêve ni boutique.
 
+- **AIDER QUELQU'UN DOIT COÛTER TON MATCH** (le propriétaire, 02/10/2026, rapport à l'appui :
+  « je relève le joueur à chaque fois, ce n'est pas assez puni »). Il avait raison, et le code
+  disait exactement pourquoi : « Aller le relever » rapportait **+4 d'entente *et* +0,3 de note**
+  deux fois sur trois, et son échec ne coûtait que 0,3 de note et un demi-point de mental —
+  alors que son propre texte d'échec dit « tu as perdu vingt secondes et le fil ». La réussite
+  ne le disait pas.
+  - **LA CAUSE : LA RÈGLE DU 30/09 N'A JAMAIS ÉTÉ APPLIQUÉE AUX FAITS DE MATCH.** Ce jour-là les
+    soixante-cinq options des vingt-neuf arrêts ont été réécrites pour que **chacune coûte et
+    gagne quelque chose, dans deux monnaies différentes**. Les trente et un faits de match n'ont
+    jamais eu ce passage. Mesuré sur leurs 62 options : **57 ne coûtent rien du tout quand elles
+    réussissent**. Pour un fait d'action c'est juste — le prix est dans l'échec, et risquer *est*
+    le sujet (`tir[0] Frapper`, p=0,24, coûte 0,95 de note quand ça rate). Mais pour les **cinq
+    faits où l'on choisit entre le groupe et son propre match**, ça fait de la bonne action un
+    gain pur, répétable trente-quatre fois par saison.
+  - **CE QUI CHANGE, et c'est ce que le football dit déjà** : aller relever quelqu'un, jouer
+    simple pour un jeune, monter dans une bagarre — on garde ce que ça donne au groupe, et on
+    perd un peu de sa propre soirée. `craque[0]` **−0,3 de note** au lieu de +0,3, `jeune[0]`
+    **−0,25** au lieu de +0,2, `bagarre[0]` **−0,2** au lieu de +0,2, `finale[0]` **0** au lieu
+    de +0,4 (parler avant un match n'est pas une performance), `adix[0]` +0,1 au lieu de +0,5 —
+    celui-là reste un choix tactique qui marche, pas une faveur. Et les trois textes de réussite
+    disent maintenant ce qu'ils coûtent (« et toi, tu as regardé passer deux ballons »).
+  - **UN DEUXIÈME DÉFAUT TROUVÉ EN MESURANT, et c'est le plus mécanique** : `vestiaire: N` passe
+    par `bougerVestiaire()`, qui bouge **les trois lignes** — donc une valeur écrite pour une
+    ligne en valait trois, et « Parler » avant une finale donnait **vingt-quatre points
+    d'entente**. Les dix-neuf valeurs de `vestiaire` des faits sont divisées par deux : le geste
+    touche toujours tout le vestiaire — c'est ce qu'est un vestiaire — mais à l'échelle de ce
+    qu'il fait.
+  - **MESURÉ, et c'est l'arithmétique qui compte ici, pas la simulation** : l'espérance de
+    `craque[0]` passe de **+0,06 à −0,30 de note** pour les mêmes +2,40 d'entente, contre +0,25
+    de note et −0,75 d'entente pour « le laisser ». **Le prix d'aider a triplé** : 0,55 de note
+    contre 3,15 d'entente à chaque fois, au lieu de 0,19.
+  - **ET UNE CORRECTION À MOI, dans les deux sens.** J'ai d'abord annoncé au propriétaire que
+    toujours prendre l'option du groupe valait **+0,4 titre par carrière**. **C'était du bruit** :
+    à 12 carrières par ligne, l'écart-type sur les titres vaut 0,6 à 0,9, donc 3,8 contre 3,4 ne
+    dit rien — et les 2,8 contre 3,4 mesurés après ne disent rien non plus. C'est la leçon de
+    méthode du 29/09 reprise à mes dépens, deux lots après l'avoir écrite. Ce qui est solide,
+    c'est l'entente : médiane **69,8 contre 56,0** avant, **65,4 contre 55,2** après, sur 7 000 à
+    8 000 semaines — le gain gratuit perd un quart de sa valeur et le prix est dans la note.
+    *Deuxième correction* : les deux politiques ne sont pas un A/B propre, parce que la sonde
+    choisit l'option qui maximise l'entente **sur les 31 faits** et que diviser `vestiaire` a
+    changé ses choix ailleurs (`cuisse[1]` passe devant `grand[0]`). D'où l'arithmétique par
+    option ci-dessus, qui est exacte.
+  - **Ce que j'ai cru et que la mesure a démenti** : je pensais trouver les trois ententes
+    saturées à 100, puisque les siennes sont à 98/100/100. Faux en général — mesuré, médiane
+    **69,8** et **5 % seulement** des lectures à 100, les trois à la fois dans **0,2 %** des
+    semaines. Sa partie est le haut de la distribution : à 8,03 de moyenne, sa note seule donne
+    **+1,4 par match** à sa ligne contre un rappel de **−0,5 par journée** au sommet, donc elle
+    est collée au plafond par ses performances, pas par ses choix. C'est pour ça que, chez lui,
+    ni l'une ni l'autre option ne changeait quoi que ce soit.
+  - **Vérifié** : les sept invariants du tableau des notes à zéro écart sur 850 matchs, **31 faits
+    sur 31**, score = film **0 écart** sur 5 145 faits, les minutes à zéro incohérence sur 1 062
+    faits ; 24 carrières entières de 18 à 38 ans avec tous les écrans, zéro erreur ;
+    `tests/simulate.js` → `ERRORS: none` ; tes notes s'élargissent d'un dixième comme le coût
+    l'exige (10ᵉ **4,9** · médiane **7,0** · 90ᵉ **8,8**) et la moyenne reste au-dessus du pivot
+    de 6,2 que lit la confiance du coach ; **aucune migration** (`VERSION` reste à 15 : seules des
+    valeurs de données changent, et une note déjà jouée garde la sienne) — vérifié sur une vraie
+    partie de **joueur·euse** et une d'**entraîneur·euse** de la version déployée, reprises à la
+    17ᵉ journée, **deux saisons entières** jouées, 22 joueurs, zéro doublon.
+  - **Ce qui reste à décider, et c'est à lui** : **rien n'amortit la répétition** dans le 2.0.
+    `amorti()` ne réduit que les pertes (par le mental), jamais les gains répétés — la 1.0 avait
+    `MEETING_FATIGUE` et `boostFactor()` pour exactement ça (« accepter un choix qui ne sert pas
+    le match suivant fait remonter la corde »), et le 2.0 n'a pas d'équivalent, ni dans les
+    arrêts ni dans les faits. Le coût sur la note rend la répétition payante à payer, il ne la
+    décourage pas. Et les `vestiaire` des **arrêts** gardent leur échelle d'origine : ils ont été
+    calibrés le 30/09 avec leur propre mesure, et les toucher l'invaliderait sans raison.
+
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).
 - Tout l'état d'une carrière est dans l'objet global `state` (sérialisé dans localStorage). `state.pendingChoice` désigne l'écran courant ; `render()` dans `ui.js` dispatche.
