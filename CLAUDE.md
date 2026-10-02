@@ -1901,6 +1901,56 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     doit s'adoucir, le levier est sa bande *presque* (aujourd'hui podium ou montée — une finale de
     coupe n'y compte pas) ou le fait qu'un coach reste dans la moitié basse du tableau (force de club
     médiane 49, 90ᵉ centile 54, maximum 64 dans un monde dont le meilleur vaut 62-67).
+- **UN FAIT DE MATCH NE LAISSAIT PRESQUE AUCUNE TRACE** (le propriétaire, 02/10/2026,
+  rapport à l'appui : « pourquoi mon fait de match n'est pas comptabilisé dans résultat et
+  dans mes stat », sur un penalty tiré et réussi à la 25ᵉ). Son but, lui, était bien compté
+  (score 2-1, deux buts, pastilles ⚽⚽, la note à 8,4) : ce qui manquait, c'est tout le
+  reste. Deux causes séparées, et une troisième chose qui n'existait pas.
+  1. **« Ce que ça change » comparait un état d'après à un état d'après.** La photo des
+     jauges (`g0`, `l0`, `e0`) était prise dans `finirMatch()`, c'est-à-dire **après** que
+     les faits ont appliqué leurs effets par `effetFait()`. Son penalty réussi donnait
+     `ment +1,5` et `supporters +3` ; la comparaison voyait zéro. `photoAvantMatch()` est
+     désormais prise au **coup d'envoi** et rangée sur `m.av`, pour qu'une sauvegarde prise
+     **en plein match** la retrouve au rechargement (sans elle, repli sur l'état du moment —
+     l'ancien comportement, jamais une erreur).
+  2. **Les axes et le corps n'avaient aucun canal** : `m.mvt` ne lisait que `S.liens`, les
+     trois lignes et la fraîcheur. Mesuré, `tech`, `phys`, `spec` et `corps` étaient à
+     **98 effets sur 98 invisibles**. Ils ont leur ligne, avec l'icône de la séance qui les
+     nourrit (⚽ 💪 🧠 🎯), et un seuil à **.25 au lieu de .8** — possible sans risque parce
+     qu'entre le coup d'envoi et la fin, **seuls les faits** touchent ces axes.
+  3. **Tes faits n'étaient comptés nulle part** : ni dans la saison, ni dans la carrière.
+     `S.stats.faits` / `faitsOk` les comptent, et les deux bilans portent une case
+     **faits de match** (« 14/23 »).
+  - **Mesuré, 510 faits joués, 561 effets appliqués** : les invisibles passent de **52 % à
+    20 %**. Et le reste n'est pas un trou d'affichage : **35** sont des effets qui ne
+    bougent réellement rien (un axe déjà au-dessus de son plafond — `bougerAxe` ne monte
+    plus —, une jauge à 100), les autres sont des nets annulés par le match lui-même, et
+    un +1 de mental dans une soirée qui en coûte 1,7 ne doit pas s'annoncer comme un gain.
+  - **DEUX DÉFAUTS DANS MA PROPRE CORRECTION, vus à l'écran avant de livrer.** (a) Je
+    comparais `base + boost`, or le **boost se divise par deux à chaque match** par
+    construction : « Ton poste — ce match t'en a pris un peu » sortait à **tous** les
+    matchs, fait ou pas. On compare la **base**, qui est la trace et ce qu'un fait déplace.
+    (b) Le mental apparaissait **deux fois** sur un penalty manqué — sa ligne d'axe et le
+    « Tu rumines : … » qui nomme déjà la raison. Il n'entre plus qu'**en gain**.
+  - **Vérifié** : à **graine fixe**, le même match avant et après donne le **même score, la
+    même note et les mêmes faits** — le lot est un lot d'affichage, aucun chiffre du moteur
+    ne bouge ; **31 faits sur 31**, score = film **0 écart** sur 5 243 faits ; les minutes à
+    zéro incohérence sur 2 004 faits ; zéro doublon de nom ; 24 carrières entières avec tous
+    les écrans, zéro erreur ; `tests/simulate.js` → `ERRORS: none` ; **aucune migration**
+    (`VERSION` ne bouge pas) — vérifié en reprenant une vraie partie de la version déployée
+    **arrêtée sur un fait de match**, sans photo d'avant-match : repli, saison finie, trêve
+    passée, **deuxième saison entière**. Le banc de la semaine n'est pas touché :
+    `uneSaison()` ne lit jamais `m.mvt`.
+  - **Ce que ça ne répare pas, et il faut le savoir** : le match **déjà joué** de sa
+    sauvegarde ne changera pas — sa photo d'avant-match n'existe pas. C'est au match suivant
+    que « Ce que ça change » dira ce que son penalty a produit.
+  - **Un résidu trouvé en mesurant, et qui n'est pas de ce lot** : une sonde sur 1 700 matchs
+    a signalé **une** ligne de notes à « 1 min » pour un entrant sorti la minute de son
+    entrée (0 minute réelle). Quatre passages de plus — deux sur la version déployée, deux
+    sur celle-ci — sont à **zéro** : c'est un cas pré-existant de l'ordre de un match sur
+    cinq mille, de la même famille que l'écart « un match sur seize mille » déjà noté le
+    27/09. `planChangements()` ne garantit pas deux minutes entre l'entrée et la sortie d'un
+    même joueur là où `sortirDuMatch()` le fait.
 - **Ce qui n'est pas encore là** : rien du 2.0. (Les deux modes, les trente et un faits de match, les
   vingt-neuf arrêts, les quatorze familles et dix situations de match du coach, la sélection, les deux
   mercatos, la vie et l'argent des deux côtés, la trêve, les offres, la progression d'une saison sur
