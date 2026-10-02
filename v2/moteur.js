@@ -3271,7 +3271,16 @@ function ecrireFait(m, f, quoi){
       /* Un deuxième jaune est un rouge : c'est la règle, et c'est ce qui rend la
          faute tactique dangereuse quand on en traîne déjà un. */
       if (m.evs.some(e => e.type === 'jaune' && e.moi)){
+        /* Un rouge né d'un fait arrête ton match comme celui que le moteur tire.
+           Le moteur, lui, choisit ses expulsés parmi ceux qui devaient finir, donc il
+           n'a jamais de changement à annuler ; ici si — et un expulsé ne se remplace
+           pas. Sans ça le film montrait « tu sors à la 57ᵉ » pour un match arrêté à
+           la 49ᵉ (vu par la sonde des invariants, 1 match sur 850). */
         m.evs.push({ type:'rouge', min, moi:true }); tri();
+        const ic = (m.chg || []).findIndex(c => c.sortant && c.sortant.moi);
+        if (ic >= 0) m.chg.splice(ic, 1);
+        (m.expulses = m.expulses || []).push({ nom:S.moi.nom, min });
+        finirTonMatch(m, min);
       } else { m.jaune++; m.evs.push({ type:'jaune', min, moi:true }); tri(); }
     } else if (k === 'manque'){
       m.evs.push({ type:'penratee', nous:true, min, moi:f.choixMoi !== false }); tri();
@@ -3292,6 +3301,33 @@ function ecrireFait(m, f, quoi){
    sonde l'a rattrapé : 33 matchs sur 2 040 avec neuf sortants pour quatre
    changements. La sortie s'accroche donc à un changement réel — celui qui était
    prévu pour toi, avancé à la minute du fait, ou un nouveau pris sur le banc. */
+/* TU NE MARQUES PAS APRÈS AVOIR QUITTÉ LE TERRAIN (le propriétaire, 02/10/2026,
+   rapport à l'appui : « je suis sorti et j'ai mis 2 buts » — sorti à la 66ᵉ sur la
+   cuisse, et le film lui donnait un but à la 72ᵉ et un autre à la 73ᵉ).
+   **C'est un défaut d'ordre, pas de tirage.** Le moteur attribue tes buts dans la
+   fenêtre `entree`-`sortie` qu'il connaît (`e.min >= entree && e.min <= sortie`),
+   puis un **fait de match referme cette fenêtre** — la cuisse qu'on écoute, un
+   deuxième jaune — et les buts déjà posés restaient les tiens. Un rouge tiré *avant*
+   l'attribution était déjà traité ; celui qu'un fait crée ne l'était pas.
+   `finirTonMatch()` est la porte unique : elle coupe tes minutes **et rend à un
+   coéquipier réellement sur le terrain** les buts et les passes qui tombent après.
+   Les événements ne sont ni ajoutés ni retirés, donc le score vaut toujours le film :
+   c'est le buteur qui change, pas le but. Mesuré avant : 117 matchs sur 20 794
+   (96 buts, 41 passes) et 17 matchs qui continuaient après ton propre rouge. */
+function finirTonMatch(m, min){
+  const e0 = m.entree || 0;
+  m.minutes = Math.max(0, min - e0);
+  (m.evs || []).forEach(e => {
+    if (e.type !== 'but' || !e.nous || e.min <= min) return;
+    if (e.moi){
+      e.moi = false; m.buts = Math.max(0, m.buts - 1);
+      e.qui = surLeBanc(m, e.min, 'but');
+      // un buteur ne se sert pas lui-même
+      if (e.passe === e.qui) delete e.passe;
+    }
+    if (e.passeMoi){ e.passeMoi = false; m.passes = Math.max(0, m.passes - 1); }
+  });
+}
 function sortirDuMatch(m, min){
   const e0 = m.entree || 0;
   if (!m.minutes || min <= e0 + 1 || min >= 89) return;
@@ -3310,7 +3346,7 @@ function sortirDuMatch(m, min){
     if (!libre.length || !moi) return;
     chg.push({ min, entrant: pick(libre), sortant: moi });
   }
-  m.sorti = min; m.minutes = min - e0;
+  m.sorti = min; finirTonMatch(m, min);
 }
 /* ---------- le tirage des faits ---------- */
 /* « Tu peux monter le nombre de faits par match. » Mesuré avant : 64 % des matchs
