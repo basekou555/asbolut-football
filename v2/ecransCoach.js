@@ -271,10 +271,13 @@ function ecranCOffres(){
   return `<div class="card">
     <div class="step">L'été · une proposition</div>
     <div class="big-ico">📞</div>
-    <h2>${esc(o.nom)}</h2>
+    <h2>${o.pays ? (PAYS[o.pays] || {}).dr + ' ' : ''}${esc(o.nom)}</h2>
     <p class="narr">${esc(cMotClub(o))} ${esc(cMotObjectif(o))}</p>
+    ${o.pays ? `<p class="narr" style="border-left:3px solid var(--gold-dim);padding-left:10px">
+      <b>Changer de pays.</b> Tu entraînerais ${esc(nomChampionnat(o.pays, S.annee))} ·
+      le vestiaire, la direction et la presse sont à refaire · les tiens restent ici.</p>` : ''}
     <div class="sit">
-      ${celSit('🪜', "La division", nomDivision(o.division), 'd', null)}
+      ${celSit('🪜', "La division", o.pays ? nomChampionnat(o.pays, S.annee) : nomDivision(o.division), 'd', null)}
       ${celSit('📋', "Ce qu'on te demande", `${o.objectif}ᵉ, et ils le disent maintenant.`, 'o', null)}
       ${celSit('💰', "Le contrat", `${sous(o.salaire)} par an, ${o.ans} an${o.ans > 1 ? 's' : ''}.`, 's', null)}
       ${celSit('🧱', "L'effectif", cMotEffectif(o), 'e', null)}
@@ -495,6 +498,8 @@ function ecranCCarriere(){
     ${cVieFinaleHTML()}
     ${cCarriereHTML()}
     <p class="sub">Les clubs : ${esc(c.clubs.join(', ')) || '—'}.</p>
+    ${(c.pays || []).length > 1 ? `<p class="sub">Les pays : ${(c.pays || [])
+      .map(p => `${(PAYS[p] || {}).dr || ''} ${esc(nomPays(p).replace(/^(la |l')/, ''))}`).join(' · ')}.</p>` : ''}
     <div class="btn-row"><button class="btn ghost" onclick="ouvrirJournal()">📓 Le journal</button>
       <button class="btn" onclick="recommencer()">Un autre parcours</button></div>
   </div>`;

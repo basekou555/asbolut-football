@@ -155,7 +155,7 @@ function cNouvellePartie(c){
      première saison : survivre. */
   const club = ligue.equipes[ri(ligue.equipes.length - 5, ligue.equipes.length - 1)];
   S = {
-    v: VERSION, mode: 'coach', annee: c.annee, division: 1, argent: 0, salaire: 0,
+    v: VERSION, mode: 'coach', annee: c.annee, division: 1, pays: 'FR', argent: 0, salaire: 0,
     moi: { nom: c.nom, age: ri(36, 46), base, boost: { jeu:0, groupe:0, banc:0, reseau:0 },
       plafond, socle, pic, an0: { ...base }, u0: c.origine.u0,
       origine: c.origine.id, ambition: c.ambition.id,
@@ -281,13 +281,15 @@ function cPoserObjectif(){
    d'Europe. Le palmarès vaut jusqu'à 80 % de plus — c'est ce qui rend un vainqueur
    cher, et c'est la seule chose du métier qui s'accumule. */
 const C_SAL_BASE = .22, C_SAL_PENTE = 10.5;
-function cSalaireDe(force, div, presse){
+/* `pays` est facultatif : sans lui on lit celui où tu entraînes. */
+function cSalaireDe(force, div, presse, pays){
   const era = typeof eraForYear === 'function' ? eraForYear(S.annee) : { marketSize:1 };
   const c = S.carriere || { titres:0, coupes:0 };
   const palmares = 1 + Math.min(.8, (c.titres || 0) * .12 + (c.coupes || 0) * .05);
   return Math.round(C_SAL_BASE * Math.exp((force - 45) / C_SAL_PENTE)
     * clamp(.65 + ((presse == null ? 50 : presse) - 50) * .006, .45, 1.15)
-    * ((div || 1) === 2 ? .45 : 1) * palmares * (era.marketSize || 1) * 1000) / 1000;
+    * ((div || 1) === 2 ? .45 : 1) * palmares * (era.marketSize || 1)
+    * facteurPays(pays || S.pays || 'FR', S.annee) * 1000) / 1000;
 }
 function cSalaire(){
   return cSalaireDe(S.club.force, S.division || 1, S.liens.president);
@@ -801,7 +803,7 @@ function cApresMatch(){
      **5** quand on ne le fait jamais. Les deux bouts sont faux, et un seul rappel les
      ferme tous les deux : il relève le bas et il empêche le haut de se figer. C'est le
      même correctif qu'on a dû faire au stade le 29/09 et aux proches du joueur·euse. */
-  if (S.vie) bougerProches((RAPPEL_PROCHES_VERS - S.vie.proches) * RAPPEL_PROCHES);
+  if (S.vie) bougerProches((cibleProches() - S.vie.proches) * RAPPEL_PROCHES);
   autresMatchs();
   /* UN GROUPE VIDÉ SE BLESSE, et c'est la seule conséquence mécanique de la
      fraîcheur collective en dehors de la force du samedi. C'est la même règle que
@@ -1106,11 +1108,14 @@ function cFinSaison(){
   const c = S.carriere;
   c.saisons++;
   if (!c.clubs.includes(S.club.nom)) c.clubs.push(S.club.nom);
+  /* Les pays traversés : le bilan de carrière les relit. */
+  c.pays = c.pays || [];
+  if (!c.pays.includes(S.pays || 'FR')) c.pays.push(S.pays || 'FR');
   if (pos === 1 && div === 1) c.titres++;
   if (mont) c.montees++;
   if (S.coupe.gagnee) c.coupes++;
   if (S.euro.gagnee) c.europes++;
-  c.annees.push({ annee: S.annee, club: S.club.nom, pos, div, objectif: S.objectif,
+  c.annees.push({ annee: S.annee, club: S.club.nom, pays: S.pays || 'FR', pos, div, objectif: S.objectif,
     v: S.stats.v, n: S.stats.n, d: S.stats.d, coupe: S.coupe.gagnee, euro: S.euro.gagnee });
   jrn('saison', `${S.club.nom} finit ${pos}ᵉ de ${nomDivision()} (objectif ${S.objectif}ᵉ). ${S.stats.v}V ${S.stats.n}N ${S.stats.d}D.`);
   S.saisonsClub++;
@@ -1347,10 +1352,25 @@ function cCote(){
     + (S.carriere ? Math.min(6, S.carriere.titres * 2.5 + S.carriere.coupes * 1.2) : 0)
     + (S.bilan && S.bilan.atteint ? 2 : -2), 38, 82);
 }
+/* OÙ UN BANC SE REPREND : le rang d'un club étranger se lit sur le vivier de son pays,
+   pas sur un championnat qui n'existe pas encore — les ancres étant les mêmes, l'objectif
+   annoncé en juin sera celui de la saison en août. */
+function cRangEtranger(pays, force, dk){
+  const pool = poolPays(pays, dk);
+  const fs = pool.gros.concat(pool.petits)
+    .map(x => clamp(52 + x.s * PENTE_CLUB, 44, 74)).sort((a, b) => b - a).slice(0, 18);
+  return clamp(fs.filter(f => f > force).length + 1, 1, 18);
+}
 function cGenererOffres(){
   const cote = cCote();
   const libre = !!S.vire || (S.bilan && S.liens.president < 32);
-  const tous = toutesLesEquipes().filter(e => e.nom !== S.club.nom);
+  /* UN ENTRAÎNEUR AUSSI PEUT PARTIR. Les mêmes règles que pour le joueur·euse : seuls
+     les clubs d'histoire appellent de l'étranger, et avant Bosman c'est rare. */
+  const dkO = typeof decadeKey === 'function' ? decadeKey(S.annee) : '10';
+  const rare = S.annee >= 1996 ? ETRANGER_APRES : ETRANGER_AVANT;
+  const tous = toutesLesEquipes().filter(e => e.nom !== S.club.nom)
+    .map(e => ({ nom:e.nom, force:e.force }))
+    .concat(candidatsEtrangers(dkO).map(e => ({ ...e, rare })));
   /* Un gros club n'appelle pas tous les étés : le tirage est pondéré, un club à ta
      portée appelle volontiers, un club au-dessus de toi rarement. C'est la
      correction mesurée le 27/09 côté joueur·euse, et elle vaut ici. */
@@ -1363,18 +1383,21 @@ function cGenererOffres(){
   for (let k = 0; k < n; k++){
     const cand = tous.filter(e => !l.some(o => o.nom === e.nom));
     if (!cand.length) break;
-    const p = cand.map(poids), t = p.reduce((a, b) => a + b, 0);
+    const p = cand.map(e => poids(e) * (e.rare || 1)), t = p.reduce((a, b) => a + b, 0);
     let r = Math.random() * t, e = cand[0];
     for (let i = 0; i < cand.length; i++){ r -= p[i]; if (r <= 0){ e = cand[i]; break; } }
-    const d2 = (S.ligue.autre || []).some(x => x.nom === e.nom) ? (S.division === 1 ? 2 : 1) : S.division;
+    const d2 = e.pays ? 1
+      : (S.ligue.autre || []).some(x => x.nom === e.nom) ? (S.division === 1 ? 2 : 1) : S.division;
     /* L'objectif qu'on te promet découle du rang de SON effectif dans SON
        championnat, exactement comme le tien : un club t'annonce donc ce qu'il peut
        honnêtement demander, et l'écran ne pourra pas être démenti en août. */
-    const div = d2 === S.division ? S.ligue.equipes : S.ligue.autre;
-    const rang = div.slice().sort((a, b) => b.force - a.force).findIndex(x => x.nom === e.nom) + 1;
-    l.push({ nom:e.nom, force:e.force, division:d2, rang,
-      objectif: clamp(rang - 2, 1, Math.max(1, div.length - MONTEES)),
-      salaire: cSalaireDe(e.force, d2, S.liens.presse),
+    const div = e.pays ? null : (d2 === S.division ? S.ligue.equipes : S.ligue.autre);
+    const rang = e.pays ? cRangEtranger(e.pays, e.force, dkO)
+      : div.slice().sort((a, b) => b.force - a.force).findIndex(x => x.nom === e.nom) + 1;
+    const nDiv = e.pays ? 18 : div.length;
+    l.push({ nom:e.nom, force:e.force, division:d2, rang, pays: e.pays || null,
+      objectif: clamp(rang - 2, 1, Math.max(1, nDiv - MONTEES)),
+      salaire: cSalaireDe(e.force, d2, S.liens.presse, e.pays),
       ans: ri(1, 3) });
   }
   S.offres = l; S.offreIdx = 0; S.libre = libre; S.bonusOffres = 0;
@@ -1385,6 +1408,13 @@ function cPasserOffre(){ S.raccroche = 0; S.offreIdx = (S.offreIdx || 0) + 1;
   sauver(); rendre(); }
 function cSignerOffre(){
   const o = cOffreCourante(); if (!o) return;
+  /* Le club étranger n'existe pas encore : on fabrique son championnat d'abord (ou on
+     ressort celui qu'on avait quitté), puis on le cherche dedans. */
+  if (o.pays && o.pays !== (S.pays || 'FR')){
+    changerDePays(o.pays, o);
+    bougerProches(-10);
+    S.liens.presse = clamp(48); S.liens.direction = 50;
+  }
   const club = toutesLesEquipes().find(e => e.nom === o.nom); if (!club) return;
   S.club = { nom: club.nom, force: Math.round(club.force) };
   if ((S.ligue.autre || []).some(x => x.nom === club.nom)){
