@@ -120,6 +120,19 @@ table.sq{ width:100%; border-collapse:collapse; font-size:12.5px; }
 table.sq th{ text-align:left; font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:600; padding:5px 6px; border-bottom:1px solid var(--line); }
 table.sq td{ padding:6px; border-bottom:1px solid var(--line); vertical-align:middle; }
 table.sq td.r{ text-align:right; font-variant-numeric:tabular-nums; }
+/* UN EN-TÊTE DE COLONNE QUI TRIE. Il garde exactement l'allure d'un `th`, sinon la
+   ligne de titres se lirait comme une rangée de boutons. Trois choses en passant :
+   `th.r` manquait, donc les titres des trois colonnes de nombres étaient alignés à
+   gauche de leurs nombres ; la flèche tombait sous son libellé ; et un montant cassait
+   en « 42,7 / M€ », ce qui doublait la hauteur de chaque rangée sur un téléphone. */
+table.sq th{ white-space:nowrap; }
+table.sq th.r{ text-align:right; }
+table.sq td.money{ white-space:nowrap; }
+table.sq th button.thtri{ font:inherit; font-size:inherit; letter-spacing:inherit;
+  text-transform:inherit; color:inherit; font-weight:inherit; background:transparent;
+  border:0; padding:0; cursor:pointer; white-space:nowrap; }
+table.sq th button.thtri:hover{ color:var(--cream); }
+table.sq th button.thtri.on{ color:var(--gold); }
 table.sq tr:last-child td{ border-bottom:0; }
 .pos{ display:inline-block; width:19px; text-align:center; font-size:10px; font-weight:700; border-radius:4px; padding:2px 0; background:var(--panel-2); border:1px solid var(--line); }
 .mini{ font:inherit; font-size:11px; padding:3px 9px; border-radius:6px; cursor:pointer; background:transparent; color:var(--muted); border:1px solid var(--line); }
