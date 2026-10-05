@@ -3393,6 +3393,53 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     `triVendre` n'est pas sauvegardé). **Aucun chiffre du moteur n'a bougé** — c'est un lot
     d'écran.
 
+- **LE MERCREDI DU COACH ÉTAIT ÉCRIT POUR UN JOUEUR** (le propriétaire, 05/10/2026 : « j'ai les
+  mêmes infos que quand je suis joueur, en mode entraîneur, pour les coupes et l'Europe »).
+  L'écran de résultat du coach appelait **`annexeHTML()`, la fonction du joueur·euse** — et comme
+  `cJouerAnnexe()` ne pose ni `minutes` ni `statut` (un coach ne joue pas), elle tombait toujours
+  sur sa dernière branche. **Mesuré : 192 matchs de mercredi sur 192, la même phrase — « Tu
+  n'étais pas du voyage »**, c'est-à-dire la voix du joueur·euse *et* une phrase fausse, puisqu'un
+  entraîneur y était forcément.
+  - **La fuite était unique, et c'est la mesure qui l'a bornée.** Sonde sur **2 500 écrans de
+    coach** (les onze écrans du mode, une carrière entière) cherchant tout ce qui ne peut se dire
+    que du terrain — tes minutes, ta note, le banc, la sélection, « tu entres », « tu sors »,
+    « perdu le fil » : **une seule occurrence, celle-là**. `filmHTML()` est partagé et contient
+    cinq « tu », mais tous derrière des drapeaux `moi` qui n'existent pas en mode coach ;
+    `selecHTML()` n'est jamais appelé. Vérifié, pas supposé.
+  - **Ce qu'un coach lit d'un mercredi, c'est ce que ça coûte à samedi.** `cAnnexeHTML()` garde le
+    tour et le score (ils sont justes) et remplace le temps de jeu par les deux choses que le
+    moteur calcule déjà à ce moment-là et jetait : **la rotation** (`m.cadres`, combien de ton onze
+    le plus fort a joué) et **les jambes qui restent** (`m.fr`, la fraîcheur du groupe juste après
+    le coût de `C_MERCREDI_FR`). C'est l'arbitrage du mercredi, et il n'était écrit nulle part.
+  - **La photo est prise au moment où le coût tombe**, pas à l'affichage : l'écran de résultat se
+    lit après le samedi, donc `S.grp.fr` a déjà rebougé — sans `m.fr`, le coach lirait les jambes
+    d'après-match et non le prix de son mercredi.
+  - **MES PREMIÈRES BANDES ÉTAIENT ÉCRITES À L'ESTIME, ET DEUX SUR QUATRE NE SERAIENT JAMAIS
+    SORTIES.** Mesuré sur **371 mercredis**, trois politiques de semaine : `cadres` vit entre **5
+    et 10** (médiane 8 : 5 % 2 · 6 % 9 · 7 % 13 · 8 % 36 · 9 % 30 · 10 % 9) et la fraîcheur
+    d'après-mercredi entre **0 et 93** (médiane 36), pas de 30 à 100. Mes seuils (9 / 6 / 3 et
+    80 / 64 / 48 / 30) laissaient donc deux phrases muettes — et une bande qui ne sort jamais est
+    de la décoration, ce que la règle du projet interdit. Reposées sur les quantiles mesurés.
+    **Mesuré après, 290 mercredis : les neuf bandes sortent** — rotation 35 / 31 / 21 / 13 %,
+    jambes 35 / 25 / 21 / 13 / 6 %, zéro rendu douteux.
+  - **Et la mesure a trouvé autre chose, qui n'est pas de ce lot** : `ROTATION_COUPE` = 7 contre
+    `ROTATION` = 3,5 est censé faire tourner davantage en coupe, et **ça ne déplace la rotation que
+    d'un joueur** — médiane 8 cadres dans les deux compétitions, la coupe n'ayant qu'une queue
+    basse un peu plus épaisse (7 cadres : 18 % en coupe contre 7 % en Europe). Le tirage est un
+    bruit ajouté au choix du onze, donc doubler sa largeur ne réordonne qu'un ou deux hommes sur
+    vingt-deux. À lui de dire si la coupe doit vraiment être le tour des remplaçants ; le levier
+    est `ROTATION_COUPE`, et il se mesure avant d'y toucher.
+  - **Deux sondes à moi tombées en panne, encore.** (a) J'ai écrit un `cApresVire()` qui n'existe
+    pas — la vraie fonction est `cApresVirage()` ; (b) j'ai géré un écran `cete` qui **n'existe
+    pas en mode coach** (l'été du coach, c'est `cvie` puis `cprepa`), et la boucle non bornée qui
+    en résultait a fait tomber le navigateur deux fois. Les noms viennent maintenant de la sonde
+    coach qui marche, et la boucle casse si un écran se répète quatre cents fois.
+  - **Vérifié** : la sonde de voix rejouée après coup — **aucune voix de joueur·euse sur les 2 500
+    écrans** ; les neuf bandes mesurées non muettes ; `annexeHTML()` **n'est pas touchée**, donc le
+    mode joueur·euse est inchangé ; **aucune migration** (`VERSION` reste à 15 : une sauvegarde
+    sans `fr` ni `cadres` retombe sur les jambes du moment et se tait sur la rotation, plutôt que
+    d'inventer un chiffre).
+
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).
 - Tout l'état d'une carrière est dans l'objet global `state` (sérialisé dans localStorage). `state.pendingChoice` désigne l'écran courant ; `render()` dans `ui.js` dispatche.

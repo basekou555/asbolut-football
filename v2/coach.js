@@ -425,6 +425,15 @@ function cJouerAnnexe(info){
      en coupe garde un onze frais pour samedi. C'est la décision, et elle est vraie. */
   eq.onze.forEach(x => { if (x.ref) bougerForme(x.ref, (m.res === 'V' ? .3 : -.2)); });
   if (m.res === 'V') cBougerVestiaire(1.2); else if (m.res === 'D') cBougerVestiaire(-.9);
+  /* CE QUE LE MERCREDI A COÛTÉ, RETENU AU MOMENT OÙ IL LE COÛTE. L'écran de résultat
+     se lit après le samedi, donc `S.grp.fr` a déjà rebougé : sans cette photo, le
+     coach lirait les jambes d'après-match et non le prix de son mercredi. Et
+     `cadres` dit ce qu'il a aligné — combien de son onze le plus fort a joué —,
+     c'est-à-dire la rotation, qui est tout l'arbitrage de la semaine. */
+  m.fr = Math.round(S.grp.fr);
+  const forts = (S.equipe || []).slice().sort((a, b) => b.niv - a.niv).slice(0, 11)
+    .map(x => x.nom);
+  m.cadres = eq.onze.filter(x => forts.includes(x.nom)).length;
   suiteAnnexe(info, m);
   return m;
 }
