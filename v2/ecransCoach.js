@@ -36,9 +36,28 @@ const CLIEN_NOM = { president:"Le président", direction:"La direction",
 function cSituationHTML(ouvert){
   const gens = CLIENS_VUS.map(k => celSit(CLIEN_ICO[k], CLIEN_NOM[k], cDire(k), k, cPourquoi(k))).join('');
   const maLigne = k => `${LIGNE_NOM[k]} : ${minuscule(direLigne(k))} ${direTendance(k)}`;
+  /* « LE VESTIAIRE » NE PEUT PAS ÊTRE DEUX CASES (le propriétaire, 05/10/2026 :
+     « la ligne vestiaire dans l'entraîneur ne donne pas les bonnes infos »). Il y
+     en avait deux, **même nom et même icône ✊**, à une section d'écart : celle-ci
+     lisait `vestiaire()` (la moyenne des trois ententes) et celle de « Ton métier »
+     lit `cAxe('groupe')` (ton métier d'homme de vestiaire, ce que la séance
+     construit). Mesuré sur 5 006 semaines : **les deux diffèrent de dix points ou
+     plus 85 % du temps** (médiane 17, maximum 42), donc on ne pouvait pas lire
+     l'une en croyant l'autre sans se tromper.
+     Et elle était fausse deux fois de plus : (1) elle parlait avec `MOTS.vestiaire`,
+     **le vocabulaire du joueur·euse** — « On te sert volontiers », « Tu es un joueur
+     du groupe » : 31 % des semaines un entraîneur lisait une phrase qui n'a de sens
+     que pour quelqu'un qui joue (le seul usage de `MOTS.*` de ce fichier, même
+     famille que la fuite du mercredi du 05/10) ; (2) elle passait par `bande()`, les
+     bandes générales de seize points, là où une entente a ses huit bandes
+     resserrées et sa direction depuis le 27/09 — mesuré, **4 lectures sur 6** et la
+     plus fréquente à 45 %.
+     Elle est donc retirée, comme elle l'a été côté joueur·euse le 02/10 et pour la
+     même raison : c'est au mot près la moyenne de trois nombres **déjà lisibles
+     deux sections plus bas**, dans la bonne voix et avec les bonnes bandes. Sa
+     conséquence mécanique n'est pas perdue pour autant — elle passe dans l'en-tête
+     des trois lignes, là où les trois nombres sont. */
   const equipe = [
-    celSit('✊', "Le vestiaire", MOTS.vestiaire[bande(vestiaire())], 'vestiaire',
-      "C'est la moyenne des trois lignes, et elle entre dans la force de l'équipe."),
     celSit('🫁', "Les jambes", cDireJambes(), 'fit',
       "C'est ce que l'équipe produira samedi — et ce qu'une semaine chargée coûte."),
     celSit('🏥', "Le groupe", cDireInfirmerie(), 'grp', null),
@@ -63,7 +82,7 @@ function cSituationHTML(ouvert){
     <div class="sitHead">Ton équipe</div><div class="sit">${equipe}</div>
     <div class="sitHead">Ton métier</div><div class="sit">${toi}</div>
     <div class="sitHead">Ce qu'on sait de toi</div><div class="sit">${perso}</div>
-    <div class="lineHead">Les trois lignes<span></span></div>
+    <div class="lineHead">Les trois lignes<span>Leur moyenne est l'entente du vestiaire, et elle entre dans la force de l'équipe.</span></div>
     <div class="sit">${LIGNES.map(k => celSit(
       { def:'🛡️', mil:'🧭', att:'🎯' }[k], LIGNE_NOM[k], maLigne(k), k,
       ENJEU_LIGNE_COACH[k])).join('')}</div>
