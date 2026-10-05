@@ -2,25 +2,25 @@
 const ERAS=[
   { id:'60s', icon:'📻', name:"Années 50-60", start:1958, end:1969, tagline:"Kopa, Fontaine, Reims et Saint-Étienne. Pas de remplaçants, des trains de nuit et des journalistes en imperméable.",
     rules:["Aucun remplaçant","2 étrangers maximum","Transferts rares, salaires plafonnés","Pas de mercato d'hiver"],
-    subs:0, foreignersMax:2, winterMercato:false, moneyScale:.02, injuryMult:1.35, marketSize:.5, scamBase:.08, mediaMult:.6, youthMult:.7, euroCup:"Coupe des clubs champions", euroCup2:"Coupe des villes de foires", mediaWord:"la presse écrite" },
+    subs:0, foreignersMax:2, winterMercato:false, moneyScale:.08, injuryMult:1.35, marketSize:.5, scamBase:.08, mediaMult:.6, youthMult:.7, euroCup:"Coupe des clubs champions", euroCup2:"Coupe des villes de foires", mediaWord:"la presse écrite" },
   { id:'70s', icon:'📺', name:"Années 70", start:1970, end:1981, tagline:"Le football total, les Verts à Glasgow, Platini à Nancy. Deux remplaçants et des tribunes qui grondent.",
     rules:["2 remplaçants","2 étrangers maximum","Mercato limité","Pas de mercato d'hiver"],
-    subs:2, foreignersMax:2, winterMercato:false, moneyScale:.05, injuryMult:1.25, marketSize:.6, scamBase:.08, mediaMult:.7, youthMult:.8, euroCup:"Coupe des clubs champions", euroCup2:"Coupe de l'UEFA", mediaWord:"la télévision naissante" },
+    subs:2, foreignersMax:2, winterMercato:false, moneyScale:.2, injuryMult:1.25, marketSize:.6, scamBase:.08, mediaMult:.7, youthMult:.8, euroCup:"Coupe des clubs champions", euroCup2:"Coupe de l'UEFA", mediaWord:"la télévision naissante" },
   { id:'80s', icon:'📼', name:"Années 80", start:1982, end:1993, tagline:"Maradona, le carré magique, Bordeaux et Marseille. Trois étrangers, des tacles par derrière et des affaires.",
     rules:["2 remplaçants","3 étrangers maximum","Tacles par derrière tolérés","Pas de mercato d'hiver"],
-    subs:2, foreignersMax:3, winterMercato:false, moneyScale:.12, injuryMult:1.2, marketSize:.7, scamBase:.1, mediaMult:.85, youthMult:.9, euroCup:"Coupe des clubs champions", euroCup2:"Coupe de l'UEFA", mediaWord:"les tabloïds" },
+    subs:2, foreignersMax:3, winterMercato:false, moneyScale:.48, injuryMult:1.2, marketSize:.7, scamBase:.1, mediaMult:.85, youthMult:.9, euroCup:"Coupe des clubs champions", euroCup2:"Coupe de l'UEFA", mediaWord:"les tabloïds" },
   { id:'90s', icon:'💿', name:"Années 90", start:1994, end:2003, tagline:"Zidane, Ronaldo, l'arrêt Bosman. Le mercato explose, les droits télé aussi.",
     rules:["3 remplaçants","Arrêt Bosman dès 1996 : joueurs libres et étrangers de l'UE sans limite","Ligue des champions élargie","Mercato d'hiver dès 2000"],
-    subs:3, foreignersMax:3, bosmanYear:1996, winterMercatoYear:2000, winterMercato:false, moneyScale:.35, injuryMult:1.1, marketSize:.85, scamBase:.12, mediaMult:1, youthMult:1, euroCup:"Ligue des champions", euroCup2:"Coupe de l'UEFA", mediaWord:"les chaînes payantes" },
+    subs:3, foreignersMax:3, bosmanYear:1996, winterMercatoYear:2000, winterMercato:false, moneyScale:1.4, injuryMult:1.1, marketSize:.85, scamBase:.12, mediaMult:1, youthMult:1, euroCup:"Ligue des champions", euroCup2:"Coupe de l'UEFA", mediaWord:"les chaînes payantes" },
   { id:'00s', icon:'📱', name:"Années 2000", start:2004, end:2013, tagline:"Henry, Ronaldinho, Kaká. Les agents règnent, les investisseurs débarquent, Lyon enchaîne les titres.",
     rules:["3 remplaçants","Étrangers hors UE limités à 4","Mercato d'hiver","Agents tout-puissants, premiers fonds étrangers"],
-    subs:3, foreignersMax:99, winterMercato:true, moneyScale:.7, injuryMult:1, marketSize:1, scamBase:.15, mediaMult:1.15, youthMult:1.05, euroCup:"Ligue des champions", euroCup2:"Ligue Europa", mediaWord:"les sites en continu" },
+    subs:3, foreignersMax:99, winterMercato:true, moneyScale:2.8, injuryMult:1, marketSize:1, scamBase:.15, mediaMult:1.15, youthMult:1.05, euroCup:"Ligue des champions", euroCup2:"Ligue Europa", mediaWord:"les sites en continu" },
   { id:'10s', icon:'📊', name:"Années 2010", start:2014, end:2023, tagline:"Messi, Cristiano, Neymar au PSG. Fair-play financier, data, réseaux sociaux et fonds souverains.",
     rules:["3 remplaçants (5 dès 2020)","Fair-play financier","Mercato d'hiver","Data, VAR (2018) et réseaux sociaux"],
-    subs:3, foreignersMax:99, winterMercato:true, moneyScale:1, injuryMult:1, marketSize:1.15, scamBase:.17, mediaMult:1.3, youthMult:1.1, euroCup:"Ligue des champions", euroCup2:"Ligue Europa", mediaWord:"les réseaux sociaux" },
+    subs:3, foreignersMax:99, winterMercato:true, moneyScale:4, injuryMult:1, marketSize:1.15, scamBase:.17, mediaMult:1.3, youthMult:1.1, euroCup:"Ligue des champions", euroCup2:"Ligue Europa", mediaWord:"les réseaux sociaux" },
   { id:'20s', icon:'🛰️', name:"Aujourd'hui", start:2024, end:2035, tagline:"Mbappé, Yamal, Bellingham. Le Golfe, la MLS, la multipropriété, le calendrier saturé et les transferts à 100 M€.",
     rules:["5 remplaçants","Mercato d'hiver","Golfe, MLS et multipropriété","Calendrier saturé, TikTok et transferts à 100 M€"],
-    subs:5, foreignersMax:99, winterMercato:true, moneyScale:1.4, injuryMult:1.15, marketSize:1.3, scamBase:.2, mediaMult:1.45, youthMult:1.15, euroCup:"Ligue des champions", euroCup2:"Ligue Europa", mediaWord:"TikTok et les podcasts" },
+    subs:5, foreignersMax:99, winterMercato:true, moneyScale:5.6, injuryMult:1.15, marketSize:1.3, scamBase:.2, mediaMult:1.45, youthMult:1.15, euroCup:"Ligue des champions", euroCup2:"Ligue Europa", mediaWord:"TikTok et les podcasts" },
 ];
 function eraForYear(y){ return ERAS.find(e=>y>=e.start&&y<=e.end)||ERAS[ERAS.length-1]; }
 function decadeKey(y){ return y<1970?'60':y<1982?'70':y<1994?'80':y<2004?'90':y<2014?'00':y<2024?'10':'20'; }
@@ -28,6 +28,17 @@ function eraHasWinterMercato(y){ const e=eraForYear(y); return e.winterMercato||
 function eraForeignersMax(y){ const e=eraForYear(y); if(e.bosmanYear&&y>=e.bosmanYear) return 99; return e.foreignersMax; }
 function eraSubs(y){ const e=eraForYear(y); if(e.id==='10s'&&y>=2020) return 5; return e.subs; }
 /* Monnaie : francs avant 2002, euros ensuite. Les valeurs internes sont en « millions de 2015 » ; l'échelle d'époque s'applique à l'affichage. */
+/* L'ÉCHELLE DE L'ARGENT AFFICHÉ, ×4 (le propriétaire, 05/10/2026 : « je joue le haut du
+   tableau du championnat anglais, et les montants de transfert se comptent en millions
+   d'euros, mais genre 1 million, 2 millions — ça ressemble pas du tout aux montants des
+   clubs qui jouent à ce niveau-là »). Mesuré avant d'y toucher, Manchester City en 2024 :
+   meilleur joueur **21,8 M€**, budget de transfert 24,6 M€, plafond salarial 99,6 M€ —
+   soit environ cinq fois moins que la réalité du haut de la Premier League.
+   `moneyScale` n'est lu **que par cette fonction** : c'est un facteur d'affichage pur, donc
+   le multiplier par quatre change tous les montants lus et **aucune mécanique** — pas un
+   plafond, pas un budget, pas une valeur, pas un arbitrage. Il est appliqué aux **sept**
+   époques, pour que les rapports entre elles ne bougent pas d'un pouce (1970 → 2024 reste
+   le même facteur) : seul le niveau absolu monte. */
 function money(v,year){
   const e=eraForYear(year), scaled=v*e.moneyScale;
   if(year<2002){ const f=scaled*6.56; if(Math.abs(f)>=1000) return (f/1000).toFixed(1)+" MdF"; if(Math.abs(f)<1) return Math.round(f*1000)+" kF"; return f.toFixed(1)+" MF"; }

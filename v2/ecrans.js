@@ -563,26 +563,68 @@ function situationHTML(ouvert){
    et chaque bloc porte l'entente de sa ligne, l\u00e0 o\u00f9 elle a enfin des noms. */
 const GROUPES = [['G', "Les gardiens", "\u{1F9E4}", null], ['D', "La d\u00e9fense", "\u{1F6E1}\ufe0f", 'def'],
   ['M', "Le milieu", "\u{1F9ED}", 'mil'], ['A', "L'attaque", "\u{1F3AF}", 'att']];
+/* TRIER L'EFFECTIF SELON CE QU'ON CHERCHE (le propriétaire, 05/10/2026 : « j'aimerais
+   bien pouvoir trier l'effectif en fonction de mes besoins — des fois j'ai besoin de
+   trier par poste, des fois par note, des fois par valeur marchande ; c'est cool si on
+   peut appuyer sur la colonne et ça permet de la trier dans un sens ou dans l'autre »).
+   Les tuiles n'ont pas de colonnes à cliquer, donc ce sont des boutons : on appuie sur
+   celui qu'on veut, et une deuxième fois pour renverser le sens. `par ligne` garde les
+   quatre blocs (c'est la lecture de football) ; les autres aplatissent en une seule
+   liste, parce que comparer les valeurs marchandes bloc par bloc ne veut rien dire.
+   L'état vit **hors de la sauvegarde**, comme le tableau de bord de la 1.0 : c'est une
+   façon de regarder, pas une donnée de carrière. */
+let triEff = { cle:'ligne', sens:-1 }, effOuvert = false;
+const TRIS_EFF = [
+  { cle:'ligne',  nom:"par ligne" },
+  { cle:'note',   nom:"note",    v: x => x.moy == null ? (x.res == null ? -1 : x.res - 2) : x.moy },
+  { cle:'buts',   nom:"buts",    v: x => (x.b || 0) * 100 + (x.p || 0) },
+  { cle:'min',    nom:"minutes", v: x => x.min || 0 },
+  { cle:'age',    nom:"âge",     v: x => -x.age },
+  { cle:'valeur', nom:"valeur",  v: x => x.val || 0, coach:true },
+];
+function trisEffHTML(){
+  return `<div class="tris">${TRIS_EFF.filter(t => !t.coach || S.mode === 'coach').map(t =>
+    `<button class="tri${triEff.cle === t.cle ? ' on' : ''}" onclick="trierEff('${t.cle}')">${
+      esc(t.nom)}${triEff.cle === t.cle && t.cle !== 'ligne'
+        ? (triEff.sens < 0 ? ' \u2193' : ' \u2191') : ''}</button>`).join('')}</div>`;
+}
+function trierEff(cle){
+  if (triEff.cle === cle && cle !== 'ligne') triEff.sens = -triEff.sens;
+  else triEff = { cle, sens:-1 };
+  effOuvert = true; rendre();
+}
 function effectifHTML(){
   if (!S.equipe || !S.equipe.length) return '';
   const l = effectifTrie();
   /* Quatre groupes, pas trois : « dans l'onglet effectif il n'y a pas la colonne
      des gardiens » — ils étaient fondus dans la défense, dont ils partagent bien
      l'entente, mais pas le poste. L'entente reste sur les trois lignes. */
+  /* La tuile est la même dans les deux lectures : par ligne, ou à plat une fois trié.
+     Hors du rangement par ligne, elle porte son poste — sinon on ne sait plus qui est
+     qui dans une liste de vingt-deux. */
+  const tuile = x => `<div class="${x.moi ? 'me' : ''}${x.blesse || x.susp ? ' out' : ''}">
+        <b>${esc(x.nom)}</b><span class="n">${x.moy == null ? (x.res == null ? '\u2014' : virg(x.res)) : virg(x.moy)}</span>
+        <span class="s">${triEff.cle !== 'ligne' ? `${esc(x.poste)} \u00b7 ` : ''}${x.moy == null && x.res != null ? `${x.age} ans \u00b7 ${x.nbR} m en r\u00e9serve` : `${x.age} ans \u00b7 ${x.nb} m${x.nbR ? ` \u00b7 ${x.nbR} r\u00e9s.` : ''}`}${x.moi ? ' \u00b7 toi' : x.rival ? ' \u00b7 ton poste' : x.monte ? ' \u00b7 il monte' : ''}${x.blesse ? ' \u00b7 \u{1FA7C}' : x.susp ? ' \u00b7 \u{1F7E5}' : x.boude ? ' \u00b7 \u{1F624}' : ''}</span>
+        ${statsJoueurHTML(x)}
+      </div>`;
   const bloc = ([po, nom, ico, k]) => {
     const j = l.filter(x => x.poste === po);
     if (!j.length) return '';
     return `<div class="lineHead">${ico} ${esc(nom)}<span>${k ? esc(direLigne(k)) : ''}</span></div>
-      <div class="lineup">${j.map(x => `<div class="${x.moi ? 'me' : ''}${x.blesse || x.susp ? ' out' : ''}">
-        <b>${esc(x.nom)}</b><span class="n">${x.moy == null ? (x.res == null ? '\u2014' : virg(x.res)) : virg(x.moy)}</span>
-        <span class="s">${x.moy == null && x.res != null ? `${x.age} ans \u00b7 ${x.nbR} m en r\u00e9serve` : `${x.age} ans \u00b7 ${x.nb} m${x.nbR ? ` \u00b7 ${x.nbR} r\u00e9s.` : ''}`}${x.moi ? ' \u00b7 toi' : x.rival ? ' \u00b7 ton poste' : x.monte ? ' \u00b7 il monte' : ''}${x.blesse ? ' \u00b7 \u{1FA7C}' : x.susp ? ' \u00b7 \u{1F7E5}' : x.boude ? ' \u00b7 \u{1F624}' : ''}</span>
-        ${statsJoueurHTML(x)}
-      </div>`).join('')}</div>`;
+      <div class="lineup">${j.map(tuile).join('')}</div>`;
   };
-  return `<details class="fold"><summary>L'effectif</summary>
-    ${GROUPES.map(bloc).join('')}
+  const t = TRIS_EFF.find(x => x.cle === triEff.cle) || TRIS_EFF[0];
+  const corps = t.cle === 'ligne' || (t.coach && S.mode !== 'coach')
+    ? GROUPES.map(bloc).join('')
+    : `<div class="lineup">${l.slice().sort((a, b) => (t.v(b) - t.v(a)) * -triEff.sens)
+        .map(tuile).join('')}</div>`;
+  return `<details class="fold"${effOuvert ? ' open' : ''}><summary>L'effectif</summary>
+    ${trisEffHTML()}
+    ${corps}
     <p class="sub">Vingt-deux joueurs, onze titulaires. Pour chacun, sa moyenne, ses matchs, puis ce qu'il a fait de sa saison :
-      \u26bd buts \u00b7 \u{1F45F} passes d\u00e9cisives \u00b7 \u{1F7E8}\u{1F7E5} cartons \u00b7 minutes jou\u00e9es.<br>
+      \u26bd buts \u00b7 \u{1F45F} passes d\u00e9cisives \u00b7 \u{1F7E8}\u{1F7E5} cartons \u00b7 minutes jou\u00e9es${
+      S.mode === 'coach' ? ' \u00b7 sa valeur marchande' : ''}.<br>
+      Appuie sur un bouton pour trier, une deuxi\u00e8me fois pour renverser le sens.<br>
       L'entente du vestiaire, c'est la moyenne de ces trois lignes.</p>
   </details>`;
 }
@@ -598,6 +640,7 @@ function statsJoueurHTML(x){
   if (x.ja) p.push(`\u{1F7E8} ${x.ja}`);
   if (x.ro) p.push(`\u{1F7E5} ${x.ro}`);
   if (x.min) p.push(`${Math.round(x.min)}\u2032`);
+  if (x.val) p.push(sous(x.val));
   return p.length ? `<span class="f">${p.join(' \u00b7 ')}</span>` : '';
 }
 const virg = v => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
