@@ -576,13 +576,29 @@ function effectifHTML(){
       <div class="lineup">${j.map(x => `<div class="${x.moi ? 'me' : ''}${x.blesse || x.susp ? ' out' : ''}">
         <b>${esc(x.nom)}</b><span class="n">${x.moy == null ? (x.res == null ? '\u2014' : virg(x.res)) : virg(x.moy)}</span>
         <span class="s">${x.moy == null && x.res != null ? `${x.age} ans \u00b7 ${x.nbR} m en r\u00e9serve` : `${x.age} ans \u00b7 ${x.nb} m${x.nbR ? ` \u00b7 ${x.nbR} r\u00e9s.` : ''}`}${x.moi ? ' \u00b7 toi' : x.rival ? ' \u00b7 ton poste' : x.monte ? ' \u00b7 il monte' : ''}${x.blesse ? ' \u00b7 \u{1FA7C}' : x.susp ? ' \u00b7 \u{1F7E5}' : x.boude ? ' \u00b7 \u{1F624}' : ''}</span>
+        ${statsJoueurHTML(x)}
       </div>`).join('')}</div>`;
   };
   return `<details class="fold"><summary>L'effectif</summary>
     ${GROUPES.map(bloc).join('')}
-    <p class="sub">Vingt-deux joueurs, onze titulaires. La moyenne de chacun sur la saison, et le nombre de matchs not\u00e9s.<br>
+    <p class="sub">Vingt-deux joueurs, onze titulaires. Pour chacun, sa moyenne, ses matchs, puis ce qu'il a fait de sa saison :
+      \u26bd buts \u00b7 \u{1F45F} passes d\u00e9cisives \u00b7 \u{1F7E8}\u{1F7E5} cartons \u00b7 minutes jou\u00e9es.<br>
       L'entente du vestiaire, c'est la moyenne de ces trois lignes.</p>
   </details>`;
+}
+/* CE QU'UN JOUEUR A FAIT DE SA SAISON (le propriétaire, 04/10/2026 : « j'aimerais
+   bien savoir les stats des joueurs, qui fait des passes d[\u00e9cisives], etc. »).
+   Le m\u00eame vocabulaire que les notes d'apr\u00e8s-match (\u26bd \u{1F45F} \u{1F7E8} \u{1F7E5}), parce que ce sont
+   les **m\u00eames** faits : l'effectif ne peut donc pas contredire le film. Une ligne
+   vide ne s'affiche pas \u2014 un gardien sans but n'a pas besoin d'un z\u00e9ro. */
+function statsJoueurHTML(x){
+  const p = [];
+  if (x.b) p.push(`\u26bd ${x.b}`);
+  if (x.p) p.push(`\u{1F45F} ${x.p}`);
+  if (x.ja) p.push(`\u{1F7E8} ${x.ja}`);
+  if (x.ro) p.push(`\u{1F7E5} ${x.ro}`);
+  if (x.min) p.push(`${Math.round(x.min)}\u2032`);
+  return p.length ? `<span class="f">${p.join(' \u00b7 ')}</span>` : '';
 }
 const virg = v => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
 

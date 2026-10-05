@@ -2907,6 +2907,57 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     décourage pas. Et les `vestiaire` des **arrêts** gardent leur échelle d'origine : ils ont été
     calibrés le 30/09 avec leur propre mesure, et les toucher l'invaliderait sans raison.
 
+- **CE QU'UN JOUEUR A FAIT DE SA SAISON, ET UN DÉFENSEUR QUI MARQUAIT TROP** (le propriétaire,
+  04/10/2026 : « petit ajout sur l'effectif, j'aimerais bien savoir les stats des joueurs, qui fait
+  des passes d[écisives], etc. »). Les faits existaient déjà, nommés, pour la note et pour les
+  pastilles d'après-match — ils n'étaient simplement **jamais additionnés**. `notesEquipe()` les
+  accumule maintenant sur chaque joueur (`sB`, `sP`, `sJ`, `sRC`, `sMin`), `effectifTrie()` les
+  porte et chaque tuile de l'effectif affiche une troisième ligne, avec le vocabulaire des notes
+  d'après-match (⚽ 👟 🟨 🟥 et les minutes) : ce sont les **mêmes** faits, donc l'effectif ne peut
+  pas contredire le film. Une ligne vide ne s'affiche pas — un troisième gardien qui n'a pas joué
+  n'a pas besoin d'une rangée de zéros. L'écran est partagé, donc les deux modes l'ont.
+  - **UN DÉFENSEUR CENTRAL MARQUAIT PLUS QU'UN ATTAQUANT, et c'est l'affichage qui l'a révélé.**
+    Première version rendue à l'écran : des défenseurs à cinq buts. Mesuré sur 612 matchs :
+    **buts D 38 % · M 40 % · A 22 %**, et les passes décisives pareil (D 40 % · M 38 % · A 22 %).
+    La cause est arithmétique — `surLeBanc(m, min, 'but')` tirait **uniformément** parmi les dix
+    joueurs de champ sur le terrain, et il y a quatre défenseurs pour deux attaquants. C'est
+    l'inverse du football, et ça vivait depuis le début parce que rien ne l'affichait. Le tirage est
+    pondéré par le poste (`POIDS_BUTEUR` A 7 · M 2,4 · D 1,1 ; `POIDS_PASSEUR` M 3,4 · A 2,2 · D ,9)
+    et le passeur a enfin ses propres poids — il empruntait ceux du buteur. Mesuré après :
+    **buts A 49 % · M 34 % · D 17 %**, passes **M 67 % · D 18 % · A 16 %**. Les **cartons restent
+    uniformes** : la mesure les donnait déjà justes (D 40 % · M 38 % · A 12 % · G 9 %), donc il n'y
+    avait rien à régler.
+  - **TA LIGNE NE COMPTAIT PAS LA MÊME CHOSE QUE LES AUTRES.** `S.stats.buts` compte toutes les
+    compétitions, alors qu'un coéquipier n'a **aucune** statistique le mercredi (`finirAnnexe()`
+    n'appelle pas `notesEquipe()` — le mercredi se lit, il ne s'opère pas). Mesuré avant de le voir :
+    la somme des buts de l'effectif dépassait d'un but ce que le club avait marqué en championnat, et
+    c'était ta ligne. `S.stats.ch` ne compte que le championnat, et c'est elle que l'effectif
+    affiche. Mesuré après : **buts de l'effectif = buts du club, 4 fois sur 4**.
+  - **LA SAISON DU COACH NE REPARTAIT PAS DE ZÉRO.** `relireClubSq()` remet les compteurs du
+    joueur·euse chaque été ; `cLireEffectif()` ne touchait rien, donc la moyenne et les matchs
+    affichés dans l'effectif d'un entraîneur·euse étaient ceux de **toute la carrière** du joueur.
+    Invisible jusqu'ici (une moyenne de carrière ressemble à une moyenne de saison), impossible à
+    ignorer dès qu'on affiche « 23 buts ». Corrigé, mesuré : tous les compteurs à zéro après l'été.
+  - **Un piège évité** : `m.rouge` n'est posé qu'après le calcul de la note, donc on ne peut pas le
+    lire là où les compteurs s'incrémentent. Les cartons se comptent comme `poidsCartons()` les
+    compte — les événements du film **plus** `m.jaune`, qu'un fait de match incrémente de son côté.
+  - **Vérifié** : les sept invariants du tableau des notes à zéro écart sur 850 matchs, **31 faits
+    sur 31**, score = film **0 écart** sur 5 495 faits, les minutes à zéro incohérence sur 1 077
+    faits ; 24 carrières entières de joueur·euse et **8 d'entraîneur·euse (193 saisons)** avec tous
+    les écrans, zéro erreur ; l'effectif rendu dans les deux modes, **zéro tuile qui déborde et zéro
+    ligne coupée** (22 et 20 lignes de stats) ; `tests/simulate.js` → `ERRORS: none` ; le banc de la
+    semaine à 150 saisons par ligne tient l'invariant aux trois croisements (académie·M matchs « le
+    mental » 21,7±0,67 / trace « ton poste » +6,8 ; quartier·D matchs « au hasard » 20,9±0,60 /
+    trace « le physique » +10,2 ; étranger·A, où la technique prend nominalement les deux, **20,4
+    contre 20,0 pour « deux séances » est dans la demi-erreur-type**, donc une égalité) et
+    « toujours lever le pied » ne prend les matchs nulle part ; **aucune migration** (`VERSION` reste
+    à 15 : les nouveaux compteurs valent zéro quand ils manquent) — vérifié sur une vraie partie de
+    **joueur·euse** et une d'**entraîneur·euse** de la version déployée, reprises à la 17ᵉ journée,
+    deux saisons entières jouées, zéro doublon.
+  - **Ce que ça ne répare pas** : une partie en cours n'a pas l'historique des buts de chaque
+    joueur — il n'était stocké nulle part. Les compteurs partent donc de zéro au prochain match,
+    à côté d'une moyenne de saison déjà remplie.
+
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).
 - Tout l'état d'une carrière est dans l'objet global `state` (sérialisé dans localStorage). `state.pendingChoice` désigne l'écran courant ; `render()` dans `ui.js` dispatche.
