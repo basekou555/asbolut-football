@@ -114,6 +114,8 @@ p{ margin:0 0 10px; }
 .lack{ border:1px solid color-mix(in srgb, var(--red) 55%, transparent); background:color-mix(in srgb, var(--red) 10%, transparent);
   border-radius:8px; padding:9px 12px; font-size:13px; margin:0 0 10px; }
 .lack b{ color:var(--red); }
+/* chaque phrase sur sa ligne : deux .sub d'affilée se collaient (« → l'étranger<b>P. Moulin</b> ») */
+.lack b, .lack .sub{ display:block; }
 table.sq{ width:100%; border-collapse:collapse; font-size:12.5px; }
 table.sq th{ text-align:left; font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:600; padding:5px 6px; border-bottom:1px solid var(--line); }
 table.sq td{ padding:6px; border-bottom:1px solid var(--line); vertical-align:middle; }

@@ -2993,6 +2993,38 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     +0,80 est un résultat ou du bruit. Le levier est `C_PART_VENTE`, et le choix de combien un départ
     forcé doit rapporter lui appartient.
 
+- **QUATRE REPROCHES SUR LE MERCATO DU COACH, QUATRE DÉFAUTS** (le propriétaire, 04/10/2026,
+  dans la foulée du crédit des départs). Chacun était exact, et deux avaient une conséquence
+  mécanique que l'étiquette cachait.
+  1. **« On les remplace par des joueurs automatiquement, c'est qui ces joueurs ? »** La branche des
+     ventes forcées de `mercato()` poussait un `jeuneDuCentre()` dans ton effectif **sans laisser de
+     trace** : un inconnu apparaissait, sans âge annoncé et sans provenance. Il est maintenant inscrit
+     dans les mouvements (`centre:true`) et l'écran le nomme : « O. Vincent (19 ans), B. Goujon
+     (18 ans) et E. Quentin (20 ans) sont montés du centre pour prendre les places. » Le mercato des
+     autres clubs les ignore, sinon la liste se remplirait de dix-sept gamins.
+  2. **« Y'a aucun joueur libre sur le mercato en dehors des joueurs du centre. »** Vrai : la pile
+     n'avait que des joueurs sous contrat, trois de l'étranger payants et deux gamins du centre. Or un
+     joueur libre est **le levier du club pauvre** — aucune indemnité, seulement un salaire, et il le
+     négocie d'autant mieux qu'il ne coûte rien à acheter (`salMult` 1,3). Deux profils, parce que
+     c'est ce que le football donne : un joueur en fin de carrière que son club n'a pas prolongé
+     (65 %, 30-35 ans) et un jeune qu'on a laissé partir. Mesuré : **21 dossiers libres sur 119**,
+     et le sous-titre dit lequel des deux (« libre, son club ne l'a pas prolongé »).
+  3. **« C'est long. »** Quatorze dossiers à un par écran, avec l'effectif complet sous chacun.
+     La pile tombe à **dix en été et sept en hiver**, les places réservées aux familles qui ne
+     viennent pas d'un club montant de cinq à six puisqu'il y a maintenant les libres. Mesuré :
+     É10 / H7 sur quatorze fenêtres.
+  4. **« Après une saison au club, on n'est plus une recrue. »** Et ce n'était pas qu'une étiquette :
+     `j.recrue` était posé à la signature et **jamais retiré**, or `cVentesQuiSuffisent()` écarte les
+     recrues — donc un joueur signé une fois ne pouvait **plus jamais** être proposé pour financer un
+     achat, dix saisons plus tard. On ne peut annuler un transfert que dans la fenêtre où il a été
+     conclu : c'est la règle de la 1.0 (`p.joinedWindow`), et elle manquait ici. Effacé à
+     `cFermerMercato()`. Mesuré : **0 joueur portant encore « recrue »** après fermeture, sur
+     quatorze fenêtres.
+  - **Deux défauts de français trouvés à l'écran avant de livrer** : les deux phrases du bandeau des
+    départs se collaient (« → l'étranger**P. Moulin** (20 ans) ») — `.lack b` et `.lack .sub` passent
+    en `display:block` ; et « A et B et C » n'est pas du français (`etListe()` : des virgules, un seul
+    « et »).
+
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).
 - Tout l'état d'une carrière est dans l'objet global `state` (sérialisé dans localStorage). `state.pendingChoice` désigne l'écran courant ; `render()` dans `ui.js` dispatche.
