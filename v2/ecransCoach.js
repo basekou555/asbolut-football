@@ -134,6 +134,45 @@ function ecranCMoment(){
 }
 
 /* ---------------- le résultat ---------------- */
+/* LE MERCREDI VU DU BANC (le propriétaire, 05/10/2026 : « j'ai les mêmes infos que
+   quand je suis joueur, en mode entraîneur, pour les coupes et l'Europe »). L'écran de
+   résultat du coach appelait `annexeHTML()`, **la fonction du joueur·euse** : mesuré sur
+   2 500 écrans de coach, c'était la seule fuite de cette voix-là — mais elle sortait à
+   **chaque** match de mercredi, et toujours par la même phrase, « Tu n'étais pas du
+   voyage », absurde pour un entraîneur qui y était forcément.
+   Ce qu'un coach lit d'un mercredi, ce n'est pas son temps de jeu : c'est **ce que ça
+   coûte à samedi** — la rotation qu'il a faite et les jambes qu'il lui reste. */
+/* LES BANDES SONT POSÉES LÀ OÙ LES VALEURS PASSENT VRAIMENT, et c'est une mesure.
+   Première version écrite à l'estime : `cadres` > 9 / 6 / 3, alors que le onze de
+   mercredi compte **5 à 10 cadres** (médiane 8, mesuré sur 371 mercredis) — deux des
+   quatre phrases ne seraient jamais sorties, et une bande qui ne sort jamais est de
+   la décoration. Même chose pour la fraîcheur : elle va de 0 à 93 avec une médiane à
+   36, pas de 30 à 100. */
+function cMotMercredi(fr){
+  return fr > 78 ? "Le groupe rentre sans trop de dégâts."
+    : fr > 58 ? "Ça laisse des jambes, mais samedi reste jouable."
+    : fr > 38 ? "Ils reviennent émoussés : samedi partira de plus loin."
+    : fr > 18 ? "Ce déplacement se paie. Samedi se jouera sur les nerfs."
+    : "Ils rentrent vidés. Samedi, il ne restera rien.";
+}
+function cAnnexeHTML(a){
+  if (!a) return '';
+  const tours = a.comp === 'coupe' ? TOURS_COUPE : TOURS_EURO;
+  const ton = a.res === 'V' ? 'gagne' : a.res === 'D' ? 'perdu' : '';
+  const ico = a.comp === 'coupe' ? '🏅' : '⭐';
+  /* Une sauvegarde d'avant ce lot n'a ni `fr` ni `cadres` : on retombe sur les jambes
+     du moment et on se tait sur la rotation, plutôt que d'inventer un chiffre. */
+  const fr = a.fr == null ? S.grp.fr : a.fr;
+  const rot = a.cadres == null ? ''
+    : a.cadres >= 9 ? `Tu as sorti le grand jeu : ${a.cadres} de tes onze les plus forts sur le terrain. `
+    : a.cadres >= 8 ? `Tu as aligné ${a.cadres} de tes cadres. `
+    : a.cadres >= 7 ? `Tu as laissé souffler deux ou trois cadres : ${a.cadres} sur le terrain. `
+    : `Tu as fait tourner : ${a.cadres} cadres seulement. `;
+  return `<h3>Mercredi — ${COMP_NOM[a.comp]}</h3>
+    <div class="bloc ${ton}"><span class="i">${ico}</span><div>
+      <h4>${esc(tours[a.tour])} · ${a.bn}–${a.be} contre ${esc(a.adv)}${a.tab ? (a.tabNous ? ' (qualifiés aux tirs au but)' : ' (sortis aux tirs au but)') : a.prolong ? ' (après prolongation)' : ''}</h4>
+      <p class="narr" style="margin:0">${esc(rot)}${esc(cMotMercredi(fr))}</p></div></div>`;
+}
 function ecranCResultat(){
   const m = S.dernier;
   const gauche = m.adv.dom ? S.club.nom : m.adv.nom, droite = m.adv.dom ? m.adv.nom : S.club.nom;
@@ -143,7 +182,7 @@ function ecranCResultat(){
   return `<div class="card">
     <div class="step">${ordinal(S.journee + 1)} journée · terminé</div>
     <div class="score"><span class="big">${score}</span><div><b>${esc(gauche)}</b> – ${esc(droite)}<br><span class="sub">${esc(ligne)}</span></div></div>
-    ${annexeHTML(m.annexe)}
+    ${cAnnexeHTML(m.annexe)}
     ${m.arret || m.seance ? `<h3>Ta semaine</h3>
       ${m.arret ? `<p class="narr" style="margin-bottom:6px"><b>${esc(m.arret.titre)}</b> — tu as choisi : « ${esc(m.arret.choix)} ».${
         m.arret.suite ? ` ${esc(m.arret.suite)}` : ''}</p>` : ''}
