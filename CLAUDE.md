@@ -3440,6 +3440,55 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     sans `fr` ni `cadres` retombe sur les jambes du moment et se tait sur la rotation, plutôt que
     d'inventer un chiffre).
 
+- **ON NE SAVAIT PAS SI ON AVAIT GAGNÉ** (le propriétaire, 05/10/2026 : « en coupe et en Europe
+  on ne sait jamais vraiment si on a gagné — un petit défaite ou victoire et/ou qualification
+  ne ferait pas de mal »). Il avait raison deux fois, et la deuxième est la plus grosse :
+  l'en-tête du mercredi n'écrivait que `en quarts · 1–1 contre Torino`, donc **le résultat
+  n'était porté que par la couleur du bloc** (aucun mot, et un nul de phase de groupes ne se
+  lisait pas du tout) ; et **la qualification n'était écrite nulle part à l'écran** alors que
+  `suiteAnnexe()` la calcule depuis toujours — elle n'allait que dans le journal, c'est-à-dire
+  pas là où on lit son match.
+  - **Le mot vient du score** (`motScore()` : Victoire · Match nul · Défaite), et il peut
+    légitimement ne pas coller à `m.res` : un 1-1 perdu aux tirs au but reste un match nul, et
+    c'est la phrase suivante qui dit qu'on est sortis. Mesuré sur 353 mercredis : les deux
+    s'accordent 334 fois, et les 19 désaccords sont **tous** des séances de tirs au but.
+  - **La qualification est retenue sur `m.suite` au moment où elle se décide**, dans
+    `suiteAnnexe()`, et non recalculée à l'affichage : l'écran de résultat se lit après samedi,
+    donc `S.coupe` et `S.euro` ont déjà pu bouger — la même leçon que `m.fr` côté coach
+    (05/10/2026). Un seul endroit, donc **les deux modes disent exactement la même chose** :
+    `enTeteAnnexe()` et `suiteAnnexeHTML()` sont partagés par `annexeHTML()` et `cAnnexeHTML()`.
+  - **Trois formulations que la mesure a corrigées, toutes vues dans la sortie de la sonde** :
+    (1) « Éliminés **en finale** » ne se dit pas — on y perd, on n'en sort pas : c'est
+    **« Battus en finale »** ; (2) « Éliminés en phase de groupes avec **1 points** » — le
+    singulier manquait ; (3) « 10 points en 4 journées — **il en faut huit pour passer** »,
+    c'est-à-dire promettre un seuil déjà franchi : les points ne redescendent pas, donc à huit
+    avant la dernière journée c'est fait, et la phrase le dit (« les huit sont là, les quarts
+    sont joués »).
+  - **Mesuré, 734 mercredis sur 8 carrières entières (4 par mode)** : **46 branches distinctes
+    tirées** (les cinq tours de coupe gagnés et perdus, la finale gagnée et perdue, les six
+    journées de groupe, la décision du groupe dans les deux sens, les trois tours à élimination
+    directe d'Europe, et chacune en version quatre-vingt-dix minutes, prolongation et tirs au
+    but), **zéro mercredi sans suite**, **zéro rendu douteux** (`undefined` / `NaN` /
+    `[object` / `null`) sur 734 rendus.
+  - **C'est un lot d'affichage, et c'est prouvé, pas affirmé** : à **graine fixe**, la même
+    carrière de vingt saisons jouée sur le code déployé et sur celui-ci donne les **mêmes 680
+    scores, les mêmes 680 notes, les mêmes 149 mercredis et les mêmes 20 classements** —
+    identiques caractère pour caractère.
+  - **Vérifié** : les invariants du tableau des notes à zéro écart sur 850 matchs
+    (`incohérences de minutes film / notes : 0`, buteurs absents 0, `ERREURS: aucune`) ;
+    `tests/simulate.js` → `ERRORS: none` ; le ⚠ ouvert et refermé sur l'écran de résultat des
+    deux modes, zéro `undefined`, aucune fenêtre qui reste ; **aucune migration** (`VERSION`
+    reste à 15) — vérifié sur une vraie partie de la version déployée **arrêtée pile sur un
+    écran de résultat de mercredi** : son `annexe` n'a pas de `suite`, l'écran **se taît** au
+    lieu d'inventer une qualification depuis un état qui a bougé, puis **deux saisons entières**
+    sont rejouées (joueur·euse comme entraîneur·euse, 22 joueurs, zéro erreur).
+  - **Deux sondes à moi remises d'aplomb, et c'est la quatrième fois que cette leçon revient** :
+    `v2inv.js` ne connaissait pas l'écran de la **trêve** (livré le 02/10), donc il n'atteignait
+    jamais le bilan et plantait sur `S.bilan.note` ; et son invariant « onze ou douze notes »
+    est **périmé depuis les dix-huit convoqués** (27/09) — le compte juste est onze titulaires
+    plus un entrant par changement, et c'est `v2coher.js` qui le vérifie. Une sonde qui porte un
+    invariant d'une version antérieure ne mesure pas le jeu, elle mesure son propre retard.
+
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).
 - Tout l'état d'une carrière est dans l'objet global `state` (sérialisé dans localStorage). `state.pendingChoice` désigne l'écran courant ; `render()` dans `ui.js` dispatche.
