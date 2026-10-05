@@ -3489,6 +3489,58 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     plus un entrant par changement, et c'est `v2coher.js` qui le vérifie. Une sonde qui porte un
     invariant d'une version antérieure ne mesure pas le jeu, elle mesure son propre retard.
 
+- **« LE VESTIAIRE » ÉTAIT DEUX CASES, ET L'UNE PARLAIT À UN JOUEUR** (le propriétaire,
+  05/10/2026 : « la ligne vestiaire dans l'entraîneur ne donne pas les bonnes infos »).
+  Trois défauts dans la même case, chacun mesuré avant d'y toucher.
+  1. **Deux cases, même nom, même icône ✊**, à une section d'écart dans la fiche : celle de
+    « Ton équipe » lisait `vestiaire()` (la moyenne des trois ententes de ligne), celle de
+    « Ton métier » lit `cAxe('groupe')` (ton métier d'homme de vestiaire, ce que la séance
+    construit). **Mesuré sur 5 006 semaines : les deux diffèrent de dix points ou plus 85 %
+    du temps** (médiane 17, maximum 42) — donc lire l'une en croyant l'autre trompait
+    presque toujours, et rien à l'écran ne disait laquelle était laquelle.
+  2. **Elle parlait avec `MOTS.vestiaire`, le vocabulaire du joueur·euse** : « On te sert
+    volontiers » (13 % des semaines), « Tu comptes ici » (14 %), « Tu es un joueur du
+    groupe » (4 %) — **31 % des semaines** un entraîneur lisait une phrase qui n'a de sens
+    que pour quelqu'un qui joue. Même famille que la fuite du mercredi du 05/10.
+  3. **Elle passait par `bande()`**, les bandes générales de seize points, là où une entente
+    a ses huit bandes resserrées et sa direction depuis le 27/09 : mesuré, **4 lectures sur
+    6** et la plus fréquente à 45 %.
+  - **La case est retirée**, comme elle l'a été côté joueur·euse le 02/10 et pour la même
+    raison : c'est au mot près la moyenne de trois nombres **déjà lisibles deux sections plus
+    bas**, dans la bonne voix et avec les bonnes bandes. Sa conséquence mécanique n'est pas
+    perdue — elle passe dans l'en-tête des trois lignes, là où les trois nombres sont
+    (« Leur moyenne est l'entente du vestiaire, et elle entre dans la force de l'équipe »).
+  - **ET LA SONDE A TROUVÉ DEUX AUTRES LECTEURS QUE JE N'AVAIS PAS VUS.** (a) `cDire()`
+    portait une branche `k === 'vestiaire'` qui renvoyait vers `MOTS.vestiaire` : devenue
+    morte avec la case, retirée pour qu'ajouter une clé à `CLIENS_VUS` ne la rouvre pas sans
+    qu'on le voie. (b) **`coach.js:818`, le bloc « Ce que ça change » après un match,
+    appelait `dire('supporters')`** au lieu de `cDire('supporters')` — donc « Ton nom circule
+    un peu » à un entraîneur là où son propre `CMOTS.supporters` dit « On attend de voir ».
+    Mesuré après : **zéro fuite sur 3 021 écrans de coach**, et plus aucun lecteur vivant de
+    `MOTS.*` dans les deux fichiers du mode.
+  - **LA LEÇON DE SONDE, ET C'EST LA CINQUIÈME FOIS** : la sonde de voix du 05/10 avait
+    conclu « une seule occurrence » avec des aiguilles **écrites de mémoire** (« tes
+    minutes », « ta note », « le banc »). Les aiguilles viennent maintenant de `MOTS`
+    lui-même, moins les phrases que `CMOTS` partage légitimement — sans cette soustraction
+    elle criait au défaut sur « Le stade t'apprécie » et « Il te fait confiance », qui sont
+    dans les deux vocabulaires et justes pour un coach. **Une sonde dont les aiguilles ne
+    sont pas lues dans le code mesure ce dont je me souviens, pas ce que le jeu dit.**
+  - **UNE CORRECTION À MOI, EN COURS DE MESURE.** J'ai d'abord annoncé que la moyenne des
+    lignes **saturait** en mode entraîneur·euse (médiane 98, 90ᵉ centile 99) et accusé
+    l'absence de rappel vers 50. **Les deux étaient faux** : le rappel existe (`cApresMatch`,
+    identique au joueur·euse), et les 98 venaient de **ma politique de sonde**, qui prenait la
+    séance vestiaire une semaine sur quatre. Mesuré proprement : médiane **97 avec cette
+    séance, 77 sans, 60 en ne faisant que du repos** — et **77 en mode joueur·euse**, soit
+    exactement la même jauge des deux côtés. Il n'y avait rien à corriger dans le moteur.
+  - **Vérifié** : la fiche rendue sur 901 semaines, **zéro case en double, zéro fuite de
+    voix, zéro rendu douteux**, les trois lignes toujours présentes 3 sur 3 ; les invariants
+    du tableau des notes à zéro écart sur 850 matchs ; **à graine fixe, les mêmes 680 scores,
+    680 notes, 149 mercredis et 20 classements** qu'avant — lot d'affichage, aucun chiffre du
+    moteur ne bouge ; `tests/simulate.js` → `ERRORS: none` ; migration sur une vraie partie
+    d'entraîneur·euse de la version déployée (deux saisons entières, 22 joueurs, zéro
+    doublon) ; **aucune migration** (`VERSION` reste à 15 : aucun champ de sauvegarde ne
+    change).
+
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).
 - Tout l'état d'une carrière est dans l'objet global `state` (sérialisé dans localStorage). `state.pendingChoice` désigne l'écran courant ; `render()` dans `ui.js` dispatche.

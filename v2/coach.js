@@ -815,7 +815,12 @@ function cFinirMatch(){
   const mot = (k, up, txt) => m.mvt.push({ k, up, mot: txt });
   if (S.liens.president - g0.president <= -1.6) mot('president', false, cDirePresident());
   if (S.liens.president - g0.president >= 1.6) mot('president', true, cDirePresident());
-  if (Math.abs(S.liens.supporters - g0.supporters) >= 2.4) mot('supporters', S.liens.supporters > g0.supporters, dire('supporters'));
+  /* `cDire` et non `dire` : la seconde lit `MOTS`, le vocabulaire du joueur·euse, et
+     sortait donc « Ton nom circule un peu » à un entraîneur là où son propre
+     `CMOTS.supporters` dit « On attend de voir ». Trouvé par la sonde de voix du
+     05/10, qui ne l'avait pas vu la première fois parce que ses aiguilles étaient
+     écrites de mémoire au lieu d'être prises dans `MOTS`. */
+  if (Math.abs(S.liens.supporters - g0.supporters) >= 2.4) mot('supporters', S.liens.supporters > g0.supporters, cDire('supporters'));
   LIGNES.forEach(k => { if (Math.abs(S.lignes[k] - l0[k]) >= 1.4)
     mot('vestiaire', S.lignes[k] > l0[k], `${LIGNE_NOM[k]} : ${minuscule(direLigne(k))}`); });
   if (S.tribune) mot('presse', false, "Tu regarderas le prochain match depuis la tribune.");
@@ -2191,7 +2196,12 @@ const CMOTS = {
   supporters: ["Le stade te siffle.", "On ne te croit pas.", "On attend de voir.",
     "Le stade t'apprécie.", "Le stade t'attend.", "C'est ton stade."],
 };
-function cDire(k){ return k === 'vestiaire' ? MOTS.vestiaire[bande(vestiaire())] : CMOTS[k][bande(S.liens[k])]; }
+/* `cDire` ne lit que `CMOTS`, le vocabulaire du coach. Elle portait une branche
+   `k === 'vestiaire'` qui renvoyait vers `MOTS.vestiaire`, celui du joueur·euse :
+   c'est l'autre porte par laquelle la mauvaise voix entrait, et elle est devenue
+   morte en même temps que la case. Retirée, pour qu'ajouter une clé à `CLIENS_VUS`
+   ne la rouvre pas sans qu'on le voie. */
+function cDire(k){ return CMOTS[k][bande(S.liens[k])]; }
 function cDirePresident(){ return CMOTS.president[bande(S.liens.president)]; }
 /* Ce que chaque jauge change, écrit sous la phrase : la règle du projet, sans quoi
    rebrancher une jauge ne se voit pas. Les seuils sont ceux du moteur. */
