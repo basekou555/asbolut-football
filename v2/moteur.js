@@ -992,6 +992,7 @@ function relireClubSq(){
   });
   joueurs.forEach(j => { j.forme = 0; j.blesse = 0; j.susp = 0; j.rancune = 0;
     j.note = null; j.noteR = null; j.sum = 0; j.nb = 0; j.sumR = 0; j.nbR = 0;
+    j.sB = 0; j.sP = 0; j.sJ = 0; j.sRC = 0; j.sMin = 0;
     delete j.monte; });
   /* Le partage : à ton poste, les meilleurs sont tes rivaux, les autres des
      coéquipiers. Il se refait chaque été — donc une recrue peut passer devant toi,
@@ -2800,7 +2801,7 @@ function lancerMatch(){
     /* Un but a souvent un passeur, et jusqu'ici seul le tien existait : les
        coéquipiers marquaient tout seuls. Le film le dit, et la note le compte. */
     if (!e.passeMoi && Math.random() < .55){
-      const p = surLeBanc(m, e.min, 'but');
+      const p = surLeBanc(m, e.min, 'passe');
       if (p !== e.qui) e.passe = p;
     }
   });
@@ -3710,6 +3711,20 @@ function finirMatch(){
     S.sansJouer = 0;
     S.stats.matchs++; S.stats.minutes += m.minutes; S.stats.buts += m.buts; S.stats.passes += m.passes;
     S.stats.notes.push(m.note); if (m.statut === 'titulaire') S.stats.titus++;
+    /* LA MÊME PORTÉE QUE TES COÉQUIPIERS, sinon la colonne de l'effectif ne veut
+       rien dire. `S.stats.buts` compte toutes les compétitions ; un coéquipier n'a
+       aucune statistique le mercredi (`finirAnnexe` n'appelle pas `notesEquipe` —
+       le mercredi se lit, il ne s'opère pas). Mesuré avant de poser ces compteurs :
+       la somme des buts de l'effectif dépassait d'un but ce que le club avait
+       marqué en championnat, et c'était ta ligne à toi. `S.stats.ch` ne compte que
+       le championnat, et c'est elle que l'effectif affiche. */
+    S.stats.ch = S.stats.ch || { b:0, p:0, ja:0, ro:0, min:0 };
+    S.stats.ch.b += m.buts; S.stats.ch.p += m.passes; S.stats.ch.min += m.minutes;
+    /* Les cartons se comptent comme `poidsCartons()` les compte — un fait de match
+       incrémente `m.jaune`, le moteur pousse un événement : il faut les deux, et
+       `m.rouge` n'est posé que plus bas, donc on ne peut pas le lire ici. */
+    S.stats.ch.ja += (m.evs || []).filter(e => e.type === 'jaune' && e.moi).length + (m.jaune || 0);
+    S.stats.ch.ro += (m.evs || []).some(e => e.type === 'rouge' && e.moi) ? 1 : 0;
     /* Entrer en jeu coûte moins que commencer : on arrive frais, sur une demi-heure.
        Depuis que tu entres 71 % des fois où tu es sur le banc, le total de minutes
        a bondi et la fraîcheur s'effondrait — « lever le pied » redevenait la
@@ -3906,9 +3921,29 @@ function surLeTerrainA(m, min){
 /* Qui marque, qui prend le carton, qui sort blessé : quelqu'un qui est vraiment
    sur le terrain. `coequipier()` tirait un nom au hasard dans la liste des noms,
    donc un buteur qui ne joue même pas au club. */
+/* UN DÉFENSEUR CENTRAL NE MARQUE PAS AUTANT QU'UN ATTAQUANT (le propriétaire,
+   04/10/2026, en demandant les statistiques de l'effectif : la première version de
+   l'écran affichait des défenseurs à cinq buts, et c'était vrai). Le buteur était
+   tiré **uniformément** parmi les dix joueurs de champ sur le terrain : comme il y a
+   quatre défenseurs pour deux attaquants, la défense prenait mécaniquement le plus
+   gros paquet. Mesuré sur 612 matchs, avant : buts D 38 % · M 40 % · A 22 %, et les
+   passes décisives pareil. C'est l'inverse du football. Le tirage est maintenant
+   pondéré par le poste — un but part devant, une passe décisive part du milieu — et
+   les cartons restent uniformes, parce que la mesure les donnait déjà justes
+   (D 40 % · M 38 % · A 12 % · G 9 %). */
+const POIDS_BUTEUR = { A:7, M:2.4, D:1.1, G:0 };
+const POIDS_PASSEUR = { M:3.4, A:2.2, D:.9, G:0 };
 function surLeBanc(m, min, genre){
-  const l = surLeTerrainA(m, min).filter(x => !x.moi && (genre !== 'but' || x.poste !== 'G'));
-  return l.length ? pick(l).nom : coequipier();
+  const l = surLeTerrainA(m, min).filter(x => !x.moi
+    && ((genre !== 'but' && genre !== 'passe') || x.poste !== 'G'));
+  if (!l.length) return coequipier();
+  const w = genre === 'but' ? POIDS_BUTEUR : genre === 'passe' ? POIDS_PASSEUR : null;
+  if (!w) return pick(l).nom;
+  const tot = l.reduce((a, x) => a + (w[x.poste] || 0), 0);
+  if (tot <= 0) return pick(l).nom;
+  let r = Math.random() * tot;
+  for (const x of l){ r -= w[x.poste] || 0; if (r <= 0) return x.nom; }
+  return l[l.length - 1].nom;
 }
 function notesEquipe(m){
   /* LA MÊME SOIRÉE SE JUGE SUR UNE SEULE ÉCHELLE. `duelResultat()` fait suivre la
@@ -3963,6 +3998,14 @@ function notesEquipe(m){
       + cumul(f.b, POIDS_BUT_AUTRE) + f.p * PASSE_NOTE_AUTRE - f.j * .25 - f.r * 1.3 - (f.pm || 0) * 1.1;
     x.ref.note = Math.round(plafonnerNote(n) * 10) / 10;
     x.ref.sum = (x.ref.sum || 0) + x.ref.note; x.ref.nb = (x.ref.nb || 0) + 1;
+    /* CE QU'ILS FONT SUR LA SAISON, PAS SEULEMENT CE SOIR (le propriétaire,
+       04/10/2026 : « j'aimerais bien savoir les stats des joueurs, qui fait des
+       passes décisives, etc. »). Les faits du match existaient déjà, nommés, pour
+       la note et pour les pastilles — ils n'étaient simplement jamais additionnés.
+       Ce sont les **mêmes** faits, donc l'effectif ne peut pas contredire le film. */
+    x.ref.sB = (x.ref.sB || 0) + f.b; x.ref.sP = (x.ref.sP || 0) + f.p;
+    x.ref.sJ = (x.ref.sJ || 0) + f.j; x.ref.sRC = (x.ref.sRC || 0) + f.r;
+    x.ref.sMin = (x.ref.sMin || 0) + minutes;
     // une bonne note, c'est une place la semaine prochaine
     bougerForme(x.ref, (x.ref.note - 6.1) * .9 * a);
     /* CE QU'ILS ONT FAIT SE LIT À CÔTÉ DE LEUR NOTE (le propriétaire, 27/09/2026 :
@@ -4043,14 +4086,19 @@ function effectifTrie(){
   const l = [];
   S.equipe.forEach(j => l.push({ nom:j.nom, poste:j.poste, age:j.age, nb:j.nb || 0,
     moy: moyDe(j), res: moyReserve(j), nbR: j.nbR || 0,
+    b:j.sB || 0, p:j.sP || 0, ja:j.sJ || 0, ro:j.sRC || 0, min:j.sMin || 0,
     cle: LIGNE_DU_POSTE[j.poste], monte: !!j.monte,
     blesse: j.blesse > 0, susp: j.susp > 0, boude: (j.rancune || 0) > 1.5 }));
   if (S.mode !== 'coach'){
     S.concurrents.forEach(c => l.push({ nom:c.nom, poste:S.moi.poste, age:c.age, nb:c.nb || 0,
       moy: moyDe(c), res: moyReserve(c), nbR: c.nbR || 0,
+      b:c.sB || 0, p:c.sP || 0, ja:c.sJ || 0, ro:c.sRC || 0, min:c.sMin || 0,
       cle: LIGNE_DU_POSTE[S.moi.poste], rival:true, blesse: c.blesse > 0 }));
     l.push({ nom:S.moi.nom, poste:S.moi.poste, age:S.moi.age, nb:S.stats.notes.length,
       cle: LIGNE_DU_POSTE[S.moi.poste],
+      b:(S.stats.ch || {}).b || 0, p:(S.stats.ch || {}).p || 0,
+      ja:(S.stats.ch || {}).ja || 0, ro:(S.stats.ch || {}).ro || 0,
+      min:(S.stats.ch || {}).min || 0,
       moy: S.stats.notes.length ? moyenneNotes() : null, moi:true });
   }
   return l.sort((a, b) => (b.moy == null ? -1 : b.moy) - (a.moy == null ? -1 : a.moy));
@@ -5293,7 +5341,8 @@ function demarrerSaison(club, reste){
   S.etats = { fraicheur: S.ete ? S.ete.fraicheur : 100, forme:60, blessure:0, suspension:0,
     corps: clamp((S.etats.corps || 88) + (S.ete ? S.ete.corps : 0), 0, cibleCorps()),
   };
-  S.stats = { matchs:0, titus:0, buts:0, passes:0, notes:[], minutes:0, faits:0, faitsOk:0 };
+  S.stats = { matchs:0, titus:0, buts:0, passes:0, notes:[], minutes:0, faits:0, faitsOk:0,
+    ch: { b:0, p:0, ja:0, ro:0, min:0 } };
   S.promesses = []; S.brassard = 0; S.piqure = false; S.prolonge = false; S.reprise = 0;
   S.selecVue = null;
   S.selec = S.selec || { dedans:false, caps:0, buts:0, passes:0, notes:[] };

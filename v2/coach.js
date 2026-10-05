@@ -209,6 +209,14 @@ function cLireEffectif(){
       forme:0, blesse:0, susp:0, prog:0, note:null });
   });
   S.equipe = l; S.concurrents = [];
+  /* LA SAISON REPART DE ZÉRO, et elle ne le faisait pas. `relireClubSq()` remet les
+     compteurs du joueur·euse chaque été ; ici rien ne les touchait, donc la moyenne
+     et les buts affichés dans l'effectif étaient ceux de **toute la carrière** du
+     joueur, pas de la saison. Trouvé en branchant les stats de l'effectif
+     (04/10/2026) : sans cette ligne, « 23 buts » ne voulait rien dire. */
+  S.equipe.forEach(j => { j.forme = 0; j.blesse = 0; j.susp = 0; j.rancune = 0;
+    j.note = null; j.noteR = null; j.sum = 0; j.nb = 0; j.sumR = 0; j.nbR = 0;
+    j.sB = 0; j.sP = 0; j.sJ = 0; j.sRC = 0; j.sMin = 0; });
   delete S.equipe.monte;
   S.equipe.forEach(j => delete j.monte);
   const jeune = S.equipe.filter(j => j.age <= 22).sort((a, b) => a.age - b.age)[0];

@@ -223,6 +223,10 @@ button.chip.on{border-color:var(--gold);color:var(--gold);background:color-mix(i
 .lineup .n{font-variant-numeric:tabular-nums;color:var(--gold);font-weight:600;font-size:12.5px}
 .lineup .s{grid-column:1/-1;color:var(--muted);font-size:10.5px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* ce qu'il a fait de sa saison : buts, passes, cartons, minutes */
+.lineup .f{grid-column:1/-1;font-size:10.5px;margin-top:2px;
+  font-variant-numeric:tabular-nums;letter-spacing:.2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lineup .me{outline:1px solid var(--gold-dim)}
 .lineup .out{opacity:.5}
 
