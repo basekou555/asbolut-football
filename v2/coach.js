@@ -744,6 +744,18 @@ function cFinirMatch(){
   c[m.adv.nom].j++; c[m.adv.nom].bp += m.be; c[m.adv.nom].bc += m.bn;
   c[m.adv.nom].pts += res === 'D' ? 3 : res === 'N' ? 1 : 0;
   c[m.adv.nom][res === 'D' ? 'v' : res === 'N' ? 'n' : 'd']++;
+  /* LES AUTRES MATCHS DE LA JOURNÉE SE JOUENT ICI, PAS UN ÉCRAN PLUS TARD (le
+     propriétaire, 05/10/2026 : « des fois je suis à une position du classement, je
+     gagne un match, et je descends au classement… j'ai l'impression que le classement
+     évolue d'une manière incompréhensible »). Il avait raison, et la cause est un
+     défaut d'ordre : `autresMatchs()` était appelé dans `cApresMatch()`, c'est-à-dire
+     **après** que tu as lu l'écran de résultat. Le classement de cet écran comptait
+     donc ton match et aucun des huit autres — mesuré : **un match d'écart entre les
+     clubs à 100 % des journées**. Tu te voyais deuxième sur une journée incomplète,
+     puis la semaine suivante affichait la vraie journée et tu avais « descendu en
+     gagnant ». Le mode joueur·euse le fait correctement depuis toujours, dans
+     `finirMatch()` : c'était une asymétrie, pas un choix. */
+  autresMatchs();
   m.res = res;                      // avant les notes : elles le lisent
   notesEquipe(m);
   S.stats.j++; S.stats[res === 'V' ? 'v' : res === 'N' ? 'n' : 'd']++;
@@ -819,7 +831,6 @@ function cApresMatch(){
      ferme tous les deux : il relève le bas et il empêche le haut de se figer. C'est le
      même correctif qu'on a dû faire au stade le 29/09 et aux proches du joueur·euse. */
   if (S.vie) bougerProches((cibleProches() - S.vie.proches) * RAPPEL_PROCHES);
-  autresMatchs();
   /* UN GROUPE VIDÉ SE BLESSE, et c'est la seule conséquence mécanique de la
      fraîcheur collective en dehors de la force du samedi. C'est la même règle que
      celle validée pour le joueur·euse le 30/09 (« la fraîcheur ne se régénère pas
@@ -1404,9 +1415,19 @@ function cRangEtranger(pays, force, dk){
     .map(x => clamp(52 + x.s * PENTE_CLUB, 44, 74)).sort((a, b) => b - a).slice(0, 18);
   return clamp(fs.filter(f => f > force).length + 1, 1, 18);
 }
+/* TON CLUB PEUT AVOIR DISPARU DU CHAMPIONNAT, ET C'ÉTAIT UN PLANTAGE (trouvé en
+   mesurant, 05/10/2026 — défaut antérieur à ce lot). Hors de France il n'y a pas de
+   division inférieure : les trois derniers **quittent l'élite** et `renouvelerElite()`
+   les retire de `S.ligue.equipes`, en posant `S.clubDescendu`. Le mode joueur·euse le
+   lit depuis le 02/10 (une offre garantie, `S.libre` forcé) ; le mode
+   entraîneur·euse ne le lisait **nulle part**. Un coach pouvait donc « rester » dans un
+   club absent du championnat, et `cFinirMatch()` plantait à la première journée sur
+   `c[S.club.nom].j++` — le classement n'a pas de ligne pour un club qui n'y est plus.
+   Trois conséquences ici : l'offre est **garantie**, rester est **impossible**, et si
+   personne n'appelle le parcours s'arrête proprement au lieu de planter. */
 function cGenererOffres(){
   const cote = cCote();
-  const libre = !!S.vire || (S.bilan && S.liens.president < 32);
+  const libre = !!S.vire || (S.bilan && S.liens.president < 32) || !!S.clubDescendu;
   /* UN ENTRAÎNEUR AUSSI PEUT PARTIR. Les mêmes règles que pour le joueur·euse : seuls
      les clubs d'histoire appellent de l'étranger, et avant Bosman c'est rare. */
   const dkO = typeof decadeKey === 'function' ? decadeKey(S.annee) : '10';
@@ -1421,7 +1442,23 @@ function cGenererOffres(){
     const d = e.force - cote;
     return d <= 0 ? Math.exp(-Math.abs(d) / 7) : Math.exp(-d / 3.2);
   };
-  const n = clamp(1 + (libre ? 1 : 0) + (S.bonusOffres || 0) + (Math.random() < .45 ? 1 : 0), 1, 4);
+  /* COMBIEN DE CLUBS T'APPELLENT, ET ÇA DÉPEND DE DEUX JAUGES (le propriétaire,
+     05/10/2026 : « ça fait trois quatre saisons, j'ai qu'une seule proposition de
+     club »). C'était arithmétique : sous contrat, le nombre d'offres valait
+     `1 + Bernoulli(0,45)` — donc **une seule offre 55 % des étés** quand on ne prend
+     pas l'arrêt qui donne `bonusOffres`, et trois ou quatre étés de suite comme ça
+     arrive une fois sur six. Mesuré sur 76 intersaisons sous contrat avec cet
+     arrêt : 17 % à une seule offre, et 0 % une fois libre.
+     Rien là-dedans ne dépendait de ce qu'il construit. `cAppel()` branche les deux
+     jauges qui le disent déjà en mots : **la presse** — dont `cPourquoi('presse')`
+     promettait « c'est elle qui fait qu'un autre club pense à toi » sans aucune
+     lecture mécanique, sa première — et **le réseau**, qui ne servait qu'à la cote.
+     Un coach dont on parle reçoit trois ou quatre dossiers ; un coach dont personne ne
+     parle en reçoit un, et c'est alors une conséquence, pas un tirage. */
+  const appel = cAppel();
+  const n = clamp(1 + (libre ? 1 : 0) + (S.bonusOffres || 0)
+    + (Math.random() < .5 + appel * .35 ? 1 : 0)
+    + (Math.random() < .18 + appel * .3 ? 1 : 0), 1, 4);
   const l = [];
   for (let k = 0; k < n; k++){
     const cand = tous.filter(e => !l.some(o => o.nom === e.nom));
@@ -1469,10 +1506,17 @@ function cSignerOffre(){
   S.liens.president = 58; S.liens.direction = 50; S.liens.supporters = 46; S.liens.presse = clamp(S.liens.presse);
   S.saisonsClub = 0;
   poserSalaire(o.salaire);
+  S.clubDescendu = false;
   jrn('offre', `Tu signes à ${club.nom} (${nomDivision(S.division)}), ${sous(o.salaire)} par an.`);
   cDemarrerSaison();
 }
 function cResterAuClub(){
+  /* On ne reste pas dans un club qui n'est plus dans le championnat (voir
+     `cGenererOffres()`). S'il n'y a plus personne à qui dire oui, le parcours
+     s'arrête — c'est la fin de carrière du joueur·euse quand le téléphone ne sonne
+     plus, et elle a sa phrase dans le bilan. */
+  if (S.clubDescendu && !(S.ligue.equipes || []).some(e => e.nom === S.club.nom))
+    return cFinCarriere("ton club a quitté l'élite, et personne n'a rappelé");
   /* Rester, c'est renégocier : ce que le club lâche dépend de ce qu'il pense de toi. */
   const v = cSalaire() * clamp(1 + (S.liens.president - 50) * .006, .8, 1.25);
   poserSalaire(Math.round(v * 1000) / 1000);
@@ -1743,9 +1787,23 @@ function cMotRelais(){
     : r >= -.5 ? "tu décroches peu, et on te propose peu"
     : "personne ne te sort rien : le bureau, c'est aussi du travail";
 }
+/* LA FOURCHETTE EST LA SIENNE (le propriétaire, 05/10/2026 : « j'ai lu quelque part 20 ou
+   30 dossiers lors du mercato, c'est beaucoup — une dizaine ça suffit, entre 7 et 15 je
+   dirais, même entre 7 et 15 c'est suffisant, 30 c'est trop »). Mesuré sur la version
+   livrée ce matin, la pile allait déjà de **7 à 12 l'été et 4 à 8 l'hiver** : les 20 ou 30
+   qu'il a lus sont le nombre de **candidats** que la liste interne rassemble avant la
+   composition, pas la table. Il reste que l'hiver pouvait descendre à quatre. Les deux
+   fenêtres tiennent maintenant dans sa fourchette : **7 à 13 l'été, 5 à 9 l'hiver.** */
+/* Ce que le monde du football sait de toi : la presse pour six dixièmes (c'est elle
+   qui porte ton nom ailleurs), le réseau pour quatre (c'est lui qui décroche). Même
+   forme et même dénominateur que `cRelais()`, pour une raison simple : ces jauges
+   vivent dans la même bande. */
+function cAppel(){
+  return clamp((((S.liens.presse || 50) - 50) * .6 + (cAxe('reseau') - 50) * .4) / 28, -1, 1);
+}
 function cNbDossiers(hiver){
-  const base = hiver ? 6 : 9, amp = hiver ? 2 : 3;
-  return Math.max(3, Math.round(base + cRelais() * amp));
+  const base = hiver ? 7 : 10, amp = hiver ? 2 : 3;
+  return clamp(Math.round(base + cRelais() * amp), 5, 13);
 }
 /* À QUEL POSTE ON TE PROPOSE QUELQU'UN. Un tirage uniforme sur quatre postes donnait
    **un dossier sur quatre pour un gardien** alors qu'un groupe en compte trois sur
@@ -2140,7 +2198,8 @@ function cPourquoi(k){
     ? "Elle peut te protéger une fois si le président lâche, elle te laisse la main sur l'argent des ventes, et elle te sort des dossiers au mercato."
     : "Elle ne s'interposera pas, elle garde sa part sur l'argent des ventes, et elle ne se fatigue pas à te trouver des joueurs.";
   if (k === 'presse') return S.liens.presse > 56
-    ? "C'est elle qui fait qu'un autre club pense à toi." : "Personne ne parle de toi ailleurs.";
+    ? "On parle de toi ailleurs : plus de clubs t'appelleront en juin."
+    : "Personne ne parle de toi ailleurs — et en juin, le téléphone sonne une fois.";
   if (k === 'supporters'){
     const v = S.liens.supporters;
     return v >= 72 ? "À domicile, ils vous portent : un demi-terrain de plus."

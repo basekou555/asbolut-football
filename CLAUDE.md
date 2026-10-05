@@ -3252,6 +3252,97 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     points au-dessus du sien, ce qui est voulu, mais son effet cumulé sur vingt saisons reste à
     mesurer si le championnat lui paraît trop facile à rattraper.
 
+- **LE CLASSEMENT NE PEUT PLUS MENTIR, ET L'ARGENT A L'ÉCHELLE DE SON ÉPOQUE** (le propriétaire,
+  05/10/2026, quatre points en jouant le haut du championnat anglais aujourd'hui). Les quatre
+  étaient justes ; deux étaient des défauts, un était une mesure à refaire, un était une demande.
+  1. **GAGNER ET DESCENDRE : UN DÉFAUT D'ORDRE, ET IL N'ÉTAIT QUE CÔTÉ COACH** (« des fois je suis
+     à une position du classement, je gagne un match, et je descends… j'ai l'impression que le
+     classement évolue d'une manière incompréhensible »). `autresMatchs()` était appelé dans
+     `cApresMatch()`, c'est-à-dire **après** que tu as lu l'écran de résultat : le classement de cet
+     écran comptait donc ton match et **aucun des huit autres**. Mesuré sur 329 matchs : **un match
+     d'écart entre les clubs à 100 % des journées**. Tu te voyais deuxième sur une journée
+     incomplète, puis la semaine suivante affichait la vraie journée — d'où « j'ai gagné et je suis
+     descendu ». Le mode joueur·euse le fait correctement depuis toujours, **dans `finirMatch()`** :
+     c'était une asymétrie, pas un choix. Déplacé dans `cFinirMatch()`, juste après le classement.
+     Mesuré après : **écart max 0, 0 % des journées**, et **zéro victoire suivie d'une descente** sur
+     614 matchs (le tri reste points, puis différence de buts, puis buts marqués — un soir où un
+     rival à égalité gagne 5-0 quand tu gagnes 1-0 peut encore te passer, et c'est du football).
+  2. **L'ARGENT ÉTAIT CINQ FOIS TROP PETIT AU SOMMET DE L'ÉPOQUE MODERNE** (« les montants de
+     transfert se comptent en millions d'euros, mais genre 1 million, 2 millions — ça ressemble pas
+     du tout aux montants des clubs qui jouent à ce niveau-là »). Mesuré, Manchester City en 2024 :
+     meilleur joueur **21,8 M€**, budget de transfert **24,6 M€**, plafond salarial **99,6 M€**.
+     Le levier est **chirurgical** : `moneyScale` n'est lu **que par `money()`** — c'est un facteur
+     d'affichage pur, donc le multiplier **par quatre** change tous les montants lus et **aucune
+     mécanique** (pas un plafond, pas un budget, pas une valeur, pas un arbitrage). Il est appliqué
+     aux **sept** époques pour que les rapports entre elles ne bougent pas d'un pouce : seul le
+     niveau absolu monte. Mesuré après, même club : **meilleur joueur 55,2 M€, budget 157,7 M€,
+     plafond 629 M€**, et des dossiers à 145 et 162 M€ sur la table.
+     **Une erreur de mesure à ne pas refaire** : ma première lecture annonçait un budget de **48 k€**
+     pour Manchester City. C'était la sonde — elle changeait `S.club` sans rappeler
+     `cPoserPlafond()`, donc le plafond restait celui du club de départ. Le jeu, lui, le repose à
+     chaque `cDemarrerSaison()`, y compris juste après une signature.
+  3. **LA PILE N'A JAMAIS FAIT 20 OU 30 DOSSIERS** (« j'ai lu quelque part 20 ou 30 dossiers lors du
+     mercato, c'est beaucoup — entre 7 et 15 c'est suffisant »). Mesuré sur la version livrée le matin
+     même : **7 à 12 l'été, 4 à 8 l'hiver**. Les 20 ou 30 qu'il a lus sont le nombre de **candidats**
+     que la liste interne rassemble avant la composition, pas la table. Il restait que l'hiver pouvait
+     descendre à quatre : les deux fenêtres tiennent maintenant dans sa fourchette — **7 à 13 l'été,
+     5 à 9 l'hiver**.
+  4. **L'EFFECTIF SE TRIE** (« des fois j'ai besoin de trier par poste, des fois par note, des fois
+     par valeur marchande ; c'est cool si on peut appuyer sur la colonne et ça permet de la trier
+     dans un sens ou dans l'autre »). Les tuiles n'ont pas de colonnes à cliquer, donc ce sont des
+     pastilles : **par ligne · note · buts · minutes · âge · valeur**, et une deuxième pression
+     renverse le sens. `par ligne` garde les quatre blocs (c'est la lecture de football) ; les cinq
+     autres **aplatissent en une seule liste** — comparer des valeurs marchandes bloc par bloc ne
+     veut rien dire — et la tuile porte alors son poste, sinon on ne sait plus qui est qui parmi
+     vingt-deux. La **valeur marchande** entre dans la tuile et n'existe **qu'en mode
+     entraîneur·euse** : un joueur·euse ne vend personne, l'afficher serait un chiffre sans
+     conséquence. L'état du tri vit **hors de la sauvegarde** (comme `dashOpen` en 1.0) : c'est une
+     façon de regarder, pas une donnée de carrière. Vérifié : les six tris donnent six ordres
+     différents, et le renversement marche.
+  - **Vérifié** : `tests/simulate.js` → `ERRORS: none` (la 1.0 partage `eras.js`, donc le lot
+    l'affecte) ; carrières d'entraîneur·euse et de joueur·euse avec tous les écrans, zéro erreur,
+    zéro `undefined` / `NaN` / `[object Object]` ; le classement du coach à **écart 0** ;
+    **aucune migration** (`VERSION` reste à 15 : `moneyScale` est un facteur d'affichage, et l'état
+    du tri n'est pas sauvegardé).
+  5. **UN CLUB QUI N'EXISTE PLUS, ET UN PLANTAGE** (trouvé en mesurant, pas demandé — et
+     **antérieur à ce lot**). Hors de France il n'y a pas de division inférieure : les trois
+     derniers **quittent l'élite** et `renouvelerElite()` les retire de `S.ligue.equipes` en posant
+     `S.clubDescendu`. Le mode joueur·euse le lit depuis le 02/10 (offre garantie, `S.libre` forcé) ;
+     le mode entraîneur·euse ne le lisait **nulle part**. Un coach pouvait donc « rester » dans un
+     club absent du championnat, et `cFinirMatch()` plantait à la première journée sur
+     `c[S.club.nom].j++` — le classement n'a pas de ligne pour un club qui n'y est plus. Trouvé par
+     la sonde de carrières une fois qu'elle a su passer l'écran de préparation (avant, elle
+     s'arrêtait à la première saison et ne pouvait pas l'atteindre). Désormais `clubDescendu` force
+     `libre`, donc l'offre est garantie, rester est impossible, et si personne n'appelle le parcours
+     s'arrête proprement (`cFinCarriere`) au lieu de planter. Mesuré après : **10 carrières,
+     250 saisons, zéro erreur**, et 8 213 semaines sans un club absent du classement.
+  6. **UNE SEULE PROPOSITION DE CLUB PENDANT TROIS OU QUATRE SAISONS** (le propriétaire,
+     05/10/2026). C'était arithmétique : sous contrat, le nombre d'offres valait
+     `1 + Bernoulli(0,45)`, donc **une seule offre 55 % des étés** et quatre étés de suite comme ça
+     **9 % du temps** — et rien là-dedans ne dépendait de ce qu'il construit. `cAppel()` branche les
+     deux jauges qui le disent déjà en mots : **la presse**, dont `cPourquoi('presse')` promettait
+     « c'est elle qui fait qu'un autre club pense à toi » sans **aucune** lecture mécanique (c'est sa
+     première), et **le réseau**, qui ne servait qu'à la cote. Mesuré à jauges forcées, sous contrat
+     et sans l'arrêt qui donne un bonus — son cas exact, 400 tirages par ligne :
+     | | une seule offre | quatre étés de suite |
+     |---|---|---|
+     | avant (tirage pur) | **55 %** | 9,2 % |
+     | personne ne parle de toi (presse 34, réseau 44) | 62 à 64 % | 14 à 17 % |
+     | ordinaire (50 / 55) | **34 à 42 %** | 1,4 à 3,0 % |
+     | on parle de toi (72 / 78) | **10 à 15 %** | 0,0 % |
+     (deux passages de 400 tirages par ligne : l'écart entre les deux est le bruit
+     d'échantillonnage, deux erreurs-types sur une proportion de 38 %.)
+     Le cas le plus dur existe encore, et c'est voulu : il est maintenant la **conséquence** d'une
+     jauge négligée, pas un tirage. La phrase de la presse le dit (« Personne ne parle de toi
+     ailleurs — et en juin, le téléphone sonne une fois »).
+  - **Ce qui reste à décider, et c'est à lui** : (a) l'Angleterre paie **1,5 fois** la France depuis
+    2004 (`PAYS.EN.sal`), là où la réalité est plutôt deux à trois fois — ce facteur-là est
+    **mécanique** (il entre dans les salaires, donc dans les plafonds, les budgets et les valeurs),
+    donc le monter change l'équilibre entre championnats et se mesure avant ; (b) le salaire du coach
+    reste bas par rapport au reste (`cSalaireDe` a sa propre courbe, calibrée le 01/10 avant ce
+    changement d'échelle) : un grand d'Angleterre paierait son entraîneur une dizaine de millions, à
+    comparer aux 629 M€ de masse salariale de son effectif.
+
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).
 - Tout l'état d'une carrière est dans l'objet global `state` (sérialisé dans localStorage). `state.pendingChoice` désigne l'écran courant ; `render()` dans `ui.js` dispatche.

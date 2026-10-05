@@ -4169,7 +4169,13 @@ function moyDe(j){ return j.nb ? j.sum / j.nb : null; }
 function moyReserve(j){ return j.nbR ? j.sumR / j.nbR : null; }
 function effectifTrie(){
   const l = [];
+  /* `niv` et `val` servent au tri de l'effectif : trier par valeur marchande était
+     impossible sans elles. La valeur n'existe qu'en mode entraîneur·euse — un
+     joueur·euse ne vend personne, et l'afficher serait un chiffre sans conséquence. */
+  const vaut = j => (S.mode === 'coach' && typeof cValeur === 'function')
+    ? cValeur(j.niv, j.age) : null;
   S.equipe.forEach(j => l.push({ nom:j.nom, poste:j.poste, age:j.age, nb:j.nb || 0,
+    niv:j.niv, val: vaut(j),
     moy: moyDe(j), res: moyReserve(j), nbR: j.nbR || 0,
     b:j.sB || 0, p:j.sP || 0, ja:j.sJ || 0, ro:j.sRC || 0, min:j.sMin || 0,
     cle: LIGNE_DU_POSTE[j.poste], monte: !!j.monte,
