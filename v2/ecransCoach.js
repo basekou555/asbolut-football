@@ -396,7 +396,8 @@ function ecranCMercato(){
     <div class="step">Mercato ${m.hiver ? "d'hiver" : "d'été"} · ${esc(S.club.nom)}${m.deck.length
       ? ` · dossier ${m.idx + 1} sur ${m.deck.length}` : ''}</div>
     <div class="sheet" style="margin-top:0">
-      <div><span class="l">Budget de transfert</span><span class="v money">${esc(sous(m.budget))}</span></div>
+      <div><span class="l">Budget de transfert</span><span class="v money">${esc(sous(m.budget))}${
+        m.vendu ? `<i class="sub"> dont ${esc(sous(m.vendu))} des d\u00e9parts</i>` : ''}</span></div>
       <div><span class="l">Masse salariale</span><span class="v money">${esc(sous(masse))} / ${esc(sous(plafond))}</span></div>
       <div><span class="l">Effectif</span><span class="v">${(S.equipe || []).length} joueurs / ${C_CAP_EFFECTIF}</span></div>
     </div>
@@ -404,8 +405,9 @@ function ecranCMercato(){
     <p class="sub">${reste > 0
       ? `Il te reste ${esc(sous(reste))} de masse salariale avant le plafond.`
       : `Tu es au-dessus du plafond de ${esc(sous(-reste))}. Le président compte les journées.`}</p>
-    ${mien.length ? `<div class="lack"><b>On est venu te prendre ${mien.length === 1 ? 'un joueur' : `${mien.length} joueurs`}.</b>
-      <span class="sub">${mien.map(x => `${esc(x.nom)} → ${esc(x.vers || "l'étranger")}`).join(' · ')}</span></div>` : ''}
+    ${mien.length ? `<div class="lack"><b>On est venu te prendre ${mien.length === 1 ? 'un joueur' : `${mien.length} joueurs`}${
+      m.vendu ? ` \u2014 ${esc(sous(m.vendu))} dans le budget` : ''}.</b>
+      <span class="sub">${mien.map(x => `${esc(x.nom)} \u2192 ${esc(x.vers || "l'\u00e9tranger")}`).join(' \u00b7 ')}</span></div>` : ''}
     ${cDossierHTML()}
     ${(m.in || []).length ? `<h3>Tes recrues</h3>${mvtHTML(m.in, 'in')}` : ''}
     ${(m.out || []).length ? `<h3>Tes départs</h3>${mvtHTML(m.out.map(o => ({ ...o, de: S.club.nom })), 'out')}` : ''}
