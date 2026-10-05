@@ -424,6 +424,10 @@ function ecranCMercato(){
       m.venduPart ? `<span class="sub">Le club en garde ${Math.round((1 - m.venduPart) * 100)} % \u2014 ${
         m.venduPart >= .86 ? "ils te laissent la main" : m.venduPart >= .74
         ? "la part habituelle" : "ils gardent large, et tu sais pourquoi"}.</span>` : ''}${
+      (S.equipe || []).length < C_CAP_EFFECTIF ? `<span class="sub">${
+        C_CAP_EFFECTIF - S.equipe.length === 1 ? "Une place est rest\u00e9e libre dans ton groupe"
+        : `${C_CAP_EFFECTIF - S.equipe.length} places sont rest\u00e9es libres dans ton groupe`} \u2014 \u00e0 toi de ${
+        C_CAP_EFFECTIF - S.equipe.length === 1 ? 'la' : 'les'} remplir, avec l'argent des d\u00e9parts.</span>` : ''}${
       duCentre.length ? `<span class="sub">${duCentre.length === 1
         ? `${esc(duCentre[0].nom)}, ${duCentre[0].age} ans, est mont\u00e9 du centre pour prendre la place.`
         : `${esc(etListe(duCentre.map(x => `${x.nom} (${x.age} ans)`)))} sont mont\u00e9s du centre pour prendre les places.`}</span>` : ''}</div>` : ''}

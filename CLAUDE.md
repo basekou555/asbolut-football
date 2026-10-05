@@ -3117,6 +3117,36 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     02/10 (`planChangements()` ne garantit pas deux minutes entre l'entrée et la sortie d'un même
     joueur) ; rien ici ne touche au moteur de match.
 
+- **TON CLUB GARDE LA PLACE LIBRE, IL NE REÇOIT PAS UN GAMIN QU'IL N'A PAS CHOISI** (le
+  propriétaire, 05/10/2026 : « pourquoi à l'intersaison on me rajoute des joueurs super nuls ? »).
+  **Mesuré avant, 139 arrivées sur 149 saisons** : le centre t'envoyait **0,93 joueur par été** à un
+  niveau médian de **42 quand ton club vaut 54** — douze points sous la force du club, huit sous le
+  onzième de ton effectif, et **le plus faible du groupe dans 43 % des cas**. Il avait raison, et
+  deux choses étaient fausses à la fois.
+  1. **Le gamin était trop mauvais** : `(vise) − rnd(4, 14)`. Un club qui perd un homme fait monter
+     son meilleur espoir, pas son quinzième : `rnd(3, 10)`.
+  2. **Et surtout, ton club ne devrait pas être comblé du tout.** Tu viens de toucher l'indemnité du
+     départ (lot du 04/10) : c'est à toi de la dépenser. `combleLeTrou()` laisse donc la place libre
+     dans ton groupe — l'écran la nomme (« Une place est restée libre dans ton groupe — à toi de la
+     remplir, avec l'argent des départs »), `cManque()` autorise déjà le recrutement puisque
+     l'effectif n'est plus au complet, et si tu n'en fais rien le centre la comble au tour suivant.
+     C'est une décision avec un coût, pas une punition.
+  - **Le plancher est ce qui empêche le groupe de fondre** (`PLANCHER_GROUPE` = 20) : sans lui, un
+    coach qui ne recrute jamais perdrait deux joueurs par été, indéfiniment. Mesuré sur le pire cas —
+    un coach qui ferme la fenêtre sans rien faire, 20 saisons : taille du groupe **min 21, médiane 21,
+    maximum 22, jamais sous 20**.
+  - **Uniquement en mode entraîneur·euse** : un joueur·euse ne compose pas son effectif, et un trou
+    laissé là affaiblirait son équipe sans qu'il puisse rien y faire. `combleLeTrou()` rend `true`
+    tout de suite hors mode coach.
+  - **Mesuré après** : **0,93 → 0,43 gamin par été** (il n'arrive plus que sous le plancher), niveau
+    médian **42 → 44**, écart au onzième **−8 → −7**, et il est le plus faible du groupe **43 % →
+    34 %**. Et la sonde ne recrute jamais : un coach qui utilise l'argent du départ n'en verra
+    pratiquement plus.
+  - **Vérifié** : 6 carrières entières d'entraîneur·euse (152 saisons) et **14 de joueur·euse** avec
+    tous les écrans, zéro erreur ; les sept invariants du tableau des notes à zéro écart ; migration
+    sur de vraies sauvegardes déployées des deux modes, deux saisons entières, zéro doublon ;
+    **aucune migration** (`VERSION` reste à 15).
+
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).
 - Tout l'état d'une carrière est dans l'objet global `state` (sérialisé dans localStorage). `state.pendingChoice` désigne l'écran courant ; `render()` dans `ui.js` dispatche.
