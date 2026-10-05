@@ -3025,6 +3025,41 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     en `display:block` ; et « A et B et C » n'est pas du français (`etListe()` : des virgules, un seul
     « et »).
 
+- **LE CLUB GARDE SA PART, ET UNE RÉGRESSION QUE J'AVAIS INTRODUITE** (le propriétaire,
+  05/10/2026, deux points).
+  1. **« 20 % de ce que le joueur rapporte va au club, le reste au budget de transfert, et ça varie
+     selon la direction et le président — enfin la relation avec eux. »** Sa règle est meilleure que
+     mon forfait à 55 % posé la veille : le club prend sa part, et **combien il t'en laisse dit ce
+     qu'il pense de toi**. `cPartVente()` = `clamp(.80 + (président−50)×.003 + (direction−50)×.002,
+     .62, .94)` — à 50-50 le club garde 20 %, au mieux 6 %, au pire 38 %. C'est une **deuxième
+     lecture mécanique** pour les deux jauges, qui n'en avaient qu'une chacune (la porte et le
+     facteur du budget de base), et l'écart d'un bout à l'autre vaut deux fois ce facteur. L'écran
+     le dit en trois lignes : « dont 246 k€ des départs », « **Ce que le club a gardé** · 53 k€ sur
+     299 k€ », et « Le club en garde **18 %** — la part habituelle » (ou « ils te laissent la main »
+     / « ils gardent large, et tu sais pourquoi »).
+  2. **« À chaque mise à jour je prends les stats de mes joueurs. »** C'était une **régression du
+     04/10, de moi** : la remise à zéro de la saison avait été posée dans `cLireEffectif()`, or
+     `demarrer()` l'appelle **à chaque chargement de page**. Donc chaque mise en ligne — et chaque
+     simple rechargement — effaçait les statistiques, la forme, **les blessures, les suspensions et
+     les rancunes** de tout le groupe. Mesuré sur la version en ligne, à la 14ᵉ journée : 20 buts,
+     9 passes, 13 860 minutes, 210 notes, une blessure et une suspension → **tout à zéro après
+     rechargement**. Recharger la page soignait donc l'infirmerie. `cLireEffectif(neuf)` ne remet à
+     zéro que sur les quatre sites du jeu (partie neuve, été, signature ailleurs, démarrage de
+     saison) ; la relecture d'une sauvegarde ne touche plus à rien. Mesuré après : **rien perdu**.
+  - **ET L'ERREUR-TYPE QUE JE N'AVAIS PAS, LA VOICI — elle démonte ce que j'avais rapporté la
+    veille.** Mesurée enfin : les titres par carrière ont un **écart-type de 1,95**, soit presque
+    leur moyenne. À 30 carrières, l'erreur-type vaut donc 0,36 et le « 2,23 → 3,03 » que j'avais
+    annoncé ne valait que 2,2 erreurs-types — et à 12 carrières avec la part à 80 % je mesure
+    **2,00 ± 0,56**, c'est-à-dire *en dessous* des deux. **Je ne peux donc pas dire que l'argent des
+    ventes change les titres**, dans un sens ni dans l'autre : il faudrait une centaine de carrières
+    par ligne pour distinguer 2,2 de 3,0. Ce qui est au-dessus du bruit, c'est le budget : moyenne
+    d'été **1,54 → 3,82**.
+  - **Vérifié** : 6 carrières entières d'entraîneur·euse (147 saisons) avec tous les écrans, zéro
+    erreur ; l'écran du mercato rendu sur quatorze fenêtres, les piles É10/H7, les trois lignes du
+    partage correctes ; le rechargement ne perd plus rien (comparé à la version en ligne, qui
+    perdait tout) ; migration sur de vraies sauvegardes déployées des deux modes, deux saisons
+    entières, zéro doublon. **Aucune migration** (`VERSION` reste à 15).
+
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).
 - Tout l'état d'une carrière est dans l'objet global `state` (sérialisé dans localStorage). `state.pendingChoice` désigne l'écran courant ; `render()` dans `ui.js` dispatche.

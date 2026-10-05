@@ -407,7 +407,9 @@ function ecranCMercato(){
       ? ` · dossier ${m.idx + 1} sur ${m.deck.length}` : ''}</div>
     <div class="sheet" style="margin-top:0">
       <div><span class="l">Budget de transfert</span><span class="v money">${esc(sous(m.budget))}${
-        m.vendu ? `<i class="sub"> dont ${esc(sous(m.vendu))} des d\u00e9parts</i>` : ''}</span></div>
+        m.vendu ? `<i class="sub"> dont ${esc(sous(m.vendu))} des d\u00e9parts</i>` : ''}</span></div>${
+      m.venduBrut ? `<div><span class="l">Ce que le club a gard\u00e9</span><span class="v money">${
+        esc(sous(Math.round((m.venduBrut - m.vendu) * 1000) / 1000))} <i class="sub">sur ${esc(sous(m.venduBrut))}</i></span></div>` : ''}
       <div><span class="l">Masse salariale</span><span class="v money">${esc(sous(masse))} / ${esc(sous(plafond))}</span></div>
       <div><span class="l">Effectif</span><span class="v">${(S.equipe || []).length} joueurs / ${C_CAP_EFFECTIF}</span></div>
     </div>
@@ -418,6 +420,9 @@ function ecranCMercato(){
     ${mien.length ? `<div class="lack"><b>On est venu te prendre ${mien.length === 1 ? 'un joueur' : `${mien.length} joueurs`}${
       m.vendu ? ` \u2014 ${esc(sous(m.vendu))} dans le budget` : ''}.</b>
       <span class="sub">${mien.map(x => `${esc(x.nom)} \u2192 ${esc(x.vers || "l'\u00e9tranger")}`).join(' \u00b7 ')}</span>${
+      m.venduPart ? `<span class="sub">Le club en garde ${Math.round((1 - m.venduPart) * 100)} % \u2014 ${
+        m.venduPart >= .86 ? "ils te laissent la main" : m.venduPart >= .74
+        ? "la part habituelle" : "ils gardent large, et tu sais pourquoi"}.</span>` : ''}${
       duCentre.length ? `<span class="sub">${duCentre.length === 1
         ? `${esc(duCentre[0].nom)}, ${duCentre[0].age} ans, est mont\u00e9 du centre pour prendre la place.`
         : `${esc(etListe(duCentre.map(x => `${x.nom} (${x.age} ans)`)))} sont mont\u00e9s du centre pour prendre les places.`}</span>` : ''}</div>` : ''}
