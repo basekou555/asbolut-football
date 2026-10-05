@@ -170,8 +170,8 @@ function cAnnexeHTML(a){
     : `Tu as fait tourner : ${a.cadres} cadres seulement. `;
   return `<h3>Mercredi — ${COMP_NOM[a.comp]}</h3>
     <div class="bloc ${ton}"><span class="i">${ico}</span><div>
-      <h4>${esc(tours[a.tour])} · ${a.bn}–${a.be} contre ${esc(a.adv)}${a.tab ? (a.tabNous ? ' (qualifiés aux tirs au but)' : ' (sortis aux tirs au but)') : a.prolong ? ' (après prolongation)' : ''}</h4>
-      <p class="narr" style="margin:0">${esc(rot)}${esc(cMotMercredi(fr))}</p></div></div>`;
+      <h4>${enTeteAnnexe(a, tours)}</h4>
+      <p class="narr" style="margin:0">${suiteAnnexeHTML(a)}${esc(rot)}${esc(cMotMercredi(fr))}</p></div></div>`;
 }
 function ecranCResultat(){
   const m = S.dernier;

@@ -738,6 +738,23 @@ function ecranMoment(){
    jouable comme suite de décisions, pas de matchs à opérer ». Ce qu'on en retient
    à l'écran : le résultat, ton temps de jeu, et ce que ça coûte à samedi. */
 const COMP_NOM = { coupe:"Coupe", euro:"Europe" };
+/* LE RÉSULTAT SE DIT EN UN MOT. Il n'était porté que par la couleur du bloc, donc
+   un 1-1 se lisait comme une victoire ou une défaite selon le ton — et un nul de
+   phase de groupes ne se lisait pas du tout. Le mot vient du **score**, et la
+   qualification (`a.suite`, décidée dans le moteur) dit la suite juste après : les
+   tirs au but et la prolongation sont dans cette phrase-là, où elles décident
+   vraiment de quelque chose. */
+function motScore(a){
+  return a.bn > a.be ? 'Victoire' : a.bn < a.be ? 'Défaite' : 'Match nul';
+}
+function enTeteAnnexe(a, tours){
+  return `${esc(tours[a.tour])} · ${motScore(a)} ${a.bn}–${a.be} contre ${esc(a.adv)}`;
+}
+/* `a.suite` manque aux sauvegardes prises avant ce lot : on se taise plutôt que
+   d'inventer une qualification depuis un état qui a déjà bougé. */
+function suiteAnnexeHTML(a){
+  return a.suite ? `<b>${esc(a.suite)}</b> ` : '';
+}
 function annexeHTML(a){
   if (!a) return '';
   const tours = a.comp === 'coupe' ? TOURS_COUPE : TOURS_EURO;
@@ -745,8 +762,8 @@ function annexeHTML(a){
   const ico = a.comp === 'coupe' ? '🏅' : '⭐';
   return `<h3>Mercredi — ${COMP_NOM[a.comp]}</h3>
     <div class="bloc ${ton}"><span class="i">${ico}</span><div>
-      <h4>${esc(tours[a.tour])} · ${a.bn}–${a.be} contre ${esc(a.adv)}${a.tab ? (a.tabNous ? ' (qualifiés aux tirs au but)' : ' (sortis aux tirs au but)') : a.prolong ? ' (après prolongation)' : ''}</h4>
-      <p class="narr" style="margin:0">${a.minutes
+      <h4>${enTeteAnnexe(a, tours)}</h4>
+      <p class="narr" style="margin:0">${suiteAnnexeHTML(a)}${a.minutes
         ? `Tu as joué ${a.minutes} min, note ${virg(a.note)}${a.buts ? `, ${a.buts} but${a.buts > 1 ? 's' : ''}` : ''}${a.passes ? `, ${a.passes} passe${a.passes > 1 ? 's' : ''} décisive${a.passes > 1 ? 's' : ''}` : ''}. Samedi partira de plus loin.`
         : a.statut === 'banc' ? `Tu étais sur le banc et tu n'es pas entré.`
         : `Tu n'étais pas du voyage.`}</p></div></div>`;

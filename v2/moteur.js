@@ -2539,19 +2539,44 @@ function finirAnnexe(info, m){
   suiteAnnexe(info, m);
   return m;
 }
+/* OÙ ÇA NOUS MÈNE, ÉCRIT NOIR SUR BLANC (le propriétaire, 05/10/2026 : « en coupe
+   et en Europe on ne sait jamais vraiment si on a gagné — un petit défaite ou
+   victoire et/ou qualification ne ferait pas de mal »). Il avait raison deux fois :
+   le résultat n'était porté que par la **couleur** du bloc (aucun mot), et la
+   qualification — que cette fonction calcule depuis toujours — n'était écrite que
+   dans le journal, c'est-à-dire nulle part au moment où on lit son match.
+   Elle est retenue sur `m.suite` **au moment où elle se décide**, et non recalculée
+   à l'affichage : l'écran de résultat se lit après samedi, donc `S.coupe` et
+   `S.euro` ont déjà pu bouger — la même leçon que `m.fr` côté coach. Un seul
+   endroit, donc les deux modes disent exactement la même chose. */
+const APRES_COUPE = ["les huitièmes", "les quarts", "la demi-finale", "la finale"];
+const APRES_EURO = { 6:"la demi-finale", 7:"la finale" };
+/* Comment on s'est départagés. Vide quand le match s'est joué en quatre-vingt-dix
+   minutes : la phrase n'a alors rien à préciser. */
+function motDepart(m){
+  return m.tab ? " aux tirs au but" : m.prolong ? " après prolongation" : "";
+}
 /* Ce que le résultat fait à la compétition : on avance, on sort, on compte. */
 function suiteAnnexe(info, m){
   const nom = info.c === 'coupe' ? 'Coupe' : 'Europe';
   if (info.c === 'coupe'){
     S.coupe.hist.push({ t:info.t, adv:m.adv, bn:m.bn, be:m.be, prolong:!!m.prolong, tab:!!m.tab, tabNous:!!m.tabNous });
+    const fin = info.t === TOURS_COUPE.length - 1;
     if (m.res === 'V'){
       S.coupe.tour = info.t + 1;
-      if (info.t === TOURS_COUPE.length - 1){
+      if (fin){
         S.coupe.vivant = false; S.coupe.gagnee = true;
+        m.suite = `🏆 Vous gagnez la Coupe${motDepart(m)}.`;
         jrn('trophee', `🏆 Vous gagnez la Coupe, ${m.bn}-${m.be} contre ${m.adv}.`);
-      } else jrn('coupe', `Coupe ${TOURS_COUPE[info.t]} : ${m.bn}-${m.be} contre ${m.adv}. Ça continue.`);
+      } else {
+        m.suite = `Qualifiés${motDepart(m)} pour ${APRES_COUPE[info.t]}.`;
+        jrn('coupe', `Coupe ${TOURS_COUPE[info.t]} : ${m.bn}-${m.be} contre ${m.adv}. Ça continue.`);
+      }
     } else {
       S.coupe.vivant = false;
+      /* « Éliminés en finale » ne se dit pas : on y perd, on n'en sort pas. */
+      m.suite = fin ? `Battus en finale${motDepart(m)}. La coupe vous échappe.`
+        : `Éliminés ${TOURS_COUPE[info.t]}${motDepart(m)}. La coupe s'arrête là.`;
       jrn('coupe', `Coupe : éliminés ${TOURS_COUPE[info.t]}, ${m.bn}-${m.be} contre ${m.adv}.`);
     }
     return;
@@ -2562,19 +2587,40 @@ function suiteAnnexe(info, m){
     if (info.t === 5){
       // deux qualifiés sur quatre : huit points suffisent presque toujours
       S.euro.vivant = S.euro.pts >= 8;
+      const pt = `${S.euro.pts} point${S.euro.pts === 1 ? '' : 's'}`;
+      m.suite = S.euro.vivant
+        ? `Qualifiés pour les quarts avec ${pt}.`
+        : `Éliminés en phase de groupes avec ${pt}.`;
       jrn('euro', S.euro.vivant
         ? `Europe : qualifiés pour les quarts avec ${S.euro.pts} points.`
         : `Europe : éliminés en phase de groupes avec ${S.euro.pts} points.`);
-    } else jrn('euro', `Europe, ${TOURS_EURO[info.t]} : ${m.bn}-${m.be} contre ${m.adv}.`);
+    } else {
+      /* En phase de groupes rien n'est encore joué : ce qu'on veut savoir, c'est où
+         on en est du compte. Huit points qualifient — autant le dire chaque fois.
+         Sauf quand ils sont déjà là : les points ne redescendent pas, donc à huit
+         avant la dernière journée c'est fait, et promettre un seuil déjà franchi
+         serait faux. */
+      const pts = `${S.euro.pts} point${S.euro.pts === 1 ? '' : 's'} en ${info.t + 1} journée${info.t ? 's' : ''}`;
+      m.suite = S.euro.pts >= 8 ? `${pts} — les huit sont là, les quarts sont joués.`
+        : `${pts} — il en faut huit pour passer.`;
+      jrn('euro', `Europe, ${TOURS_EURO[info.t]} : ${m.bn}-${m.be} contre ${m.adv}.`);
+    }
     return;
   }
+  const finE = info.t === J_EURO.length - 1;
   if (m.res === 'V'){
-    if (info.t === J_EURO.length - 1){
+    if (finE){
       S.euro.vivant = false; S.euro.gagnee = true;
+      m.suite = `🏆 Vous gagnez l'Europe${motDepart(m)}.`;
       jrn('trophee', `🏆 Vous gagnez l'Europe, ${m.bn}-${m.be} contre ${m.adv}.`);
-    } else jrn('euro', `Europe ${TOURS_EURO[info.t]} : ${m.bn}-${m.be} contre ${m.adv}. Ça continue.`);
+    } else {
+      m.suite = `Qualifiés${motDepart(m)} pour ${APRES_EURO[info.t]}.`;
+      jrn('euro', `Europe ${TOURS_EURO[info.t]} : ${m.bn}-${m.be} contre ${m.adv}. Ça continue.`);
+    }
   } else {
     S.euro.vivant = false;
+    m.suite = finE ? `Battus en finale${motDepart(m)}. L'Europe vous échappe.`
+      : `Éliminés ${TOURS_EURO[info.t]}${motDepart(m)}. L'Europe s'arrête là.`;
     jrn('euro', `Europe : éliminés ${TOURS_EURO[info.t]}, ${m.bn}-${m.be} contre ${m.adv}.`);
   }
 }
