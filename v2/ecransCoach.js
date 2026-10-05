@@ -372,25 +372,65 @@ function cDossierHTML(){
 /* L'effectif complet, pour vendre. C'est là qu'il choisit qui part (demande du
    propriétaire sur la 1.0 : « c'est là que je choisis qui vendre »). On ne propose le
    bouton que quand la vente est **possible** — jamais descendre sous le onze. */
+/* TRIER LA COLONNE, PAS UNE PASTILLE (le propriétaire, 05/10/2026 : « des fois j'ai
+   besoin de trier par poste, des fois par note, des fois par valeur marchande ; c'est
+   cool si on peut appuyer sur la colonne et ça permet de la trier dans un sens ou dans
+   l'autre »). Les pastilles de l'effectif répondaient à la moitié de sa demande, sur
+   l'écran de la semaine ; **ici** il y a de vraies colonnes, et c'est l'écran où il
+   choisit qui vendre — donc c'est là qu'il l'avait demandé, et c'est la colonne qu'on
+   appuie. Son état vit hors de la sauvegarde, comme `triEff` : c'est une façon de
+   regarder, pas une donnée de carrière. */
+const ORDRE_POSTE = { G:0, D:1, M:2, A:3 };
+let triVendre = { cle:'moy', sens:-1 };
+/* `sens` −1 = du plus grand au plus petit, comme les pastilles de l'effectif. Pour le
+   poste on trie sur l'ordre du terrain (gardien d'abord) et non sur la lettre, sinon
+   on lirait A · D · G · M. */
+const TRIS_VENDRE = [
+  { cle:'poste', nom:"Poste",   v: x => -(ORDRE_POSTE[x.poste] || 0) },
+  { cle:'nom',   nom:"Joueur",  v: x => x.nom, txt:true },
+  { cle:'age',   nom:"Âge",     v: x => x.age },
+  { cle:'moy',   nom:"Moy.",    r:true, v: x => x.moy == null ? -1 : x.moy },
+  { cle:'sal',   nom:"Salaire", r:true, v: x => x.sal },
+  { cle:'val',   nom:"Valeur",  r:true, v: x => x.val },
+];
+function cTrierVendre(cle){
+  if (triVendre.cle === cle) triVendre.sens = -triVendre.sens;
+  else triVendre = { cle, sens:-1 };
+  rendre();
+}
 function cVendreHTML(){
-  const l = effectifTrie();
+  /* On fabrique la ligne une fois — salaire et valeur comprise — pour que le tri lise
+     exactement les nombres affichés. La valeur est celle d'une vente (×.9), celle que
+     `cVendre()` te créditera. */
+  const l = effectifTrie().map(x => {
+    const j = (S.equipe || []).find(y => y.nom === x.nom);
+    return j ? Object.assign({}, x, { j, sal: cSalDe(j),
+      val: Math.round(cValeur(j.niv, j.age) * .9 * 1000) / 1000 }) : null;
+  }).filter(Boolean);
+  const t = TRIS_VENDRE.find(x => x.cle === triVendre.cle) || TRIS_VENDRE[3];
+  l.sort((a, b) => t.txt
+    ? String(t.v(a)).localeCompare(String(t.v(b)), 'fr') * -triVendre.sens
+    : (t.v(b) - t.v(a)) * -triVendre.sens);
+  const th = c => `<th${c.r ? ' class="r"' : ''}><button class="thtri${
+    triVendre.cle === c.cle ? ' on' : ''}" onclick="cTrierVendre('${c.cle}')">${esc(c.nom)}${
+    triVendre.cle === c.cle ? (triVendre.sens < 0 ? ' \u2193' : ' \u2191') : ''}</button></th>`;
   return `<div class="card no-sticky"><h3>Ton effectif · vends ici pour libérer du budget ou de la place</h3>
     <div class="scrollx"><table class="sq">
-      <thead><tr><th></th><th>Joueur</th><th>Âge</th><th class="r">Moy.</th><th class="r">Salaire</th><th class="r">Valeur</th><th></th></tr></thead>
+      <thead><tr>${TRIS_VENDRE.map(th).join('')}<th></th></tr></thead>
       <tbody>${l.map(x => {
-        const j = (S.equipe || []).find(y => y.nom === x.nom);
-        if (!j) return '';
+        const j = x.j;
         const peut = (S.equipe || []).filter(y => y.poste === j.poste).length > FORMATION[j.poste];
         return `<tr><td><span class="pos">${esc(j.poste)}</span></td>
           <td>${esc(j.nom)}${j.recrue ? ' <i class="sub">recrue</i>' : ''}</td>
           <td>${j.age}</td><td class="r">${x.moy == null ? '—' : virg(x.moy)}</td>
-          <td class="r money">${esc(sous(cSalDe(j)))}</td>
-          <td class="r money">${esc(sous(Math.round(cValeur(j.niv, j.age) * .9 * 1000) / 1000))}</td>
+          <td class="r money">${esc(sous(x.sal))}</td>
+          <td class="r money">${esc(sous(x.val))}</td>
           <td class="r">${peut ? `<button class="mini" onclick="cVendre('${j.nom.replace(/'/g, "\\'")}')">Vendre</button>`
             : `<span class="sub">le onze</span>`}</td></tr>`;
       }).join('')}</tbody>
     </table></div>
-    <p class="sub">Les montants sont exacts : rien n'est arrondi. Vendre un titulaire casse sa ligne — pas un remplaçant.</p>
+    <p class="sub">Appuie sur une colonne pour trier, une deuxième fois pour renverser le sens.
+      Les montants sont exacts : rien n'est arrondi. Vendre un titulaire casse sa ligne — pas un remplaçant.</p>
   </div>`;
 }
 function ecranCMercato(){

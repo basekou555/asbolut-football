@@ -3343,6 +3343,56 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     changement d'échelle) : un grand d'Angleterre paierait son entraîneur une dizaine de millions, à
     comparer aux 629 M€ de masse salariale de son effectif.
 
+- **LE TRI ÉTAIT AU MAUVAIS ENDROIT** (le propriétaire, 05/10/2026 : « tu as fait les boutons de
+  tri du mercato ? »). Non — et sa question était la bonne. Sa demande de la veille disait
+  « **au niveau du mercato** j'aimerais bien pouvoir trier l'effectif… c'est cool si on peut
+  appuyer sur **la colonne** et ça permet de la trier dans un sens ou dans l'autre », et j'avais
+  livré des **pastilles** sur l'effectif de **l'écran de la semaine**. Les deux moitiés de sa
+  phrase étaient fausses : pas le bon écran, et pas la bonne forme.
+  - **L'écran du mercato a un vrai tableau** (`cVendreHTML`, le seul `table.sq` du jeu) avec de
+    vraies colonnes, et c'est l'écran où l'on choisit qui vendre — donc c'est là qu'il le
+    demandait, et ce sont **les en-têtes qu'on appuie**. Les six colonnes trient : **poste ·
+    joueur · âge · moyenne · salaire · valeur marchande**, une deuxième pression renverse le
+    sens, et l'en-tête actif porte sa flèche en or.
+  - **Le poste se trie sur l'ordre du terrain** (`ORDRE_POSTE`, gardien d'abord) et non sur la
+    lettre, sinon on lirait A · D · G · M.
+  - **Le tri lit exactement les nombres affichés** : la ligne est fabriquée une fois, salaire et
+    valeur compris, et la valeur est celle d'une **vente** (×.9) — celle que `cVendre()` créditera.
+  - **Les pastilles de l'effectif restent** : elles répondent à la même demande sur l'écran de la
+    semaine, où il n'y a pas de colonnes mais des tuiles. Deux écrans, deux formes, deux états
+    (`triEff` et `triVendre`), tous deux **hors de la sauvegarde** : c'est une façon de regarder,
+    pas une donnée de carrière.
+  - **Deux défauts vus à l'écran avant de livrer, et un troisième qui était antérieur** : la
+    flèche tombait **sous** son libellé (« MOY. » puis « ↓ » à la ligne) ; les montants cassaient
+    en « 42,7 / M€ », ce qui **doublait la hauteur** de chaque rangée sur un téléphone — à
+    vingt-deux joueurs, ça compte ; et **`th.r` n'existait pas**, donc les titres des trois
+    colonnes de nombres étaient alignés à gauche de leurs nombres depuis toujours. `white-space:
+    nowrap` sur les en-têtes et les montants, et `table.sq th.r{text-align:right}`.
+  - **Mesuré** : 22 lignes, **six ordres distincts sur six tris**, l'en-tête actif porte sa
+    flèche, zéro `undefined` / `NaN` / `[object Object]` sur les douze rendus (six tris × deux
+    sens). Le « renverse » n'est exact que pour **Joueur** : partout ailleurs il y a des ex æquo
+    (quatre joueurs à 33 ans, deux à 43,1 M€) et un tri stable garde leur ordre relatif dans les
+    deux sens — ce n'est pas un défaut, c'est ce qu'un tri stable fait.
+  - **La portée est d'un seul écran** : `table.sq` n'existe qu'ici, et les quatre noms
+    (`ORDRE_POSTE`, `triVendre`, `TRIS_VENDRE`, `cTrierVendre`) ne vivent que dans
+    `ecransCoach.js`. Le mode joueur·euse n'est pas touché.
+  - **Deux sondes à moi qui mentaient, et c'est la troisième fois que cette leçon revient.**
+    (a) La première comptait **44 lignes pour 22 joueurs** : son extracteur attrapait la
+    colonne du nom **et** celle de l'âge, donc le « renverse » qu'elle calculait ne voulait
+    rien dire. (b) La seconde annonçait « la fenêtre du rapport reste ouverte » sur les six
+    tris : elle cherchait `.rap`, qui est le **bouton ⚠ du bandeau**, toujours présent — la
+    vraie fenêtre est `#modalRap`. **Une sonde qui devine un sélecteur au lieu de le lire
+    dans le code invente son propre résultat** ; les deux fois, c'est en regardant le chiffre
+    qui clochait (44, et un défaut sur six lignes sur six) que la sonde s'est trahie.
+    Re-mesuré avec les bons sélecteurs : le rapport ⚠ s'ouvre sur **les six tris**, décrit
+    bien le mercato (2 616 caractères d'aperçu), zéro `undefined`, aucune fenêtre qui reste,
+    `RAP` vidé, et l'écran reste `cmercato`.
+  - **Vérifié** : syntaxe des quatre fichiers ; le tableau rendu à **430 px** (429 px dans une
+    fenêtre de 360, donc le bouton Vendre se rejoint par le défilement du `.scrollx`, comme
+    avant — **la page**, elle, ne déborde pas) ; **aucune migration** (`VERSION` reste à 15 :
+    `triVendre` n'est pas sauvegardé). **Aucun chiffre du moteur n'a bougé** — c'est un lot
+    d'écran.
+
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).
 - Tout l'état d'une carrière est dans l'objet global `state` (sérialisé dans localStorage). `state.pendingChoice` désigne l'écran courant ; `render()` dans `ui.js` dispatche.
