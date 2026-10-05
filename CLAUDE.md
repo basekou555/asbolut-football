@@ -3060,6 +3060,63 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     perdait tout) ; migration sur de vraies sauvegardes déployées des deux modes, deux saisons
     entières, zéro doublon. **Aucune migration** (`VERSION` reste à 15).
 
+- **ON NE PERD PAS SES TROIS MEILLEURS CHAQUE ÉTÉ, ET UNE PAGE DE PRÉPARATION** (le propriétaire,
+  05/10/2026 : « tu ne peux pas vendre les 3 meilleurs joueurs toutes les saisons, et en plus dans
+  tes clubs concurrents au championnat certains parmi les meilleurs — et en plus tu essaies de les
+  vendre dans d'autres championnats » ; « il manque une page prépa avant début du championnat »).
+  - **MESURÉ AVANT, 8 carrières de 20 saisons** : on te prend **0,99 joueur par été**, mais **trois
+    d'un coup dans 23 % des étés**, et **81 % partent chez un club de ton propre championnat**. Les
+    deux reproches étaient dans le code à la lettre : le tirage prenait le **meilleur** du poste, et
+    `preneurs` ne regardait que `toutesLesEquipes()`, c'est-à-dire tes rivaux.
+  - **DEUX ITÉRATIONS RATÉES AVANT LA BONNE, et c'est la mesure qui l'a dit chaque fois.**
+    (a) Prendre un remplaçant au lieu du meilleur **a empiré le compte** : 0,99 → **1,51 départ par
+    été** et 23 % → 42 % d'étés à trois. La cause est mécanique — vendre un remplaçant ne fait
+    presque pas baisser `force` (la moyenne du onze), donc le club restait vendeur et repartait pour
+    un tour. (b) Plafonner les sorties de la seule branche des ventes forcées n'a rien donné non
+    plus : la **branche d'achat** prend aussi chez toi, avec son propre `MOUV_PAR_CLUB`.
+  - **CE QUI MARCHE : un plafond de départs par club, sur les deux branches, et un seul titulaire.**
+    `MOUV_SORTIES` = 2 dans les deux branches, `nOutTit < 1` dans les deux aussi, et un titulaire ne
+    va chez un club du **même championnat** que si le vendeur **doit** vendre. Dans la branche des
+    ventes forcées, un titulaire part à l'étranger deux fois sur trois. Mesuré après :
+    | | avant | après |
+    |---|---|---|
+    | départs par été | 0,99 · **max 3** | 1,09 · **max 2** |
+    | étés à trois départs | **23 %** | **0 %** |
+    | titulaires partis chez un rival d'ici | 73 % | **37 %** |
+    | titulaires partis à l'étranger | 27 % | **63 %** |
+    Le marqueur `tit` est désormais écrit par le moteur au lieu d'être deviné sur le niveau : les
+    comptes de titulaires d'avant et d'après ne sont **pas** comparables, et je ne prétends pas le
+    contraire.
+  - **ET LE CHAMPIONNAT NE SE VIDE PAS, parce qu'une porte a été ouverte en même temps.** Envoyer
+    les stars dehors sans rien laisser entrer aurait fait baisser le niveau moyen année après année :
+    un club qui a besoin et qui ne trouve personne **ici** importe maintenant de l'étranger
+    (`recrue()`), ce qui n'existait pas — la branche d'achat ne lisait que les clubs du pays. Mesuré
+    sur 20 saisons : niveau moyen 54,5 → 59,2, dans la bande des tirages de la version déployée
+    (52,8 → 54,2 et 57,3 selon la graine), donc **pas de conclusion à 8 carrières**, seulement
+    l'absence d'effondrement.
+  - **LA PRÉPARATION D'AVANT-SAISON** (`CPREPA`, écran `cprepa`) : l'audit du 04/10 l'avait relevée
+    sans la traiter — le joueur·euse a son été depuis le 27/09, le coach n'avait rien, alors que la
+    préparation est **le seul moment où il décide de l'état dans lequel son groupe arrive**. Quatre
+    façons de passer six semaines, un coût et un gain chacune, aucune les deux : trois semaines de
+    stage (la condition du groupe, mais ils arrivent sur les jambes et personne n'a aimé), six
+    amicaux avec une idée par match (ton jeu et les lignes, la presse s'ennuie), la tournée que le
+    club a vendue (une prime, la presse et le stade, rien de construit), on reprend tard (frais, et
+    la direction trouve ça léger). L'écran ne ressemble à aucun autre : pas de classement, pas
+    d'effectif, pas d'adversaire — six semaines et une décision. Il arrive après la vie l'été, et
+    après le mercato pour la première saison (jamais l'hiver). Mesuré, les quatre choix : le groupe
+    arrive à **84 % + condition 4,5** après le stage, 92 % après les amicaux, 81 % après la tournée,
+    **100 %** si on reprend tard.
+  - **Vérifié** : 6 carrières entières d'entraîneur·euse (156 saisons) avec tous les écrans, zéro
+    erreur, et `cprepa` à 1,8 % des écrans ; **16 carrières entières de joueur·euse**, zéro erreur
+    (le marché est partagé, c'était le vrai risque) ; les sept invariants du tableau des notes à zéro
+    écart, score = film **0 écart** ; migration sur de vraies sauvegardes déployées des deux modes,
+    deux saisons entières, zéro doublon ; **aucune migration** (`VERSION` reste à 15 : `prepaFaite`
+    manquant vaut « pas encore faite », et elle s'ouvrira au premier été).
+  - **Un résidu connu, revu une fois sur deux passages** : une ligne de notes à « 1 min » pour un
+    entrant sorti la minute de son entrée. C'est le cas d'un match sur cinq mille déjà noté le
+    02/10 (`planChangements()` ne garantit pas deux minutes entre l'entrée et la sortie d'un même
+    joueur) ; rien ici ne touche au moteur de match.
+
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).
 - Tout l'état d'une carrière est dans l'objet global `state` (sérialisé dans localStorage). `state.pendingChoice` désigne l'écran courant ; `render()` dans `ui.js` dispatche.

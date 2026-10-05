@@ -52,7 +52,7 @@ function rendre(){
     csemaine:ecranCSemaine, carret:ecranCArret, cmoment:ecranCMoment,
     cresultat:ecranCResultat, cbilan:ecranCBilan, cvire:ecranCVire,
     coffres:ecranCOffres, cmercato:ecranCMercato, cvie:ecranCVie,
-    ccarriere:ecranCCarriere }[S.ecran];
+    cprepa:ecranCPrepa, ccarriere:ecranCCarriere }[S.ecran];
   el.innerHTML = (S.ecran === 'tirage' ? '' : S.mode === 'coach' ? cTopHTML() : topHTML())
     + (f ? f() : `<div class="card"><h2>Écran inconnu</h2><p class="sub">${esc(S.ecran)}</p></div>`);
   window.scrollTo(0, 0);

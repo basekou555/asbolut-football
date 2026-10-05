@@ -10,7 +10,8 @@
 
 function cTopHTML(){
   const hors = { cbilan:"Le bilan", cvire:"La porte", coffres:"Les offres",
-    cmercato:"Mercato", cvie:"La vie", ccarriere:"Fin du parcours" }[S.ecran];
+    cmercato:"Mercato", cvie:"La vie", cprepa:"Pr\u00e9paration",
+    ccarriere:"Fin du parcours" }[S.ecran];
   const pos = hors ? 0 : cPlace();
   return `<div class="top">
     <div><div class="who">${esc(S.moi.nom)}</div>
@@ -450,6 +451,28 @@ function ecranCMercato(){
    et il en fait quelque chose.
    Les chiffres d'argent sont permis à l'écran — ce ne sont pas des jauges, et chacun
    a sa conséquence : un chantier se paie, et un chantier laisse une trace. */
+/* LA PRÉPARATION. Un écran qui ne ressemble à aucun autre : pas de classement, pas
+   d'effectif, pas d'adversaire — six semaines et une seule décision, et ce qu'elle
+   laisse se lit sur l'état du groupe en août. */
+function ecranCPrepa(){
+  const f = !!S.prepa;
+  return `<div class="card">
+    <div class="step">Pr\u00e9paration \u00b7 \u00e9t\u00e9 ${S.annee} \u00b7 ${esc(S.club.nom)}</div>
+    <div class="big-ico">${f ? esc((CPREPA.find(x => x.id === S.prepa.id) || {}).ico || '\u2705') : '\ud83c\udfd5\ufe0f'}</div>
+    <h2>${f ? esc(S.prepa.nom) : "Six semaines avant la premi\u00e8re journ\u00e9e"}</h2>
+    <p class="narr">${f ? esc(S.prepaSuite || '')
+      : `Le groupe est au complet, le calendrier est tomb\u00e9, et personne n'a encore jou\u00e9. Ce que tu
+         fais de ces six semaines, tu le porteras jusqu'en mai.`}</p>
+    <div class="sit">${celSit('\ud83e\udec1', "Les jambes du groupe", cDireJambes(), 'jambes',
+      "C'est ce que tu d\u00e9penses chaque semaine, et la seule chose qu'un calendrier charg\u00e9 ne pardonne pas.")}
+      ${celSit('\ud83c\udfcb\ufe0f', "La condition", cDireCondition(), 'condition',
+      "Elle d\u00e9cide de la vitesse \u00e0 laquelle ils r\u00e9cup\u00e8rent, et elle s'en va si on ne l'entretient pas.")}</div>
+    ${f ? `<div class="btn-row"><button class="btn ghost" onclick="ouvrirJournal()">\ud83d\udcd3 Le journal</button>
+        <button class="btn" onclick="cFinirPrepa()">La premi\u00e8re journ\u00e9e \u2192</button></div>`
+      : `<h3>Ce que tu fais de l'\u00e9t\u00e9</h3>
+        ${CPREPA.map(x => optHTML(x.ico, x.nom, x.sous, x.dits, `cChoisirPrepa('${x.id}')`)).join('')}`}
+  </div>`;
+}
 function ecranCVie(){
   const v = S.vie || { chantiers:[] };
   const fait = !!v.fait;

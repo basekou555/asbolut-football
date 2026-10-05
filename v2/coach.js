@@ -1322,6 +1322,7 @@ function cChoisirVie(id){
 }
 function cFinirVie(){
   S.vie.fait = null; S.vie.suite = '';
+  if (!S.prepaFaite) return cOuvrirPrepa();
   S.ecran = 'csemaine'; sauver(); rendre();
 }
 function cOuvrirEte(){
@@ -1493,6 +1494,7 @@ function cDemarrerSaison(){
   S.journee = 0; S.arrets = 0; S.semaine = null; S.seance = null; S.match = null;
   S.dernier = null; S.annexe = null; S.eqJour = null; S.vire = null;
   S.serie = []; S.vuArrets = {}; S.recentArrets = []; S.recentMoments = []; S.hiverFait = false;
+  S.prepaFaite = false; S.prepa = null; S.prepaSuite = '';
   S.stats = { j:0, v:0, n:0, d:0, bp:0, bc:0, decisions:0 };
   S.moi.an0 = { ...S.moi.base };
   const podium = S.bilan && S.bilan.pos <= 3 && S.bilan.division === 1;
@@ -1508,6 +1510,67 @@ function cDemarrerSaison(){
   cOuvrirMercato(false);
 }
 
+
+/* ================== LA PRÉPARATION D'AVANT-SAISON ==================
+   Le propriétaire, 05/10/2026 : « il manque une page prépa avant début du championnat ».
+   Il avait raison, et l'audit du 04/10 l'avait relevé sans le traiter : l'intersaison du
+   coach fait bilan → offres → mercato → vie, puis la première journée tombe. Le
+   joueur·euse a son été depuis le 27/09 ; le coach n'avait rien, alors que la
+   préparation est **le seul moment où il décide de l'état dans lequel son groupe
+   arrive**. Quatre façons de passer six semaines, un coût et un gain chacune, aucune les
+   deux — la règle du 30/09. */
+const CPREPA = [
+  { id:'stage', ico:'\u26f0\ufe0f', nom:"Trois semaines de stage", sous:"Du volume, des côtes, deux séances par jour",
+    fit:-16, athle:4.5, ligne:-1.6,
+    dits:[{c:'foot', t:"\ud83c\udfcb\ufe0f la condition du groupe, pour des mois"},
+          {c:'risk', t:"\ud83e\udec1 ils arriveront sur les jambes en août"},
+          {c:'risk', t:"\u270a personne n'a aimé"}] },
+  { id:'amicaux', ico:'\u26bd', nom:"Six amicaux, et une idée par match", sous:"Des petits clubs, et ton plan qu'on répète",
+    fit:-8, axe:'jeu', trace:1.4, ligne:3, presse:-2,
+    dits:[{c:'foot', t:"\ud83e\udde9 ton jeu : la trace"},
+          {c:'foot', t:"\u270a les lignes se trouvent"},
+          {c:'risk', t:"\ud83d\udcf0 la presse s'ennuie"}] },
+  { id:'tournee', ico:'\u2708\ufe0f', nom:"La tournée que le club a vendue", sous:"Quatre vols, trois galas, des caméras",
+    fit:-19, presse:7, supporters:5, prime:1.5,
+    dits:[{c:'vie', t:"\ud83d\udcb0 une prime, et on parle de toi"},
+          {c:'risk', t:"\ud83e\udec1 six semaines pour rien dans les jambes"},
+          {c:'risk', t:"\ud83d\udeab rien de construit"}] },
+  { id:'tard', ico:'\ud83c\udf3f', nom:"On reprend tard", sous:"Tu les laisses rentrer, tu reprends à dix jours",
+    fit:12, direction:-4,
+    dits:[{c:'foot', t:"\ud83e\udec1 ils arriveront frais, et ça se verra"},
+          {c:'risk', t:"\ud83d\udcbc la direction trouve ça léger"},
+          {c:'risk', t:"\ud83d\udeab rien de construit"}] },
+];
+function cOuvrirPrepa(){
+  S.prepa = null; S.prepaSuite = '';
+  S.ecran = 'cprepa'; sauver(); rendre();
+}
+function cChoisirPrepa(id){
+  const x = CPREPA.find(y => y.id === id) || CPREPA[0];
+  S.grp.fr = clamp((S.grp.fr == null ? 100 : S.grp.fr) + x.fit, 0, 100);
+  let suite = '';
+  if (x.athle){ S.grp.athle = Math.min(C_ATHLE_MAX, (S.grp.athle || 0) + x.athle);
+    suite = `Ils ont fini à genoux. En novembre, ils enchaîneront.`; }
+  if (x.axe){ cBougerAxe(x.axe, x.trace || 1); suite = `Six matchs pour poser une idée. Elle tient.`; }
+  if (x.ligne) cBougerVestiaire(x.ligne);
+  if (x.presse) S.liens.presse = clamp(S.liens.presse + x.presse);
+  if (x.supporters) S.liens.supporters = clamp(S.liens.supporters + x.supporters);
+  if (x.direction) S.liens.direction = clamp(S.liens.direction + x.direction);
+  if (x.prime){
+    const g = Math.round((S.salaire || 0) * x.prime / 12 * 1000) / 1000;
+    S.argent = Math.round(((S.argent || 0) + g) * 1000) / 1000;
+    suite = `La tournée a rapporté. Ta part : ${sous(g)}.`;
+  }
+  if (x.id === 'tard') suite = `Ils sont revenus bronzés et frais. La direction, elle, a compté les jours.`;
+  S.prepa = { id: x.id, nom: x.nom };
+  S.prepaSuite = suite;
+  jrn('saison', `Préparation : ${minuscule(x.nom)}.`);
+  sauver(); rendre();
+}
+function cFinirPrepa(){
+  S.prepaFaite = true;
+  S.ecran = 'csemaine'; sauver(); rendre();
+}
 
 /* ================== LE MERCATO, CÔTÉ ENTRAÎNEUR·EUSE ==================
    Le propriétaire, 21/09/2026 : « le **mercato est ma partie préférée** du mode
@@ -1846,6 +1909,10 @@ function cFermerMercato(){
     S.vie.anVie = S.annee; S.vie.fait = null; S.vie.suite = '';
     S.ecran = 'cvie'; sauver(); rendre(); return;
   }
+  /* La préparation est le dernier temps avant la première journée — y compris la
+     première saison, où il n'y a pas d'écran de vie. Jamais à l'hiver : on est au
+     milieu d'une saison. */
+  if (!(m && m.hiver) && !S.prepaFaite) return cOuvrirPrepa();
   S.ecran = 'csemaine'; sauver(); rendre();
 }
 

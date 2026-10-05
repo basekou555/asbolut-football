@@ -823,6 +823,13 @@ const MOUVEMENTS_ETE = 40;
    la première saison disparaissait d'un coup. Trois entrées, trois sorties : un
    club se refait en deux ou trois étés, comme dans la vraie vie. */
 const MOUV_PAR_CLUB = 3;
+/* ET LE NOMBRE DE DÉPARTS SE PLAFONNE DIRECTEMENT, pas par la force. Première version
+   mesurée, et elle allait dans le mauvais sens : vendre un remplaçant ne fait presque pas
+   baisser `force` (la moyenne du onze), donc le club restait vendeur et repartait pour un
+   tour — on passait de 1,20 à **1,51 départ par été** et de 30 % à 42 % d'étés à trois
+   départs, exactement ce qu'il reprochait. Deux sorties forcées par club et par été, au
+   plus, et au plus un titulaire. */
+const MOUV_SORTIES = 2;
 /* Le poste où l'acheteur est le plus loin de ce qu'il vise : c'est là qu'il cherche. */
 function posteFaible(e){
   let pire = null;
@@ -866,7 +873,10 @@ function mercato(){
   const pris = nomsPris();
   eqs.forEach(e => { e.force = forceEffectif(e.sq); if (e.vise == null) e.vise = e.force; });
   const mouv = [];
-  eqs.forEach(e => { e.nIn = 0; e.nOut = 0; });
+  eqs.forEach(e => { e.nIn = 0; e.nOut = 0; e.nOutTit = 0; });
+  /* Qui joue dans quelle division : on n'arme pas un rival de son propre championnat. */
+  const elite = new Set((S.ligue.equipes || []).map(e => e.nom));
+  const memeDiv = (a, b) => elite.has(a.nom) === elite.has(b.nom);
   /* LES VENTES FORCÉES, ET POURQUOI ELLES SONT INDISPENSABLES. Sans elles le marché
      ne pousse que vers le haut : un club qui a besoin achète, un club qui a de trop
      ne fait rien — et la moyenne du championnat monte de six points en dix saisons
@@ -874,18 +884,34 @@ function mercato(){
      besoin si l'un se présente, à l'étranger sinon, et c'est un jeune du centre qui
      prend la place. C'est ce que faisait l'ancien « on se fait piller par le haut ». */
   for (let k = 0; k < MOUVEMENTS_ETE; k++){
-    const vendeurs = eqs.filter(e => e.force - e.vise > 1 && e.nOut < MOUV_PAR_CLUB);
+    const vendeurs = eqs.filter(e => e.force - e.vise > 1 && e.nOut < MOUV_SORTIES);
     if (!vendeurs.length) break;
     const vend = tirerPoids(vendeurs, e => Math.pow(e.force - e.vise, 1.3));
     const postes = Object.keys(EFFECTIF).filter(po => vend.sq.filter(j => j.p === po).length > FORMATION[po]);
     if (!postes.length) break;
     const po = pick(postes);
-    const j = vend.sq.filter(x => x.p === po && !x.moi).sort((a, b) => b.v - a.v)[0];
+    /* ON NE PERD PAS SES TROIS MEILLEURS CHAQUE ÉTÉ (le propriétaire, 05/10/2026 : « tu
+       ne peux pas vendre les 3 meilleurs joueurs toutes les saisons »). Le tirage prenait
+       le **meilleur** du poste, et `MOUV_PAR_CLUB` en autorise trois : un club pouvait
+       donc perdre ses trois titulaires tous les étés. Un club vend d'abord dans son
+       surplus — ceux qui ne jouent pas — et ne lâche **au plus un titulaire par été**,
+       une fois sur trois. C'est ça, vendre une star : un événement, pas une saignée. */
+    const l = vend.sq.filter(x => x.p === po && !x.moi).sort((a, b) => b.v - a.v);
+    const horsOnze = l.slice(FORMATION[po]);
+    const star = (vend.nOutTit || 0) < 1 && Math.random() < .33;
+    const j = star ? l[0] : (horsOnze[0] || l[0]);
     if (!j) continue;
+    const titulaire = j === l[0];
     // un club qui en a besoin à ce poste se sert avant l'étranger
     const preneurs = eqs.filter(e => e !== vend && !achetePasSeul(e) && e.vise - e.force > .8 && e.nIn < MOUV_PAR_CLUB
       && j.v > (e.sq.filter(x => x.p === po).sort((a, b) => b.v - a.v)[FORMATION[po] - 1] || { v:99 }).v);
-    const ach = preneurs.length ? tirerPoids(preneurs, e => Math.pow(e.vise - e.force, 1.3)) : null;
+    /* ET ON N'ARME PAS UN RIVAL DE SON CHAMPIONNAT AVEC SON MEILLEUR JOUEUR (même
+       retour : « dans tes clubs concurrents au championnat, certains parmi les
+       meilleurs — et en plus tu essaies de les vendre dans d'autres championnats »).
+       Un titulaire part donc à l'étranger deux fois sur trois, quels que soient les
+       preneurs d'ici. Un remplaçant, lui, se vend au voisin sans état d'âme. */
+    let ach = preneurs.length ? tirerPoids(preneurs, e => Math.pow(e.vise - e.force, 1.3)) : null;
+    if (titulaire && Math.random() < .68) ach = null;
     vend.sq.splice(vend.sq.indexOf(j), 1);
     if (ach){
       ach.sq.push(j);
@@ -904,9 +930,10 @@ function mercato(){
     mouv.push({ nom:gamin.n, poste:po, age:gamin.a, niv: Math.round(gamin.v),
       de:null, vers:vend.nom, centre:true });
     vend.force = forceEffectif(vend.sq);
-    vend.nOut++; if (ach) ach.nIn++;
+    vend.nOut++; if (titulaire) vend.nOutTit = (vend.nOutTit || 0) + 1;
+    if (ach) ach.nIn++;
     mouv.push({ nom:j.n, poste:po, age:j.a, niv: Math.round(j.v),
-      de:vend.nom, vers: ach ? ach.nom : null });
+      de:vend.nom, vers: ach ? ach.nom : null, tit: titulaire });
   }
   for (let k = 0; k < MOUVEMENTS_ETE; k++){
     const acheteurs = eqs.filter(e => !achetePasSeul(e) && e.vise - e.force > .8 && e.nIn < MOUV_PAR_CLUB);
@@ -919,7 +946,7 @@ function mercato(){
     const cand = [];
     eqs.forEach(vend => {
       if (vend === ach) return;
-      if (vend.nOut >= MOUV_PAR_CLUB) return;           // il a déjà fait son été
+      if (vend.nOut >= MOUV_SORTIES) return;            // il a déjà fait son été
       const l = vend.sq.filter(j => j.p === po).sort((a, b) => b.v - a.v);
       if (l.length <= FORMATION[po]) return;            // il n'a personne à perdre
       l.forEach((j, i) => {
@@ -928,15 +955,42 @@ function mercato(){
         const petit = vend.force < ach.force - 2;        // un plus grand se sert
         const doitVendre = vend.vise < vend.force - 1;   // il doit vendre
         const vieux = j.a >= 29 && vend.vise <= vend.force;
+        /* AU PLUS UN TITULAIRE PAR CLUB ET PAR ÉTÉ, et la règle vaut ici aussi.
+           Mesuré sans elle : 97 départs de titulaires sur 250, dont 70 % chez un rival
+           du championnat — la branche d'achat faisait toute seule ce que la branche des
+           ventes forcées venait d'arrêter. Un club qui coule ou qu'un très gros vient
+           piller lâche son homme ; personne ne lui en prend deux. */
+        if (!rab && (vend.nOutTit || 0) >= 1) return;
+        /* ET SON TITULAIRE NE VA PAS CHEZ LE VOISIN (le propriétaire, 05/10/2026 : « tu
+           essaies de les vendre dans d'autres championnats »). Un club du même
+           championnat ne récupère un titulaire que si le vendeur **doit** vendre : sinon
+           il le garde, ou il part dehors par la branche des ventes forcées. L'acheteur
+           prend alors un remplaçant, ou importe (la porte juste en dessous). */
+        if (!rab && !doitVendre && memeDiv(vend, ach)) return;
         if (rab || petit || doitVendre || vieux) cand.push({ j, vend, rab });
       });
     });
-    if (!cand.length) continue;
+    /* ET QUAND LE CHAMPIONNAT N'A PLUS RIEN À VENDRE, ON IMPORTE. Sans cette porte,
+       envoyer les stars à l'étranger viderait le championnat année après année : le
+       vendeur perd un titulaire, l'acheteur ne trouve personne, et le niveau moyen
+       baisse. Un club qui a besoin et qui ne trouve pas ici va chercher dehors. */
+    if (!cand.length){
+      const niv = Math.round(clamp(seuil + rnd(0, 5), 38, 86));
+      const venu = recrue(po, niv, pris);
+      ach.sq.push(venu);
+      pousserDehors(ach, po, mouv);
+      ach.force = forceEffectif(ach.sq);
+      ach.nIn++;
+      mouv.push({ nom:venu.n, poste:po, age:venu.a, niv: Math.round(venu.v),
+        de:null, vers:ach.nom });
+      continue;
+    }
     /* On veut le meilleur possible, mais un club plus fort que l'acheteur ne lâche
        pas son titulaire : c'est ce qui empêche le marché de tout niveler. */
     const c = tirerPoids(cand, x => Math.pow(Math.max(.5, x.j.v - seuil + 2), 1.4)
       / (1 + Math.max(0, x.vend.force - ach.force) * (x.rab ? .25 : .7)));
     c.vend.sq.splice(c.vend.sq.indexOf(c.j), 1);
+    if (!c.rab) c.vend.nOutTit = (c.vend.nOutTit || 0) + 1;
     ach.sq.push(c.j);
     // le vendeur comble son trou s'il n'a plus assez de monde
     Object.entries(EFFECTIF).forEach(([p2, n]) => {
@@ -947,7 +1001,7 @@ function mercato(){
     ach.force = forceEffectif(ach.sq); c.vend.force = forceEffectif(c.vend.sq);
     ach.nIn++; c.vend.nOut++;
     mouv.push({ nom:c.j.n, poste:po, age:c.j.a, niv: Math.round(c.j.v),
-      de:c.vend.nom, vers:ach.nom });
+      de:c.vend.nom, vers:ach.nom, tit: !c.rab });
   }
   eqs.forEach(e => { e.force = forceEffectif(e.sq); });
   S.ligue.equipes.sort((a, b) => b.force - a.force);
