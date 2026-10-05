@@ -3147,6 +3147,111 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     sur de vraies sauvegardes déployées des deux modes, deux saisons entières, zéro doublon ;
     **aucune migration** (`VERSION` reste à 15).
 
+- **LA TABLE DU MERCATO SE COMPOSE, ET LE DOSSIER DE LA DIRECTION ARRIVE VRAIMENT** (le
+  propriétaire, 05/10/2026, trois reproches sur le mercato du coach : « pendant la saison, il y a
+  la direction qui me propose des joueurs, je les accepte, mais je les vois jamais arriver » ;
+  « il faut un peu de tout dans les prix, un peu de tout dans les postes, des joueurs libres, des
+  joueurs du centre, des joueurs de mes concurrents, des joueurs d'autres pays — parfois je me
+  retrouvais avec 10 dossiers de gardiens » ; « la relation que j'ai avec la direction doit jouer
+  dans les propositions de joueurs qu'on me fait, et je pensais que c'est à ça que servait le
+  bureau »). Les trois étaient dans le code à la lettre, et chacun a été mesuré avant d'y toucher.
+  1. **L'ARRÊT DU DIRECTEUR SPORTIF NE PRODUISAIT AUCUN JOUEUR.** « Lui dire oui, et porter le
+     dossier » rendait `axes:{reseau:1}` et `liens:{direction:6, president:-3}` — **et rien
+     d'autre**. Le texte promettait « un joueur à ton poste faible, cher, disponible en janvier »
+     et personne ne venait, jamais. Mesuré : 30 acceptations sur 6 carrières, **0 arrivée**.
+     Désormais le candidat est tiré **avant le clic** (nouveau crochet `cible()` sur une famille
+     d'arrêt, rangé en objet simple dans `S.arret.cible`), donc le texte le **nomme** — sans ça on
+     ne pourrait pas le reconnaître en arrivant — et la porte `dossier` de `cAppliquer()` le range
+     dans `S.dossierDS`. `cCibles()` le pose sur la table de la fenêtre suivante, **en première
+     position** et quoi que dise le tri : « faisable d'abord » est une règle de feuilletage, et
+     celui-là n'est pas à découvrir, c'est un rendez-vous (mesuré sans l'exception : il tombait
+     neuvième sur neuf). `cFermerMercato()` le consomme — il ne revient pas une deuxième fenêtre.
+     Mesuré après : **30 acceptés, 30 arrivés, 0 manquant.**
+     **ET MON PREMIER DOSSIER ÉTAIT INTENABLE, ce qui refabriquait le défaut un étage plus haut.**
+     Son niveau était tiré à `cMonOnze + 4 à 11` et son prix en découlait ; or `cValeur()` est
+     convexe. Mesuré sur 150 dossiers : **prix médian 17 fois le budget, 0 % payable, 93 % hors de
+     portée quoi qu'on fasse**. Il est donc construit **à l'envers** — on part du prix que
+     l'enveloppe de l'été peut tenir et on cherche le niveau qui vaut ce prix — avec un plancher à
+     `cMonOnze + 1` (il doit améliorer la ligne, c'est tout l'objet du dossier), et c'est ce
+     plancher qui domine le prix le plus souvent. Mesuré après : prix médian **1,2 fois le
+     budget**, l'argent suffit dans **35 %** des cas, une vente nommée le débloque dans les
+     **65 %** restants, **0 % hors de portée**. Témoin mesuré en même temps : les dossiers de club
+     ordinaires sont payables à **100 %**, donc celui-là est bien la seule vraie dépense de la
+     table — ce que « cher » veut dire.
+  2. **DIX DOSSIERS DE GARDIENS : c'était arithmétique.** Le poste des familles qui ne viennent pas
+     d'un club était `pick(Object.keys(EFFECTIF))`, un tirage **uniforme sur quatre postes**, alors
+     qu'un groupe compte trois gardiens sur vingt-deux et que le onze n'en aligne qu'un. Et le
+     reste de la table était trié au seul mérite, sans aucune contrainte de composition. Mesuré sur
+     60 fenêtres : **G 20 % de la table**, **jusqu'à 7 dossiers du même poste** dans une pile de
+     dix, **25 % des piles à cinq ou plus d'un seul poste** et **35 % qui ne couvraient même pas
+     les quatre postes**.
+     Les postes sont désormais pondérés par ce que le onze **aligne** (`cPoidsPoste()` : G1 · D4 ·
+     M4 · A2), doublé par le trou que tu as à ce poste — on te propose d'abord là où ça manque. Et
+     la table se **compose** (`cComposerDeck()`) au lieu d'être triée : le dossier promis, puis un
+     de chaque poste, puis un de chaque famille, puis un de chaque bande de prix, puis le reste au
+     mérite sous un plafond par poste.
+     | | avant | après |
+     |---|---|---|
+     | postes | G 20 % · D 26 % · M 31 % · A 23 % | G 17 % · D 28 % · M 30 % · A 26 % |
+     | même poste, au pire | **7** | **3** |
+     | piles à 5+ d'un seul poste | 25 % | **0 %** |
+     | piles couvrant moins de 4 postes | 35 % | **0 %** |
+     | 90ᵉ centile des prix | 0,99 | 0,79 (max 9,3) |
+     **Deux défauts dans ma propre composition, les deux trouvés à la mesure** : le plafond par
+     poste ne s'appliquait qu'au remplissage final, donc les garanties de famille et de bande de
+     prix pouvaient prendre quatre fois le même poste avant lui (six dossiers d'un poste dans une
+     pile de dix) ; et les familles passaient **avant** les postes, si bien qu'une pile d'hiver à
+     six dossiers n'avait plus de place pour couvrir les quatre postes.
+  3. **LE BUREAU SERT ENFIN À CE QU'IL ANNONÇAIT.** Sa lecture était la bonne et le code ne la
+     tenait pas : `reseau` n'avait **qu'une** lecture mécanique — `cCote()`, qui t'appelle en juin —
+     alors que son propre commentaire lui promettait deux choses (« ce que la direction te laisse
+     faire, et qui t'appelle en juin ») et que la première n'existait nulle part. La semaine
+     « bureau » construisait donc un axe dont la moitié de la promesse était morte.
+     `cRelais()` (−1 à +1 : le réseau pour six dixièmes, la direction pour quatre) décide de deux
+     choses — **combien de dossiers arrivent** (`cNbDossiers()`) et **jusqu'où un club plus fort
+     que le tien lâche un titulaire** (le seuil passe de `+1` fixe à `+1 + relais × 3,5`). C'est
+     une deuxième lecture mécanique pour `reseau` et une troisième pour `direction`.
+     **Le dénominateur a dû être resserré.** Première version à /50 : mesuré sur cinq carrières par
+     ligne, « bureau chaque semaine » donnait **9,50 dossiers contre 8,64** — un dossier, c'est-à-dire
+     rien de sensible, parce que `reseau` est borné par son plafond (58-84) et que `direction` vit
+     autour de 50. À /28, et mesuré **à jauges forcées, tout le reste égal** (120 tirages par ligne,
+     même budget) :
+     | réseau + direction | dossiers | le meilleur, au-dessus de ton onze | dossiers chers |
+     |---|---|---|---|
+     | 38 / 32 (relais −0,51) | **7** | +9,8 ± 0,20 | 1,1 |
+     | 50 / 50 (relais 0) | 9 | +10,7 ± 0,27 | 1,6 |
+     | 80 / 72 (relais +0,96) | **12** | **+11,3 ± 0,27** | 2,0 |
+     **Et ça se dit**, sinon ça n'existe pas : une ligne dans la fiche du mercato (« Ce que ton
+     réseau a sorti · 11 dossiers — *ton carnet et la direction t'ouvrent des portes* »),
+     `cPourquoi('direction')` qui nomme les dossiers, et les quatre phrases de l'axe `reseau`
+     réécrites pour dire les deux choses qu'il fait.
+     **Un A/B par politique de semaine ne peut pas isoler cet effet**, et je l'ai essayé avant de
+     comprendre pourquoi : « toujours le bureau » change tout le football (0,13 titre par carrière
+     contre 1,38), donc le club, donc `cMonOnze`, donc l'étalon auquel on mesure un dossier — le
+     meilleur dossier y paraissait *meilleur* sans bureau. Seule la mesure à jauges forcées dit
+     quelque chose. Et l'arbitrage va dans le bon sens : le bureau construit ton marché, pas ton
+     samedi.
+  - **Deux bugs trouvés à l'écran avant de livrer** : `nomsPris()` rend un **Set**, pas un tableau
+    (`pris.includes` → `pris.has`, sans quoi l'ouverture du mercato plantait dès qu'un dossier était
+    promis) ; et la sous-ligne du réseau se collait au chiffre (`display:block`, le même défaut que
+    les deux phrases de `.lack` du 04/10).
+  - **Deux sondes mises à jour, parce qu'elles étaient antérieures à l'écran de préparation** livré
+    la veille : `cvie2.js` et `cmig.js` calaient sur `cprepa` et rendaient donc des carrières d'une
+    saison avec des colonnes vides (0 titre, force de club 0). Une sonde qui s'arrête en silence est
+    pire qu'une sonde absente — la leçon du 30/09, reprise une troisième fois.
+  - **Vérifié** : les sept invariants du tableau des notes à zéro écart sur 850 matchs, **31 faits
+    sur 31**, score = film **0 écart** sur 5 053 faits ; `tests/simulate.js` → `ERRORS: none` ;
+    **aucune migration** (`VERSION` reste à 15 : une sauvegarde v15 n'a pas de `dossierDS`, ce qui
+    vaut « rien de promis », et une sauvegarde arrêtée sur cet arrêt-là n'a pas de `cible` — on en
+    fabrique une, ce qui est cohérent puisque son texte ne nommait personne).
+  - **Ce qui reste à décider, et c'est à lui** : le dossier du directeur sportif ne vient
+    **qu'une fois à la fois** (`!S.dossierDS` dans sa condition) et il est consommé par la fenêtre
+    suivante. Si la direction doit pouvoir en porter deux dans une saison, le levier est là. Et le
+    seuil `relais × 3,5` sur ce qu'un club plus fort lâche n'a pas été mesuré sur une carrière
+    entière en isolation : un coach au réseau maximal peut prendre un titulaire à un club quatre
+    points au-dessus du sien, ce qui est voulu, mais son effet cumulé sur vingt saisons reste à
+    mesurer si le championnat lui paraît trop facile à rattraper.
+
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).
 - Tout l'état d'une carrière est dans l'objet global `state` (sérialisé dans localStorage). `state.pendingChoice` désigne l'écran courant ; `render()` dans `ui.js` dispatche.

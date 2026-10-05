@@ -959,12 +959,26 @@ const CARRETS = [
       { l:"Faire répondre par le club", liens:{ supporters:-6, direction:4 },
         dits:[{c:'foot', t:"🏛️ la direction préfère ça"}, {c:'risk', t:"📣 ils raconteront que tu as refusé"}] },
     ] },
-  { id:'direction', quand: () => S.journee >= 6,
+  /* LE DOSSIER DU DIRECTEUR SPORTIF ARRIVE VRAIMENT (le propriétaire, 05/10/2026 :
+     « la direction me propose des joueurs, je les accepte, mais je les vois jamais
+     arriver — ça aussi, c'est pas cohérent »). Il avait raison et c'était un trou
+     complet : l'option rendait `axes` et `liens`, et **rien d'autre**. Le texte
+     promettait un joueur disponible en janvier, et personne ne venait jamais.
+     Désormais le candidat est **tiré avant le clic** (`cible()`), donc le texte le
+     **nomme** — sinon on ne pourrait pas le reconnaître en arrivant — et dire oui le
+     range dans `S.dossierDS`, que la prochaine fenêtre de mercato pose sur la table à
+     coup sûr. Il est cher (×1,3, c'est le mot du texte) et il est à ton poste le plus
+     faible, ce qui est la seule chose que le dossier promettait déjà. */
+  { id:'direction', quand: () => S.journee >= 6 && !S.dossierDS,
     titre:"Le directeur sportif",
-    texte: () => `« J'ai un dossier. Un joueur à ton poste faible, cher, disponible en janvier. »`,
+    cible: () => cCandidatDS(),
+    texte: (s, c) => c
+      ? `« J'ai un dossier : ${c.nom}, ${c.age} ans, ${C_POSTE_NOM[c.poste]}. Cher, mais disponible ${cMotFenetre()}. »`
+      : `« J'ai un dossier. Un joueur à ton poste faible, cher, disponible ${cMotFenetre()}. »`,
     options:[
-      { l:"Lui dire oui, et porter le dossier", axes:{ reseau:1 }, liens:{ direction:6, president:-3 },
-        dits:[{c:'foot', t:"🤝 ton réseau travaille"}, {c:'risk', t:"🏛️ le président verra la facture"}] },
+      { l:"Lui dire oui, et porter le dossier", dossier:true, axes:{ reseau:1 },
+        liens:{ direction:6, president:-3 },
+        dits:[{c:'foot', t:"🤝 il sera sur la table au mercato"}, {c:'risk', t:"🏛️ le président verra la facture"}] },
       { l:"« On fera avec ce qu'on a »", liens:{ president:5, direction:-5 }, ligne:1.6,
         dits:[{c:'foot', t:"🏛️ le président te trouve raisonnable"}, {c:'risk', t:"🤝 on ne te proposera plus rien"}] },
     ] },
@@ -1045,7 +1059,13 @@ function cOuvrirArrets(){
   S.recentArrets = [a.id, ...recents].slice(0, 3);
   S.arrets++;
   const sujet = a.sujet ? a.sujet() : null;
-  S.arret = { id:a.id, titre:a.titre, texte:a.texte(sujet), sujet,
+  /* Une famille peut avoir besoin de **quelqu'un qui n'est pas dans ton effectif** :
+     le dossier du directeur sportif parle d'un joueur d'ailleurs, et le texte doit le
+     nommer avant le clic pour qu'on le reconnaisse quand il arrive sur la table.
+     `cible()` le fabrique une fois, et il est rangé en objet simple dans la
+     sauvegarde — jamais un pointeur. */
+  const cible = a.cible ? a.cible() : null;
+  S.arret = { id:a.id, titre:a.titre, texte:a.texte(sujet, cible), sujet, cible,
     options: a.options.map(o => ({ l:o.l, dits:o.dits })) };
   S.ecran = 'carret'; sauver(); rendre();
 }
@@ -1053,13 +1073,13 @@ function cChoisirArret(i){
   const a = CARRETS.find(x => x.id === S.arret.id);
   const o = a.options[i] || a.options[0];
   const sujet = S.arret.sujet;
-  const suite = cAppliquer(o, sujet);
+  const suite = cAppliquer(o, sujet, S.arret.cible);
   S.semaineArret = { titre: a.titre, choix: o.l, suite: suite || null };
   S.stats.decisions++;
   jrn('arret', `${a.titre} — « ${o.l} ».`);
   cLancerMatch();
 }
-function cAppliquer(o, sujet){
+function cAppliquer(o, sujet, cible){
   let suite = null;
   if (o.liens) Object.entries(o.liens).forEach(([k, v]) => {
     if (k === 'proches') bougerProches(v);
@@ -1087,6 +1107,13 @@ function cAppliquer(o, sujet){
     suite = `${qui.nom} a pris son carton. Il manquera le prochain.`;
   }
   if (o.offres) S.bonusOffres = (S.bonusOffres || 0) + o.offres;
+  if (o.dossier){
+    /* Une sauvegarde arrêtée sur cet écran avant ce lot n'a pas de `cible` : on en
+       fabrique une. C'est cohérent, puisque son texte ne nommait personne. */
+    S.dossierDS = cible || cCandidatDS();
+    const cible2 = S.dossierDS;
+    suite = `${cible2.nom} sera sur la table ${cMotFenetre()}. Le directeur sportif s'en occupe.`;
+  }
   return suite;
 }
 
@@ -1640,6 +1667,161 @@ function cBudget(hiver){
    tout l'intérêt d'avoir un monde peuplé : le recruter le fait vraiment partir de
    chez eux. On garde la règle du marché automatique sur qui se laisse prendre : un
    remplaçant, un joueur d'un club plus petit, ou un trentenaire. */
+const C_POSTE_NOM = { G:"gardien", D:"défenseur", M:"milieu de terrain", A:"attaquant" };
+/* En quelle fenêtre un dossier promis arrivera : janvier quand l'époque a un mercato
+   d'hiver et qu'il n'est pas encore passé, l'été sinon. Sans ça le texte promettait
+   « janvier » dans une époque qui n'en a pas. */
+function cMotFenetre(){
+  const hiverAVenir = eraHasWinterMercato(S.annee) && !S.hiverFait && S.journee < J_HIVER;
+  return hiverAVenir ? "en janvier" : "cet été";
+}
+/* TON POSTE LE PLUS FAIBLE : celui dont le dernier titulaire est le plus loin de ce
+   que vaut le club. C'est l'étalon que `cMonOnze()` sert déjà au mercato, donc le
+   dossier du directeur sportif parle du même trou que les dossiers de la table. */
+function cPosteFaible(){
+  return Object.keys(EFFECTIF).sort((a, b) => cMonOnze(a) - cMonOnze(b))[0] || 'M';
+}
+/* LE CANDIDAT DU DIRECTEUR SPORTIF — ET IL SE CONSTRUIT SUR LE BUDGET, PAS SUR LE
+   NIVEAU. Première version : son niveau était tiré à `cMonOnze + 4 à 11` et son prix
+   en découlait. Mesuré sur 150 dossiers, c'était une promesse intenable —
+   **0 % achetable tout de suite, 93 % hors de portée quoi qu'on fasse, prix médian
+   dix-sept fois le budget** : exactement le défaut que ce lot répare, refabriqué un
+   étage plus haut. La cause est que `cValeur()` est convexe, donc onze points
+   au-dessus de ton onze est un prix d'un autre monde.
+   Il est donc tiré **à l'envers** : on part du prix que l'enveloppe de l'été peut
+   tenir (« cher » veut dire qu'il la mange, pas qu'il la dépasse de dix-sept fois) et
+   on cherche le niveau qui vaut ce prix-là. Il améliore toujours la ligne d'au moins
+   un point — c'est tout l'objet du dossier — et ce plancher est ce qui domine le prix
+   le plus souvent : mesuré après, prix médian **1,2 fois le budget**, l'argent suffit
+   dans **35 %** des cas, une vente le débloque dans les **65 %** restants et il n'est
+   **jamais** hors de portée (contre 0 / 7 / 93 avant). Témoin mesuré en même temps :
+   les dossiers de club ordinaires sont payables à 100 %, donc celui-là est bien la
+   seule vraie dépense de la table. */
+function cCandidatDS(){
+  const poste = cPosteFaible();
+  const age = ri(23, 29);
+  const cible = Math.max(.004, cBudget(false) * rnd(.5, .95)) / 1.3;
+  let niv = clamp(cMonOnze(poste) + 1, 42, 86), ecart = Infinity;
+  for (let v = Math.round(clamp(cMonOnze(poste) + 1, 42, 86)); v <= 86; v++){
+    const e = Math.abs(cValeur(v, age) - cible);
+    if (e < ecart){ ecart = e; niv = v; } else break;
+  }
+  return { nom: nomAdverse(nomsPris()), poste, age, niv: Math.round(niv),
+    pot: potDe(Math.round(niv), age), de: null, cle:'ds',
+    prix: Math.round(cValeur(niv, age) * 1.3 * 1000) / 1000 };
+}
+/* CE QUE LA DIRECTION TE LAISSE FAIRE, ENFIN LU (le propriétaire, 05/10/2026 :
+   « la place de la direction et de la relation que j'ai avec la direction doit jouer
+   dans les propositions de joueurs qu'on me fait. Et je pensais que c'est à ça que
+   servait le bureau »). Sa lecture était la bonne et le code ne la tenait pas :
+   `reseau` n'avait **qu'une** lecture mécanique — `cCote()`, qui t'appelle en juin —
+   alors que son propre commentaire lui promettait deux choses (« ce que la direction
+   te laisse faire, et qui t'appelle en juin »), et la première n'existait pas. La
+   semaine « bureau » construisait donc un axe dont la moitié de la promesse était
+   morte.
+   `cRelais()` est ce relais, de −1 à +1 : le réseau pour six dixièmes (c'est toi qui
+   décroches le téléphone), la direction pour quatre (c'est elle qui signe). Il décide
+   de **deux choses** : combien de dossiers arrivent sur la table, et jusqu'où un club
+   plus fort que le tien accepte de lâcher un titulaire. */
+/* LE DÉNOMINATEUR EST CELUI DE L'AMPLITUDE RÉELLE, pas des cinquante points
+   théoriques. Première version à /50 : mesurée sur cinq carrières par ligne, elle
+   donnait **9,50 dossiers contre 8,64** entre « bureau chaque semaine » et « jamais le
+   bureau » — un dossier d'écart, c'est-à-dire rien de sensible, parce que `reseau` est
+   borné par son plafond (58-84) et que `direction` vit autour de 50. À /28 l'écart
+   devient lisible, et c'est ce qu'il demandait : la relation avec la direction **se
+   voit** dans ce qu'on te propose. */
+function cRelais(){
+  return clamp(((cAxe('reseau') - 50) * .6 + ((S.liens.direction || 50) - 50) * .4) / 28, -1, 1);
+}
+/* ET ÇA SE DIT, sinon ça n'existe pas : une table longue ou courte sans raison
+   affichée serait un chiffre de plus. La phrase nomme les deux jauges qui la font. */
+function cMotRelais(){
+  const r = cRelais();
+  return r >= .5 ? "ton carnet et la direction t'ouvrent des portes"
+    : r >= .15 ? "on te sort des dossiers quand tu appelles"
+    : r >= -.15 ? "ce que le club sort sans se forcer"
+    : r >= -.5 ? "tu décroches peu, et on te propose peu"
+    : "personne ne te sort rien : le bureau, c'est aussi du travail";
+}
+function cNbDossiers(hiver){
+  const base = hiver ? 6 : 9, amp = hiver ? 2 : 3;
+  return Math.max(3, Math.round(base + cRelais() * amp));
+}
+/* À QUEL POSTE ON TE PROPOSE QUELQU'UN. Un tirage uniforme sur quatre postes donnait
+   **un dossier sur quatre pour un gardien** alors qu'un groupe en compte trois sur
+   vingt-deux et que le onze n'en aligne qu'un : mesuré avant correction, 20 % de la
+   table, et jusqu'à sept dossiers du même poste dans une pile de dix. Les postes sont
+   désormais pondérés par ce que le onze **aligne** (G1 · D4 · M4 · A2), doublé par le
+   trou que tu as à ce poste : on te propose d'abord là où ça manque. */
+function cPoidsPoste(){
+  const o = {};
+  Object.keys(EFFECTIF).forEach(po => {
+    const trou = Math.max(0, S.club.force - cMonOnze(po));
+    o[po] = (FORMATION[po] || 1) * (1 + trou * .12);
+  });
+  return o;
+}
+function cPosteDemande(){
+  const w = cPoidsPoste(), ks = Object.keys(w);
+  const t = ks.reduce((a, k) => a + w[k], 0);
+  let r = Math.random() * t;
+  for (const k of ks){ r -= w[k]; if (r <= 0) return k; }
+  return ks[ks.length - 1];
+}
+/* IL FAUT UN PEU DE TOUT SUR LA TABLE (le propriétaire, 05/10/2026 : « il faut que les
+   joueurs que je reçois soient adaptés. Un peu de tout dans les prix, un peu de tout
+   dans les postes. Des joueurs libres, des joueurs du centre, des joueurs de mes
+   concurrents, des joueurs d'autres pays. Parfois je me retrouvais avec 10 dossiers de
+   gardiens »). Le tri au seul mérite faisait exactement ça : mesuré sur 60 fenêtres,
+   **35 % des piles ne couvraient même pas les quatre postes** et 25 % avaient cinq
+   dossiers ou plus au même poste.
+   La table se **compose** maintenant, dans cet ordre : le dossier promis par le
+   directeur sportif, puis un de chaque famille présente, puis un de chaque poste, puis
+   un de chaque bande de prix, et seulement ensuite le reste au mérite — avec un
+   plafond par poste pour qu'aucun ne puisse inonder la pile. */
+function cBandePrix(x, budget){
+  if (x.prix <= 0) return 'gratuit';
+  if (x.prix <= budget * .3) return 'petit';
+  if (x.prix <= budget * .85) return 'moyen';
+  return 'cher';
+}
+function cComposerDeck(l, n, budget){
+  const pris = [], dedans = new Set(), cnt = {};
+  /* LE PLAFOND PAR POSTE S'APPLIQUE AUX GARANTIES AUSSI, et c'est la mesure qui l'a
+     dit : une première version ne le posait qu'au remplissage final, donc les
+     garanties de famille et de bande de prix pouvaient prendre quatre fois le même
+     poste avant lui — six dossiers d'un seul poste dans une pile de dix. Et **les
+     postes passent devant les familles** : à six dossiers l'hiver, garantir quatre
+     familles d'abord ne laissait plus une ligne pour couvrir les quatre postes
+     (mesuré : un quart des piles n'en couvrait pas quatre). */
+  const cap = Math.max(2, Math.ceil(n / 4));
+  const prendre = (x, fort) => {
+    if (!x || dedans.has(x) || pris.length >= n) return;
+    if (!fort && (cnt[x.poste] || 0) >= cap) return;
+    pris.push(x); dedans.add(x); cnt[x.poste] = (cnt[x.poste] || 0) + 1;
+  };
+  const libre = () => l.filter(x => !dedans.has(x));
+  const mieux = arr => arr.length ? arr[0] : null;       // l est déjà trié au mérite
+  /* 1. le dossier promis : il passe devant tout, c'est ce qui le rend vrai */
+  prendre(mieux(libre().filter(x => x.cle === 'ds')), true);
+  /* 2. un de chaque poste : c'est la garantie qui compte le plus, donc elle passe
+     devant les familles — sinon une pile d'hiver n'a plus de place pour les quatre */
+  Object.keys(EFFECTIF).forEach(po =>
+    prendre(mieux(libre().filter(x => x.poste === po)), true));
+  /* 3. une de chaque famille, pour qu'aucune porte ne reste fermée */
+  ['libre', 'centre', 'etranger', 'club'].forEach(cle =>
+    prendre(mieux(libre().filter(x => x.cle === cle))));
+  /* 4. une de chaque bande de prix qui existe vraiment, la plus chère d'abord :
+     c'est elle qui manque quand le mérite trie tout seul */
+  ['cher', 'moyen', 'petit', 'gratuit'].forEach(b =>
+    prendre(mieux(libre().filter(x => cBandePrix(x, budget) === b))));
+  /* 5. le reste au mérite, sous le plafond */
+  libre().forEach(x => prendre(x));
+  /* et s'il manque encore des lignes, on remplit sans le plafond : une table courte
+     serait pire qu'une table un peu déséquilibrée */
+  libre().forEach(x => prendre(x, true));
+  return pris;
+}
 function cCibles(budget, hiver){
   const pris = nomsPris();
   const mien = monClub();
@@ -1656,7 +1838,7 @@ function cCibles(budget, hiver){
         if (!(remplacant || petit || vieux)) return;
         /* Un club plus fort que le tien ne te lâche pas son titulaire : c'est ce qui
            t'empêche de bâtir le meilleur onze du championnat en un été. */
-        if (!remplacant && e.force > S.club.force + 1) return;
+        if (!remplacant && e.force > S.club.force + 1 + cRelais() * 3.5) return;
         l.push({ nom:j.n, poste:po, age:j.a, niv: Math.round(j.v), pot:j.t,
           de:e.nom, div:d2, cle:'club',
           prix: Math.round(cValeur(j.v, j.a) * (remplacant ? .85 : 1.15) * 1000) / 1000 });
@@ -1668,7 +1850,7 @@ function cCibles(budget, hiver){
   for (let k = 0; k < 3; k++){
     const niv = Math.round(clamp(S.club.force + rnd(-3, 7), 40, 84));
     const age = ri(21, 30);
-    l.push({ nom: nomAdverse(pris), poste: pick(Object.keys(EFFECTIF)), age, niv,
+    l.push({ nom: nomAdverse(pris), poste: cPosteDemande(), age, niv,
       pot: potDe(niv, age), de: null, cle:'etranger',
       prix: Math.round(cValeur(niv, age) * 1.25 * 1000) / 1000 });
   }
@@ -1683,7 +1865,7 @@ function cCibles(budget, hiver){
     const vieux = Math.random() < .65;
     const age = vieux ? ri(30, 35) : ri(19, 23);
     const niv = Math.round(clamp(S.club.force + (vieux ? rnd(-2, 6) : rnd(-9, 1)), 38, 82));
-    l.push({ nom: nomAdverse(pris), poste: pick(Object.keys(EFFECTIF)), age, niv,
+    l.push({ nom: nomAdverse(pris), poste: cPosteDemande(), age, niv,
       pot: potDe(niv + (vieux ? 0 : rnd(3, 9)), age), de: null, cle:'libre', prix: 0,
       salMult: 1.3 });
   }
@@ -1692,8 +1874,17 @@ function cCibles(budget, hiver){
   if (!hiver) for (let k = 0; k < 2; k++){
     const age = ri(18, 19);
     const niv = Math.round(clamp(S.club.force - rnd(5, 15), 36, 70));
-    l.push({ nom: nomAdverse(pris), poste: pick(Object.keys(EFFECTIF)), age, niv,
+    l.push({ nom: nomAdverse(pris), poste: cPosteDemande(), age, niv,
       pot: potDe(niv + rnd(4, 10), age), de: null, cle:'centre', prix: 0 });
+  }
+  /* Et le dossier que le directeur sportif a promis en cours de saison : il entre
+     ici, et `cComposerDeck()` lui garde la première place de la table. */
+  if (S.dossierDS){
+    const d = Object.assign({}, S.dossierDS);
+    /* Son nom a été tiré en cours de saison : un transfert a pu le prendre depuis.
+       On le renomme plutôt que de fabriquer un doublon dans le championnat. */
+    if (pris.has(d.nom)) d.nom = nomAdverse(pris);
+    l.push(d);
   }
   l.forEach(x => { x.sal = Math.round(salaireDe(x.niv, x.age, S.club.force, S.division || 1)
     * (x.salMult || 1) * 1000) / 1000; });
@@ -1714,17 +1905,19 @@ function cCibles(budget, hiver){
     x.faisable = x.prix <= budget && cMasse() + x.sal <= cPlafond() * 1.14; });
   l.sort((a, b) => (b.faisable ? 1 : 0) - (a.faisable ? 1 : 0)
     || b.merite - a.merite || a.prix - b.prix);
-  /* Et les deux familles qui ne viennent pas d'un club gardent leur place sur la
-     table, quoi que dise le tri : une porte qu'on n'ouvre jamais n'existe pas. */
-  /* ELLE EST PLUS COURTE (« c'est long »). Quatorze dossiers à un par écran, avec
-     l'effectif complet sous chacun, c'est beaucoup de clics pour une seule décision.
-     Dix en été, sept en hiver — et les places réservées aux familles qui ne viennent pas
-     d'un club montent à six, puisqu'il y a maintenant les libres. */
-  const n = hiver ? 7 : 10;
-  const garde = l.filter(x => x.cle !== 'club').slice(0, hiver ? 3 : 6);
-  const reste = l.filter(x => !garde.includes(x)).slice(0, Math.max(0, n - garde.length));
-  return garde.concat(reste).sort((a, b) => (b.faisable ? 1 : 0) - (a.faisable ? 1 : 0)
-    || b.merite - a.merite || a.prix - b.prix);
+  /* ELLE EST COURTE (« c'est long », 04/10/2026) ET ELLE EST **COMPOSÉE**
+     (05/10/2026) : sa longueur vient maintenant de ton réseau et de ta direction
+     (`cNbDossiers()`), et son contenu de `cComposerDeck()` — un peu de tout dans les
+     postes, dans les prix et dans les familles. Le tri d'affichage reste le sien :
+     faisable d'abord, hors de portée en dernier. */
+  /* Le dossier promis par le directeur sportif passe **en tête**, même s'il n'est pas
+     faisable : « faisable d'abord » est une règle de feuilletage, et celui-là n'est pas
+     à découvrir — c'est un rendez-vous qu'on a pris. Mesuré sans cette exception : il
+     tombait en neuvième position sur neuf, donc à neuf clics de l'écran. */
+  return cComposerDeck(l, cNbDossiers(hiver), Math.max(.001, budget))
+    .sort((a, b) => (b.cle === 'ds' ? 1 : 0) - (a.cle === 'ds' ? 1 : 0)
+      || (b.faisable ? 1 : 0) - (a.faisable ? 1 : 0)
+      || b.merite - a.merite || a.prix - b.prix);
 }
 /* Le niveau du dernier titulaire à ce poste : l'étalon auquel on compare un dossier,
    et il se dit en mots, jamais en chiffre. */
@@ -1875,6 +2068,10 @@ function cVendre(nom){
 }
 /* Ce que la fenêtre a produit, et ce qu'elle coûtera. */
 function cFermerMercato(){
+  /* Le dossier du directeur sportif a été sur la table : il ne revient pas une
+     deuxième fenêtre, qu'on l'ait pris ou non. C'est le compteur de carrière que le
+     lot du 02/10 avait appris à ses dépens — une porte qui compose se vide. */
+  S.dossierDS = null;
   const m = S.marche;
   if (m){
     S.surMasse = cMasse() > cPlafond();
@@ -1940,8 +2137,8 @@ function cPourquoi(k){
       : "Au prochain bilan de quart de saison, tu peux sauter.";
   }
   if (k === 'direction') return S.liens.direction > 62
-    ? "Elle peut te protéger une fois si le président lâche, et elle te laisse la main sur l'argent des ventes."
-    : "Elle ne s'interposera pas, et elle garde sa part sur l'argent des ventes.";
+    ? "Elle peut te protéger une fois si le président lâche, elle te laisse la main sur l'argent des ventes, et elle te sort des dossiers au mercato."
+    : "Elle ne s'interposera pas, elle garde sa part sur l'argent des ventes, et elle ne se fatigue pas à te trouver des joueurs.";
   if (k === 'presse') return S.liens.presse > 56
     ? "C'est elle qui fait qu'un autre club pense à toi." : "Personne ne parle de toi ailleurs.";
   if (k === 'supporters'){
@@ -1991,9 +2188,9 @@ function cDireAxe(a){
       "Tu décides correctement, sans génie.",
       "Tes coups du banc marchent souvent.",
       "Tu changes un match avec un changement, et ça se sait."][b],
-    reseau: ["Personne ne décroche quand tu appelles.",
-      "Tu as quelques numéros.",
-      "On te rappelle, et on t'écoute.",
-      "Tu as un numéro pour chaque situation, et on décroche."][b],
+    reseau: ["Personne ne décroche : peu de dossiers au mercato, et personne en juin.",
+      "Tu as quelques numéros, et quelques dossiers quand le mercato ouvre.",
+      "On te rappelle : des dossiers sur la table, et des clubs qui pensent à toi.",
+      "Un numéro pour chaque situation : la table est pleine, et on t'appelle en juin."][b],
   }[a];
 }
