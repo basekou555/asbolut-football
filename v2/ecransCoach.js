@@ -322,11 +322,17 @@ function cMotEffectif(o){
    coquille affichait « Niveau 6,4 », or aucune valeur de jauge n'arrive à l'écran ici.
    Le niveau d'un dossier se lit donc **en mots**, comparé à ton onze (`cMotNiveau`) —
    l'argent, l'âge et les moyennes de match restent chiffrés, comme partout. */
+/* « A et B et C » n'est pas du français : des virgules, et un seul « et ». */
+function etListe(l){
+  if (l.length <= 1) return l[0] || '';
+  return l.slice(0, -1).join(', ') + ' et ' + l[l.length - 1];
+}
 function cSousTitreDossier(x){
   const po = POSTES.find(p => p.id === x.poste);
   const d = [po ? po.nom : x.poste, `${x.age} ans`];
   if (x.de) d.push(`${x.de}${x.div && x.div !== (S.division || 1) ? ` (${abrDivision(x.div)})` : ''}`);
   else if (x.cle === 'centre') d.push("ton centre de formation");
+  else if (x.cle === 'libre') d.push(x.age >= 29 ? "libre, son club ne l'a pas prolongé" : "libre, on l'a laissé partir");
   else d.push("de l'étranger");
   return d.join(' · ');
 }
@@ -342,7 +348,8 @@ function cDossierHTML(){
       <div class="m">${esc(cSousTitreDossier(x))}</div></div>
     <div class="pills"><i class="pill foot">${esc(cMotNiveau(x))}</i>${cMotPotentiel(x)
       ? `<i class="pill neutre">${esc(cMotPotentiel(x))}</i>` : ''}${x.cle === 'centre'
-      ? `<i class="pill vie">Il sort de chez toi, et il est libre</i>` : ''}</div>
+      ? `<i class="pill vie">Il sort de chez toi, et il est libre</i>` : ''}${x.cle === 'libre'
+      ? `<i class="pill vie">Aucune indemnité \u2014 mais il se paie sur le salaire</i>` : ''}</div>
     <div class="sheet">
       <div><span class="l">Indemnité de transfert</span><span class="v money">${x.prix ? esc(sous(x.prix)) : 'libre'}</span></div>
       <div><span class="l">Son salaire</span><span class="v money">${esc(sous(x.sal))} par an</span></div>
@@ -392,11 +399,15 @@ function ecranCMercato(){
   const part = Math.min(140, Math.round(masse / plafond * 100));
   const reste = Math.round((plafond - masse) * 1000) / 1000;
   const mien = (S.mercatoVu || []).filter(x => x.de === S.club.nom);
+  /* QUI SONT CES JOUEURS QUI ARRIVENT TOUT SEULS. Le centre comble les départs que tu
+     n'as pas décidés ; sans cette ligne, un inconnu apparaissait dans ton effectif. */
+  const duCentre = (S.mercatoVu || []).filter(x => x.centre && x.vers === S.club.nom);
   return `<div class="card no-sticky">
     <div class="step">Mercato ${m.hiver ? "d'hiver" : "d'été"} · ${esc(S.club.nom)}${m.deck.length
       ? ` · dossier ${m.idx + 1} sur ${m.deck.length}` : ''}</div>
     <div class="sheet" style="margin-top:0">
-      <div><span class="l">Budget de transfert</span><span class="v money">${esc(sous(m.budget))}</span></div>
+      <div><span class="l">Budget de transfert</span><span class="v money">${esc(sous(m.budget))}${
+        m.vendu ? `<i class="sub"> dont ${esc(sous(m.vendu))} des d\u00e9parts</i>` : ''}</span></div>
       <div><span class="l">Masse salariale</span><span class="v money">${esc(sous(masse))} / ${esc(sous(plafond))}</span></div>
       <div><span class="l">Effectif</span><span class="v">${(S.equipe || []).length} joueurs / ${C_CAP_EFFECTIF}</span></div>
     </div>
@@ -404,16 +415,20 @@ function ecranCMercato(){
     <p class="sub">${reste > 0
       ? `Il te reste ${esc(sous(reste))} de masse salariale avant le plafond.`
       : `Tu es au-dessus du plafond de ${esc(sous(-reste))}. Le président compte les journées.`}</p>
-    ${mien.length ? `<div class="lack"><b>On est venu te prendre ${mien.length === 1 ? 'un joueur' : `${mien.length} joueurs`}.</b>
-      <span class="sub">${mien.map(x => `${esc(x.nom)} → ${esc(x.vers || "l'étranger")}`).join(' · ')}</span></div>` : ''}
+    ${mien.length ? `<div class="lack"><b>On est venu te prendre ${mien.length === 1 ? 'un joueur' : `${mien.length} joueurs`}${
+      m.vendu ? ` \u2014 ${esc(sous(m.vendu))} dans le budget` : ''}.</b>
+      <span class="sub">${mien.map(x => `${esc(x.nom)} \u2192 ${esc(x.vers || "l'\u00e9tranger")}`).join(' \u00b7 ')}</span>${
+      duCentre.length ? `<span class="sub">${duCentre.length === 1
+        ? `${esc(duCentre[0].nom)}, ${duCentre[0].age} ans, est mont\u00e9 du centre pour prendre la place.`
+        : `${esc(etListe(duCentre.map(x => `${x.nom} (${x.age} ans)`)))} sont mont\u00e9s du centre pour prendre les places.`}</span>` : ''}</div>` : ''}
     ${cDossierHTML()}
     ${(m.in || []).length ? `<h3>Tes recrues</h3>${mvtHTML(m.in, 'in')}` : ''}
     ${(m.out || []).length ? `<h3>Tes départs</h3>${mvtHTML(m.out.map(o => ({ ...o, de: S.club.nom })), 'out')}` : ''}
     ${!(m.in || []).length && !(m.out || []).length
       ? `<p class="sub">Tu n'as encore rien fait. Ne rien faire est une décision aussi — mais on te la reprochera si le groupe ne tient pas.</p>` : ''}
-    ${(S.mercatoVu || []).filter(x => x.de !== S.club.nom && x.vers !== S.club.nom).length
+    ${(S.mercatoVu || []).filter(x => !x.centre && x.de !== S.club.nom && x.vers !== S.club.nom).length
       ? `<details class="fold"><summary>Le mercato des autres</summary><div class="mvts">${
-        (S.mercatoVu || []).filter(x => x.de !== S.club.nom && x.vers !== S.club.nom).slice(0, 25)
+        (S.mercatoVu || []).filter(x => !x.centre && x.de !== S.club.nom && x.vers !== S.club.nom).slice(0, 25)
         .map(x => `<div><span class="i">🔁</span><span><b>${esc(x.nom)}</b>
           <i>${x.age} ans — ${esc(x.de)} → ${esc(x.vers || "l'étranger")}</i></span></div>`).join('')}</div></details>` : ''}
     <div class="btn-row"><button class="btn" onclick="cFermerMercato()">Fermer le mercato →</button></div>

@@ -892,7 +892,17 @@ function mercato(){
       pousserDehors(ach, po, mouv);
       ach.force = forceEffectif(ach.sq);
     }
-    vend.sq.push(jeuneDuCentre(po, vend, pris));
+    /* QUI EST CE JOUEUR QUI ARRIVE ? (le propriétaire, 04/10/2026 : « on les remplace
+       par des joueurs automatiquement, c'est un peu bizarre, c'est qui ces joueurs ? »)
+       Un gamin du centre prenait la place du parti **sans laisser de trace** : il
+       apparaissait dans ton effectif sans nom d'origine et sans âge annoncé. Il est
+       maintenant inscrit dans les mouvements, marqué `centre`, pour que l'écran puisse
+       dire qui il est et d'où il vient. Le mercato des autres clubs l'ignore — sinon la
+       liste se remplirait de dix-sept gamins. */
+    const gamin = jeuneDuCentre(po, vend, pris);
+    vend.sq.push(gamin);
+    mouv.push({ nom:gamin.n, poste:po, age:gamin.a, niv: Math.round(gamin.v),
+      de:null, vers:vend.nom, centre:true });
     vend.force = forceEffectif(vend.sq);
     vend.nOut++; if (ach) ach.nIn++;
     mouv.push({ nom:j.n, poste:po, age:j.a, niv: Math.round(j.v),

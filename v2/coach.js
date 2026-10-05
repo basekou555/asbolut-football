@@ -1459,6 +1459,22 @@ function cDemarrerSaison(){
   /* Le marché se joue APRÈS ta signature : un club construit autour de l'entraîneur
      qu'il vient de prendre, et tu lis ce qu'il a fait. */
   const mv = mercato();
+  /* ON TE PREND DES JOUEURS, ET TU TOUCHES L'INDEMNITÉ (le propriétaire, 04/10/2026 :
+     « on vient me prendre 3 joueurs mais je ne vois pas la valeur dans mon budget de
+     transfert »). Il avait raison et c'était un trou complet : `mercato()` déplace les
+     joueurs d'un `sq` à l'autre **sans un centime**, parce qu'il a été écrit pour
+     équilibrer les forces du championnat, pas pour tenir une comptabilité. Mesuré sur
+     271 étés : on te prend **1,22 joueur**, pour une valeur médiane de 55 k€ — et
+     **zéro crédité**. Or c'est l'inverse du football : l'indemnité d'un départ est la
+     première chose qui finance le marché d'un club vendeur. Au même prix que si tu
+     l'avais vendu toi-même (`cVendre`, 90 % de sa valeur) : le club a négocié, pas toi,
+     mais l'argent rentre. */
+  const partis = mv.filter(x => x.de === S.club.nom);
+  S.venduAuto = Math.round(partis.reduce((a, x) =>
+    a + cValeur(x.niv, x.age) * .9, 0) * C_PART_VENTE * 1000) / 1000;
+  if (S.venduAuto) jrn('mercato', partis.length === 1
+    ? `Un départ que tu n'as pas décidé : ${sous(S.venduAuto)} pour le mercato.`
+    : `${partis.length} départs que tu n'as pas décidés : ${sous(S.venduAuto)} pour le mercato.`);
   cLireEffectif();
   S.mercatoVu = mv;
   S.annee++;
@@ -1584,6 +1600,21 @@ function cCibles(budget, hiver){
       pot: potDe(niv, age), de: null, cle:'etranger',
       prix: Math.round(cValeur(niv, age) * 1.25 * 1000) / 1000 });
   }
+  /* LES JOUEURS LIBRES (le propriétaire, 04/10/2026 : « y'a aucun joueur libre sur le
+     mercato en dehors des joueurs du centre »). C'était vrai : la pile n'avait que des
+     joueurs sous contrat, trois de l'étranger payants et deux gamins du centre. Or un
+     joueur libre est **le levier du club pauvre** — aucune indemnité, seulement un
+     salaire, et il le négocie d'autant mieux qu'il ne coûte rien à acheter (×1,3). Deux
+     profils, parce que c'est ce que le football donne : un joueur en fin de carrière que
+     son club n'a pas prolongé, et un jeune qu'on a laissé partir. */
+  for (let k = 0; k < (hiver ? 1 : 2); k++){
+    const vieux = Math.random() < .65;
+    const age = vieux ? ri(30, 35) : ri(19, 23);
+    const niv = Math.round(clamp(S.club.force + (vieux ? rnd(-2, 6) : rnd(-9, 1)), 38, 82));
+    l.push({ nom: nomAdverse(pris), poste: pick(Object.keys(EFFECTIF)), age, niv,
+      pot: potDe(niv + (vieux ? 0 : rnd(3, 9)), age), de: null, cle:'libre', prix: 0,
+      salMult: 1.3 });
+  }
   /* Et le centre de formation : gratuit, faible, et c'est la seule porte de
      l'ambition « faire éclore ». */
   if (!hiver) for (let k = 0; k < 2; k++){
@@ -1592,7 +1623,8 @@ function cCibles(budget, hiver){
     l.push({ nom: nomAdverse(pris), poste: pick(Object.keys(EFFECTIF)), age, niv,
       pot: potDe(niv + rnd(4, 10), age), de: null, cle:'centre', prix: 0 });
   }
-  l.forEach(x => { x.sal = Math.round(salaireDe(x.niv, x.age, S.club.force, S.division || 1) * 1000) / 1000; });
+  l.forEach(x => { x.sal = Math.round(salaireDe(x.niv, x.age, S.club.force, S.division || 1)
+    * (x.salMult || 1) * 1000) / 1000; });
   /* Faisable d'abord, hors de portée en dernier — c'est le tri de la 1.0, et c'est
      celui qu'il avait validé : on ne veut pas feuilleter dix dossiers injouables.
      **UN JEUNE NE SE JUGE PAS À CE QU'IL APPORTE SAMEDI** (mesuré le 01/10/2026 : sur
@@ -1612,8 +1644,12 @@ function cCibles(budget, hiver){
     || b.merite - a.merite || a.prix - b.prix);
   /* Et les deux familles qui ne viennent pas d'un club gardent leur place sur la
      table, quoi que dise le tri : une porte qu'on n'ouvre jamais n'existe pas. */
-  const n = hiver ? 9 : 14;
-  const garde = l.filter(x => x.cle !== 'club').slice(0, hiver ? 2 : 5);
+  /* ELLE EST PLUS COURTE (« c'est long »). Quatorze dossiers à un par écran, avec
+     l'effectif complet sous chacun, c'est beaucoup de clics pour une seule décision.
+     Dix en été, sept en hiver — et les places réservées aux familles qui ne viennent pas
+     d'un club montent à six, puisqu'il y a maintenant les libres. */
+  const n = hiver ? 7 : 10;
+  const garde = l.filter(x => x.cle !== 'club').slice(0, hiver ? 3 : 6);
   const reste = l.filter(x => !garde.includes(x)).slice(0, Math.max(0, n - garde.length));
   return garde.concat(reste).sort((a, b) => (b.faisable ? 1 : 0) - (a.faisable ? 1 : 0)
     || b.merite - a.merite || a.prix - b.prix);
@@ -1640,9 +1676,23 @@ function cMotPotentiel(x){
 }
 
 /* ---------------- la fenêtre ---------------- */
+/* Combien de l'indemnité revient au budget de transfert. À 100 %, mesuré : le budget
+   d'été médian passe de 0,20 à 0,95 et sa moyenne de 1,5 à 4,1, parce que la
+   distribution a une queue énorme (un jeune de 21 ans dans un grand club vaut
+   cinquante fois le budget d'une saison). Un club ne remet pas tout sur la table : il
+   rembourse, il paie des salaires, il garde. À 55 % l'argent se voit sans refaire
+   l'échelle du mode. */
+const C_PART_VENTE = .55;
 function cOuvrirMercato(hiver){
-  const b = cBudget(hiver);
-  S.marche = { hiver: !!hiver, budget: b, budget0: b, idx: 0,
+  /* L'indemnité des départs de l'été entre dans la fenêtre d'été, une seule fois :
+     `mercato()` ne tourne qu'à `cDemarrerSaison()`, donc l'hiver n'en a pas. */
+  const vendu = hiver ? 0 : (S.venduAuto || 0);
+  /* Et il se consomme : l'écran du mercato rouvre une fenêtre quand il n'en trouve
+     pas (une sauvegarde d'avant le lot du mercato), et sans cette remise à zéro il
+     recréditerait l'indemnité de l'été passé. */
+  S.venduAuto = 0;
+  const b = Math.round((cBudget(hiver) + vendu) * 1000) / 1000;
+  S.marche = { hiver: !!hiver, budget: b, budget0: b, idx: 0, vendu,
     deck: cCibles(b, hiver), in: [], out: [], fini: false };
   S.ecran = 'cmercato'; sauver(); rendre();
 }
@@ -1763,6 +1813,14 @@ function cFermerMercato(){
     }
     m.fini = true;
   }
+  /* UNE RECRUE N'EN EST UNE QUE DANS SA FENÊTRE (le propriétaire, 04/10/2026 : « après
+     une saison au club on n'est plus une recrue »). `j.recrue` était posé à la signature
+     et **jamais retiré** : l'étiquette restait à vie, et surtout `cVentesQuiSuffisent()`
+     écarte les recrues — donc un joueur signé une fois ne pouvait **plus jamais** être
+     proposé pour financer un achat, dix saisons plus tard. On ne peut annuler un
+     transfert que dans la fenêtre où il a été conclu : c'est la règle de la 1.0
+     (`p.joinedWindow`), et elle manquait ici. */
+  (S.equipe || []).forEach(j => { delete j.recrue; });
   cSyncEffectif();
   /* L'objectif ne se rejuge qu'en août : un président ne révise pas sa demande en
      janvier parce que tu as recruté. */
