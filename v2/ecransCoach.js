@@ -334,6 +334,7 @@ function cSousTitreDossier(x){
   if (x.de) d.push(`${x.de}${x.div && x.div !== (S.division || 1) ? ` (${abrDivision(x.div)})` : ''}`);
   else if (x.cle === 'centre') d.push("ton centre de formation");
   else if (x.cle === 'libre') d.push(x.age >= 29 ? "libre, son club ne l'a pas prolongé" : "libre, on l'a laissé partir");
+  else if (x.cle === 'ds') d.push("le dossier du directeur sportif");
   else d.push("de l'étranger");
   return d.join(' · ');
 }
@@ -350,7 +351,8 @@ function cDossierHTML(){
     <div class="pills"><i class="pill foot">${esc(cMotNiveau(x))}</i>${cMotPotentiel(x)
       ? `<i class="pill neutre">${esc(cMotPotentiel(x))}</i>` : ''}${x.cle === 'centre'
       ? `<i class="pill vie">Il sort de chez toi, et il est libre</i>` : ''}${x.cle === 'libre'
-      ? `<i class="pill vie">Aucune indemnité \u2014 mais il se paie sur le salaire</i>` : ''}</div>
+      ? `<i class="pill vie">Aucune indemnité \u2014 mais il se paie sur le salaire</i>` : ''}${x.cle === 'ds'
+      ? `<i class="pill vie">Celui que tu as accepté de porter en cours de saison</i>` : ''}</div>
     <div class="sheet">
       <div><span class="l">Indemnité de transfert</span><span class="v money">${x.prix ? esc(sous(x.prix)) : 'libre'}</span></div>
       <div><span class="l">Son salaire</span><span class="v money">${esc(sous(x.sal))} par an</span></div>
@@ -413,6 +415,8 @@ function ecranCMercato(){
         esc(sous(Math.round((m.venduBrut - m.vendu) * 1000) / 1000))} <i class="sub">sur ${esc(sous(m.venduBrut))}</i></span></div>` : ''}
       <div><span class="l">Masse salariale</span><span class="v money">${esc(sous(masse))} / ${esc(sous(plafond))}</span></div>
       <div><span class="l">Effectif</span><span class="v">${(S.equipe || []).length} joueurs / ${C_CAP_EFFECTIF}</span></div>
+      <div><span class="l">Ce que ton réseau a sorti</span><span class="v">${m.deck.length} dossier${
+        m.deck.length > 1 ? 's' : ''}<i class="sub" style="display:block">${esc(cMotRelais())}</i></span></div>
     </div>
     <div class="bar"><i class="${part > 100 ? 'hot' : ''}" style="width:${Math.min(100, part)}%"></i></div>
     <p class="sub">${reste > 0
