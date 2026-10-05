@@ -178,7 +178,7 @@ function cNouvellePartie(c){
     else S.liens[k] = clamp((S.liens[k] || 50) + v);
   });
   S.ligneRef = { ...S.lignes };
-  cLireEffectif();
+  cLireEffectif(true);
   cPoserObjectif();
   cPoserPlafond();
   poserSalaire(cSalaire());
@@ -198,7 +198,14 @@ function cNouvellePartie(c){
    l'occasion. `S.concurrents` reste vide : c'est ce qui fait que tout le code
    partagé (le onze du jour, les notes, les changements) marche sans savoir qu'il
    n'y a personne qui s'appelle « moi ». */
-function cLireEffectif(){
+/* LE PARAMÈTRE QUI RÉPARE UNE RÉGRESSION (le propriétaire, 05/10/2026 : « à chaque
+   mise à jour je prends les stats de mes joueurs »). La remise à zéro de la saison a
+   été posée ici le 04/10 — mais `demarrer()` appelle `cLireEffectif()` **à chaque
+   chargement de page**, donc chaque mise en ligne effaçait les statistiques, la forme,
+   les blessures, les suspensions et les rancunes de tout le groupe. Elle ne vaut que
+   pour un été (`cOuvrirEte`, `cDemarrerSaison`), une signature ailleurs ou une partie
+   neuve ; la relecture d'une sauvegarde ne touche à rien. */
+function cLireEffectif(neuf){
   const e = monClub(); if (!e) return;
   const avant = {}; (S.equipe || []).forEach(j => avant[j.nom] = j);
   const l = [];
@@ -214,7 +221,7 @@ function cLireEffectif(){
      et les buts affichés dans l'effectif étaient ceux de **toute la carrière** du
      joueur, pas de la saison. Trouvé en branchant les stats de l'effectif
      (04/10/2026) : sans cette ligne, « 23 buts » ne voulait rien dire. */
-  S.equipe.forEach(j => { j.forme = 0; j.blesse = 0; j.susp = 0; j.rancune = 0;
+  if (neuf) S.equipe.forEach(j => { j.forme = 0; j.blesse = 0; j.susp = 0; j.rancune = 0;
     j.note = null; j.noteR = null; j.sum = 0; j.nb = 0; j.sumR = 0; j.nbR = 0;
     j.sB = 0; j.sP = 0; j.sJ = 0; j.sRC = 0; j.sMin = 0; });
   delete S.equipe.monte;
@@ -1328,7 +1335,7 @@ function cOuvrirEte(){
   cSyncEffectif();
   promotionsRelegations();
   faireVivreLigue();
-  cLireEffectif();
+  cLireEffectif(true);
   cGenererOffres();
   S.raccroche = 0;
   S.ecran = 'coffres'; sauver(); rendre();
@@ -1429,7 +1436,7 @@ function cSignerOffre(){
     const t = S.ligue.equipes; S.ligue.equipes = S.ligue.autre; S.ligue.autre = t;
     S.division = (S.division || 1) === 1 ? 2 : 1;
   }
-  S.equipe = []; cLireEffectif();
+  S.equipe = []; cLireEffectif(true);
   S.lignes = { def:50, mil:50, att:50 }; S.ligneRef = { ...S.lignes };
   S.liens.president = 58; S.liens.direction = 50; S.liens.supporters = 46; S.liens.presse = clamp(S.liens.presse);
   S.saisonsClub = 0;
@@ -1470,12 +1477,14 @@ function cDemarrerSaison(){
      l'avais vendu toi-même (`cVendre`, 90 % de sa valeur) : le club a négocié, pas toi,
      mais l'argent rentre. */
   const partis = mv.filter(x => x.de === S.club.nom);
-  S.venduAuto = Math.round(partis.reduce((a, x) =>
-    a + cValeur(x.niv, x.age) * .9, 0) * C_PART_VENTE * 1000) / 1000;
+  const brut = partis.reduce((a, x) => a + cValeur(x.niv, x.age) * .9, 0);
+  S.venduPart = cPartVente();
+  S.venduAuto = Math.round(brut * S.venduPart * 1000) / 1000;
+  S.venduBrut = Math.round(brut * 1000) / 1000;
   if (S.venduAuto) jrn('mercato', partis.length === 1
     ? `Un départ que tu n'as pas décidé : ${sous(S.venduAuto)} pour le mercato.`
     : `${partis.length} départs que tu n'as pas décidés : ${sous(S.venduAuto)} pour le mercato.`);
-  cLireEffectif();
+  cLireEffectif(true);
   S.mercatoVu = mv;
   S.annee++;
   const e = monClub();
@@ -1676,23 +1685,29 @@ function cMotPotentiel(x){
 }
 
 /* ---------------- la fenêtre ---------------- */
-/* Combien de l'indemnité revient au budget de transfert. À 100 %, mesuré : le budget
-   d'été médian passe de 0,20 à 0,95 et sa moyenne de 1,5 à 4,1, parce que la
-   distribution a une queue énorme (un jeune de 21 ans dans un grand club vaut
-   cinquante fois le budget d'une saison). Un club ne remet pas tout sur la table : il
-   rembourse, il paie des salaires, il garde. À 55 % l'argent se voit sans refaire
-   l'échelle du mode. */
-const C_PART_VENTE = .55;
+/* CE QUE LE CLUB GARDE, ET ÇA DÉPEND DE CEUX QUI SIGNENT LES CHÈQUES (le propriétaire,
+   05/10/2026 : « 20 % de ce que le joueur rapporte va au club, le reste au budget de
+   transfert, et ça varie selon la direction et le président — enfin la relation avec
+   eux »). Sa règle est meilleure que mon forfait à 55 % : le club prend sa part, et
+   combien il t'en laisse dit ce qu'il pense de toi. C'est une **deuxième lecture
+   mécanique** pour les deux jauges, qui n'en avaient qu'une chacune (la porte et le
+   budget).
+   À 50-50 le club garde 20 %. Au mieux il ne garde que 6 %, au pire 38 % — et
+   l'écart entre les deux vaut deux fois ce que vaut le facteur du budget de base. */
+function cPartVente(){
+  return clamp(.80 + (S.liens.president - 50) * .003 + (S.liens.direction - 50) * .002, .62, .94);
+}
 function cOuvrirMercato(hiver){
   /* L'indemnité des départs de l'été entre dans la fenêtre d'été, une seule fois :
      `mercato()` ne tourne qu'à `cDemarrerSaison()`, donc l'hiver n'en a pas. */
   const vendu = hiver ? 0 : (S.venduAuto || 0);
+  const venduBrut = hiver ? 0 : (S.venduBrut || 0), venduPart = S.venduPart || cPartVente();
   /* Et il se consomme : l'écran du mercato rouvre une fenêtre quand il n'en trouve
      pas (une sauvegarde d'avant le lot du mercato), et sans cette remise à zéro il
      recréditerait l'indemnité de l'été passé. */
-  S.venduAuto = 0;
+  S.venduAuto = 0; S.venduBrut = 0;
   const b = Math.round((cBudget(hiver) + vendu) * 1000) / 1000;
-  S.marche = { hiver: !!hiver, budget: b, budget0: b, idx: 0, vendu,
+  S.marche = { hiver: !!hiver, budget: b, budget0: b, idx: 0, vendu, venduBrut, venduPart,
     deck: cCibles(b, hiver), in: [], out: [], fini: false };
   S.ecran = 'cmercato'; sauver(); rendre();
 }
@@ -1858,7 +1873,8 @@ function cPourquoi(k){
       : "Au prochain bilan de quart de saison, tu peux sauter.";
   }
   if (k === 'direction') return S.liens.direction > 62
-    ? "Elle peut te protéger une fois si le président lâche." : "Elle ne s'interposera pas.";
+    ? "Elle peut te protéger une fois si le président lâche, et elle te laisse la main sur l'argent des ventes."
+    : "Elle ne s'interposera pas, et elle garde sa part sur l'argent des ventes.";
   if (k === 'presse') return S.liens.presse > 56
     ? "C'est elle qui fait qu'un autre club pense à toi." : "Personne ne parle de toi ailleurs.";
   if (k === 'supporters'){
