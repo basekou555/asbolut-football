@@ -487,10 +487,28 @@ function recrue(po, niveau, pris){
 /* Le centre de formation. Un club qui perd du monde et qui n'achète pas descend
    d'un cran : c'est ce gamin-là qui joue. C'est la cause de la baisse, et c'est
    le marché qui la répare — ou pas. */
+/* UN GAMIN DU CENTRE N'EST PAS UNE CATASTROPHE (le propriétaire, 05/10/2026 : « pourquoi
+   à l'intersaison on me rajoute des joueurs super nuls ? »). Mesuré sur 139 arrivées :
+   niveau médian **42 quand le club vaut 54**, douze points en dessous, huit sous le
+   onzième de l'effectif — et **le plus faible du groupe dans 43 % des cas**. Un club qui
+   perd un homme fait monter son meilleur espoir, pas son quinzième : `rnd(3, 10)` au lieu
+   de `rnd(4, 14)`. */
 function jeuneDuCentre(po, e, pris){
   const age = ri(18, 20);
-  const v = clamp((e.vise || e.force) - rnd(4, 14), 38, 76);
+  const v = clamp((e.vise || e.force) - rnd(3, 10), 38, 76);
   return { n: nomAdverse(pris), p: po, a: age, v: dec1(v), t: potDe(v, age) };
+}
+/* ET TON CLUB, LUI, GARDE LA PLACE LIBRE. Tu viens de toucher l'indemnité du départ :
+   c'est à toi de la dépenser, pas au moteur de boucher le trou avec un gamin que tu n'as
+   pas choisi. On ne laisse donc le centre combler que ce qui tombe sous le plancher —
+   sinon un coach qui ne recrute jamais verrait son groupe fondre d'été en été. Uniquement
+   en mode entraîneur·euse : un joueur·euse ne compose pas son effectif, et un trou
+   laissé là affaiblirait son équipe sans qu'il puisse rien y faire. */
+const PLANCHER_GROUPE = 20;
+function combleLeTrou(e){
+  if (S.mode !== 'coach') return true;
+  if (typeof monClub !== 'function' || monClub() !== e) return true;
+  return e.sq.length <= PLANCHER_GROUPE;
 }
 function vieillirEffectif(e, pris){
   e.sq.forEach(j => {
@@ -925,10 +943,12 @@ function mercato(){
        maintenant inscrit dans les mouvements, marqué `centre`, pour que l'écran puisse
        dire qui il est et d'où il vient. Le mercato des autres clubs l'ignore — sinon la
        liste se remplirait de dix-sept gamins. */
-    const gamin = jeuneDuCentre(po, vend, pris);
-    vend.sq.push(gamin);
-    mouv.push({ nom:gamin.n, poste:po, age:gamin.a, niv: Math.round(gamin.v),
-      de:null, vers:vend.nom, centre:true });
+    if (combleLeTrou(vend)){
+      const gamin = jeuneDuCentre(po, vend, pris);
+      vend.sq.push(gamin);
+      mouv.push({ nom:gamin.n, poste:po, age:gamin.a, niv: Math.round(gamin.v),
+        de:null, vers:vend.nom, centre:true });
+    }
     vend.force = forceEffectif(vend.sq);
     vend.nOut++; if (titulaire) vend.nOutTit = (vend.nOutTit || 0) + 1;
     if (ach) ach.nIn++;
@@ -994,7 +1014,8 @@ function mercato(){
     ach.sq.push(c.j);
     // le vendeur comble son trou s'il n'a plus assez de monde
     Object.entries(EFFECTIF).forEach(([p2, n]) => {
-      while (c.vend.sq.filter(j => j.p === p2).length < n) c.vend.sq.push(jeuneDuCentre(p2, c.vend, pris));
+      while (c.vend.sq.filter(j => j.p === p2).length < n && combleLeTrou(c.vend))
+        c.vend.sq.push(jeuneDuCentre(p2, c.vend, pris));
     });
     // et l'acheteur laisse partir son plus faible à ce poste s'il est en surnombre
     pousserDehors(ach, po, mouv);
