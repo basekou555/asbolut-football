@@ -3541,6 +3541,32 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     doublon) ; **aucune migration** (`VERSION` reste à 15 : aucun champ de sauvegarde ne
     change).
 
+- **LE RAPPORT N'EMPORTAIT PAS LA CARRIÈRE** (le propriétaire, 13/10/2026, en apprenant que le ⚠
+  ne copie que les dix dernières lignes du journal : « c'est possible de changer ça ? »). La
+  sauvegarde — la seule chose qui porte le journal entier et qui permet de rejouer une scène —
+  était derrière un **deuxième** bouton, lui-même replié dans « Ce qui part avec ». Donc le geste
+  naturel (écrire une phrase, appuyer sur le bouton) laissait la carrière sur son téléphone, et
+  c'est exactement le reproche qu'il avait déjà fait le 01/10 à la version d'avant (« c'est pas
+  pratique de devoir copier le texte »). Trois changements.
+  1. **La sauvegarde part par le bouton principal** (`rapportComplet()`), qui dit son poids :
+     « Copier (avec la sauvegarde, 80 Ko) ». Le rapport **sans** elle devient l'option repliée —
+     utile pour un défaut purement visuel, où 80 Ko sont du bruit.
+  2. **Le presse-papiers passe devant le partage.** Un partage de quatre-vingts kilo-octets peut
+     être tronqué par la cible **sans le dire**, alors que le presse-papiers les tient ou refuse
+     net. L'ordre des trois chemins devient : presse-papiers → partage → texte sélectionné à
+     l'écran (ce dernier affiche alors la sauvegarde, 64 Ko mesurés).
+  3. **Le journal lisible passe de dix à trente lignes**, et l'en-tête dit sur combien
+     (« LES 30 DERNIÈRES LIGNES SUR 249 ») en renvoyant à la sauvegarde pour le reste : trente
+     lignes couvrent la saison en cours, qui est presque toujours là où est le problème.
+  - **Mesuré**, deux modes, deux saisons jouées : rapport seul 3,2-3,7 Ko, avec la sauvegarde
+    78-84 Ko, **sauvegarde relisible comme JSON** (131 à 249 lignes de journal), la phrase en tête,
+    zéro `undefined`, aucune fenêtre qui reste. Les **trois chemins forcés un par un** : copié
+    63,7 Ko · partagé 63,7 Ko · sélectionné 64 Ko, chacun avec la sauvegarde.
+  - **Aucun chiffre du moteur ne peut avoir bougé** : le lot ne touche que `v2/ecrans.js`, et
+    seulement les quatre fonctions du rapport (`ouvrirRapport`, `envoyerRapport`, `rapportTexte`,
+    plus `rapportComplet` qui remplace `copierSauvegarde`). **Aucune migration** (`VERSION` reste
+    à 15).
+
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).
 - Tout l'état d'une carrière est dans l'objet global `state` (sérialisé dans localStorage). `state.pendingChoice` désigne l'écran courant ; `render()` dans `ui.js` dispatche.
