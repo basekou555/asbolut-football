@@ -255,15 +255,15 @@ function ouvrirRapport(){
     <textarea id="rapNote" class="txt rapNote" rows="3"
       placeholder="Qu'est-ce qui cloche ? (une phrase suffit)"></textarea>
     <div class="btn-row">
-      <button class="btn" onclick="envoyerRapport()">${navigator.share ? 'Partager' : 'Copier'}</button>
+      <button class="btn" onclick="envoyerRapport()">Copier (avec la sauvegarde, ${rapPoids()})</button>
       <button class="btn ghost" onclick="fermerRapport()">Annuler</button>
     </div>
     <p class="sub" id="rapEtat"></p>
     <details class="fold" style="margin-top:12px"><summary>Ce qui part avec</summary>
       <pre class="rapVu" id="rapApercu">${esc(rapportTexte(''))}</pre>
-      <div class="btn-row"><button class="btn ghost" onclick="copierSauvegarde()">Copier avec la sauvegarde (${rapPoids()})</button></div>
-      <p class="sub">Ton message part en tête, la sauvegarde à la suite : elle permet de rejouer
-        la scène exacte. Elle est longue — à ne joindre que si on te la demande.</p>
+      <p class="sub">Ton message part en tête, puis ceci, puis <b>la sauvegarde entière</b>
+        (${rapPoids()}) : elle porte toute la carrière et permet de rejouer la scène exacte.</p>
+      <div class="btn-row"><button class="btn ghost" onclick="envoyerRapport(true)">Copier le rapport seul</button></div>
     </details>
   </div>`;
   // un clic à côté de la fiche ferme, comme partout ailleurs sur un téléphone
@@ -279,37 +279,37 @@ function rapPoids(){
   try { const s = localStorage.getItem('ac2') || ''; return Math.round(s.length / 1024) + ' Ko'; }
   catch(e){ return '?' }
 }
-async function envoyerRapport(){
+/* LA SAUVEGARDE PART PAR DÉFAUT (le propriétaire, 13/10/2026, en apprenant que le
+   rapport n'emportait que dix lignes de journal : « c'est possible de changer
+   ça ? »). Elle était derrière un deuxième bouton, lui-même replié dans « Ce qui
+   part avec » : le rapport ordinaire laissait donc la carrière entière sur son
+   téléphone, et c'est elle qui sert à rejouer une scène. Elle est maintenant dans
+   le bouton principal, et le rapport *sans* elle est devenu l'option.
+   Et l'ordre des trois chemins s'inverse : le presse-papiers passe devant le
+   partage, parce qu'un partage de soixante kilo-octets peut être tronqué par la
+   cible **sans le dire**, alors que le presse-papiers les tient ou refuse net. */
+function rapportComplet(note){
+  let s = ''; try { s = localStorage.getItem('ac2') || ''; } catch(e){}
+  return rapportTexte(note) + (s ? "\n\n— LA SAUVEGARDE —\n" + s : '');
+}
+async function envoyerRapport(seul){
   const t = document.getElementById('rapNote');
-  const txt = rapportTexte(t ? t.value : '');
+  const note = t ? t.value : '';
+  const txt = seul ? rapportTexte(note) : rapportComplet(note);
   const dit = m => { const e = document.getElementById('rapEtat'); if (e) e.textContent = m; };
+  const ok = seul ? "Copié, sans la sauvegarde." : "Copié, avec la sauvegarde. Colle-le dans la conversation.";
+  try { await navigator.clipboard.writeText(txt); dit(ok); return; }
+  catch(e){ /* refusé — fréquent sur un téléphone : on tente le partage */ }
   try {
     if (navigator.share){ await navigator.share({ title:"Absolut Coach — un problème", text: txt }); dit("Envoyé."); return; }
-  } catch(e){ /* partage annulé : on retombe sur le presse-papiers */ }
-  try { await navigator.clipboard.writeText(txt); dit("Copié. Colle-le dans la conversation."); }
-  catch(e){
-    /* Dernier recours : on le met à l'écran, sélectionné, et il copie à la main. */
-    const a = document.getElementById('rapApercu');
-    if (a){ a.textContent = txt; const r = document.createRange(); r.selectNodeContents(a);
-      const s = getSelection(); s.removeAllRanges(); s.addRange(r);
-      const d = a.closest('details'); if (d) d.open = true; }
-    dit("Impossible de copier tout seul : le texte est sélectionné ci-dessous.");
-  }
+  } catch(e){ /* partage annulé */ }
+  /* Dernier recours : on le met à l'écran, sélectionné, et il copie à la main. */
+  const a = document.getElementById('rapApercu');
+  if (a){ a.textContent = txt; const r = document.createRange(); r.selectNodeContents(a);
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    const d = a.closest('details'); if (d) d.open = true; }
+  dit("Impossible de copier tout seul : le texte est sélectionné ci-dessous.");
 }
-/* LA SAUVEGARDE PART AVEC LE MESSAGE (le propriétaire, 01/10/2026 : « c'est pas
-   pratique de devoir copier le texte, vaut mieux intégrer le message dans le
-   copier »). Ce bouton ne copiait que le JSON : il fallait coller la sauvegarde,
-   puis écrire le problème à côté, et les deux arrivaient séparés. Il copie
-   désormais **le rapport entier** — la phrase en tête — **puis** la sauvegarde. */
-async function copierSauvegarde(){
-  const dit = m => { const e = document.getElementById('rapEtat'); if (e) e.textContent = m; };
-  const t = document.getElementById('rapNote');
-  const txt = rapportTexte(t ? t.value : '')
-    + "\n\n— LA SAUVEGARDE —\n" + (localStorage.getItem('ac2') || '');
-  try { await navigator.clipboard.writeText(txt); dit("Copié, avec la sauvegarde."); }
-  catch(e){ dit("Impossible de copier."); }
-}
-
 /* Le rapport lui-même. Les chiffres sont permis ici : ce n'est pas le jeu, c'est
    l'outil qui sert à le réparer — la même exception que `labo.html`. */
 function rapportTexte(note){
@@ -328,8 +328,10 @@ function rapportTexte(note){
   if (S) { l.push("\n— TOI —"); rapportToi().forEach(x => l.push(x)); }
   if (RAP && RAP.vu){ l.push("\n— CE QUI ÉTAIT À L'ÉCRAN —"); l.push(RAP.vu); }
   if (S && S.journal && S.journal.length){
-    l.push("\n— LES DIX DERNIÈRES LIGNES DU JOURNAL —");
-    S.journal.slice(-10).forEach(j => l.push(`· ${j.txt || ''}`));
+    const n = Math.min(30, S.journal.length);
+    l.push(`\n— LE JOURNAL : LES ${n} DERNIÈRES LIGNES SUR ${S.journal.length} —`);
+    S.journal.slice(-n).forEach(j => l.push(`· ${j.txt || ''}`));
+    if (S.journal.length > n) l.push("(le journal entier est dans la sauvegarde, à la fin)");
   }
   return l.join('\n');
 }
