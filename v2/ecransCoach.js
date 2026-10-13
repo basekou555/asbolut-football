@@ -131,7 +131,8 @@ function ecranCArret(){
     <div class="big-ico">💬</div>
     <h2>${esc(a.titre)}</h2>
     <p class="narr">${esc(a.texte)}</p>
-    ${a.options.map((o, i) => optHTML('▸', o.l, null, o.dits, `cChoisirArret(${i})`)).join('')}
+    ${a.options.map((o, i) => optHTML('▸', o.l, null, o.dits, `cChoisirArret(${i})`,
+      cDireLasse(`${a.id}/${i}`))).join('')}
   </div>${liensJournal()}`;
 }
 
@@ -148,7 +149,8 @@ function ecranCMoment(){
     <div class="big-ico">${f.ico}</div>
     <h2>${esc(f.titre)}</h2>
     <p class="narr">${esc(f.texte)}</p>
-    ${f.opts.map((o, i) => optHTML('⚡', o.l, null, o.dits, `cChoisirMoment(${i})`)).join('')}
+    ${f.opts.map((o, i) => optHTML('⚡', o.l, null, o.dits, `cChoisirMoment(${i})`,
+      cDireLasse(`${f.id}/${i}`))).join('')}
   </div>`;
 }
 
@@ -239,7 +241,9 @@ function ecranCBilan(){
     <div class="big-ico">${b.pos === 1 ? '🏆' : b.descente ? '🪜' : b.atteint ? '✅' : '📉'}</div>
     <h2>${b.pos}ᵉ de ${esc(nomDivision(b.division))}</h2>
     <p class="narr">${b.atteint ? `L'objectif était ${b.objectif}ᵉ. Il est tenu.`
-      : `L'objectif était ${b.objectif}ᵉ. Il ne l'est pas.`}${
+      : `L'objectif était ${b.objectif}ᵉ. Il ne l'est pas.`}${b.plus
+      ? (b.plus.ok ? ` Et ${b.plus.quoi === 'coupe' ? 'la coupe' : "l'Europe"}, qu'il voulait en plus, est dans l'armoire.`
+        : ` Il voulait ${b.plus.quoi === 'coupe' ? 'la coupe' : "l'Europe"} en plus. Elle n'est pas venue.`) : ''}${
       b.descente ? ` <b>Vous descendez.</b>` : b.montee ? ` <b>Vous montez.</b>` : ''}</p>
     <div class="stats">
       <div><div class="v">${b.v}</div><div class="k">victoires</div></div>
@@ -290,7 +294,7 @@ function cCarriereHTML(){
   const c = S.carriere; if (!c || !c.annees.length) return '';
   return `<details class="fold"><summary>Ton parcours</summary><div class="notes">
     ${c.annees.map(a => `<div><span class="p">${String(a.annee).slice(2)}</span>
-      <span>${esc(a.club)} <i>${a.v}V ${a.n}N ${a.d}D · objectif ${a.objectif}ᵉ</i>${a.pos === 1 && a.div === 1 ? ' 🏆' : ''}${a.coupe ? ' 🏅' : ''}${a.euro ? ' ⭐' : ''}</span>
+      <span>${esc(a.club)} <i>${a.v}V ${a.n}N ${a.d}D · objectif ${a.objectif}ᵉ${a.vire ? ' · remercié en route' : ''}</i>${a.pos === 1 && a.div === 1 && !a.vire ? ' 🏆' : ''}${a.coupe ? ' 🏅' : ''}${a.euro ? ' ⭐' : ''}</span>
       <span class="n">${a.pos}ᵉ</span></div>`).join('')}
   </div><p class="sub">${c.saisons} saison${c.saisons > 1 ? 's' : ''} · ${c.titres} titre${c.titres > 1 ? 's' : ''} · ${c.coupes} coupe${c.coupes > 1 ? 's' : ''} · ${c.virages || 0} fois remercié${(c.virages || 0) > 1 ? '' : ''}.</p></details>`;
 }
@@ -510,7 +514,8 @@ function ecranCMercato(){
       <div><span class="l">Budget de transfert</span><span class="v money">${esc(sous(m.budget))}${
         m.vendu ? `<i class="sub"> dont ${esc(sous(m.vendu))} des d\u00e9parts</i>` : ''}</span></div>${
       m.venduBrut ? `<div><span class="l">Ce que le club a gard\u00e9</span><span class="v money">${
-        esc(sous(Math.round((m.venduBrut - m.vendu) * 1000) / 1000))} <i class="sub">sur ${esc(sous(m.venduBrut))}</i></span></div>` : ''}
+        esc(sous(Math.round((m.venduBrut - m.vendu) * 1000) / 1000))} <i class="sub">sur ${esc(sous(m.venduBrut))}${
+        m.venduPlaf ? ' — le reste est parti aux salaires et à la dette' : ''}</i></span></div>` : ''}
       <div><span class="l">Masse salariale</span><span class="v money">${esc(sous(masse))} / ${esc(sous(plafond))}</span></div>
       <div><span class="l">Effectif</span><span class="v">${(S.equipe || []).length} joueurs / ${C_CAP_EFFECTIF}</span></div>
       <div><span class="l">Ce que ton réseau a sorti</span><span class="v">${m.deck.length} dossier${
