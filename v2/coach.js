@@ -42,6 +42,7 @@ const CAXE_MOT = {
 const C_JEU = .055, C_BANC = .006, C_GROUPE = .012;
 const CBOOST = 3.2, CTRACE = .55;
 const CPOT_MIN = 58, CPOT_MAX = 84;
+const C_EXP_PLAFOND = .65, C_PLAFOND_VIEUX = 90;
 
 const CORIGINES = [
   { id:'joueur', nom:"Ancien joueur", sous:"Tu as eu une carrière. Le vestiaire le sait.",
@@ -260,6 +261,27 @@ function cCoutPresident(pts, raison){
   S.derniereRaison = raison || null;
   return p;
 }
+/* UNE CONFIANCE AU PLAFOND N'EST PLUS UNE TENSION (le propriétaire, 13/10/2026, son
+   journal de treize saisons à l'appui : président 100, direction 100, presse 94,
+   supporters 97 — et ses deux renvois tous les deux dans les deux premières saisons,
+   donc onze saisons sans le moindre risque). La cause n'est pas le coût d'une
+   défaite, c'est que les gains s'empilaient sans frein : la fin de saison seule rend
+   +20 à qui finit premier avec une coupe, et `clamp` posait le reste à 100 chaque
+   juin. Les gains sont donc **amortis par ce qu'il te donne déjà** — un président à
+   100 n'a plus rien à t'offrir. C'est l'asymétrie validée le 22/09 (seuls les gains
+   s'usent) prise un cran plus loin.
+   **ET SEULEMENT CELUI-LÀ**, mesuré : amortir aussi le gain d'une victoire fait tomber
+   l'équilibre de la saison de 65 à 51, et un **bon** entraîneur se faisait alors
+   remercier **5,6 fois par carrière au lieu de 0,7** — une porte à tambour, c'est-à-dire
+   l'excès inverse. Le point fixe d'une saison (1,7 par victoire contre un oubli de 3,5 %)
+   le posait déjà à 67 tout seul : les 98 venaient de juin, et c'est juin qu'on amortit.
+   À 67, où un entraîneur qui gagne vit, une saison parfaite vaut encore 69 % de ses
+   vingt points ; à 100 elle n'en vaut plus le quart, donc le plafond n'est plus
+   atteignable et il reste toujours de quoi tomber. */
+function cGainPresident(v){
+  return v * clamp(1 - (S.liens.president - 48) / 62, .25, 1);
+}
+
 /* Le vestiaire fait monter les ententes plus vite et les retient quand elles
    tombent : c'est son effet de football, et il est mesurable. */
 function cBougerLigne(k, v){
@@ -283,6 +305,18 @@ function cPoserObjectif(){
      plus bas que le maintien. C'est ce petit écart qui rend une saison tendue. */
   S.objectif = clamp(Math.round(r - 2), 1, N - MONTEES);
   S.objPromis = S.objectif;
+  /* UN OBJECTIF QUI NE BOUGE PLUS NE DEMANDE PLUS RIEN (le propriétaire, 13/10/2026 :
+     objectif 1ᵉ six saisons de suite, atteint six fois). Quand on est premier et qu'on
+     l'a tenu, le président ne peut plus demander mieux au classement — alors il demande
+     ailleurs, et c'est tout ce qui reste à gagner : la coupe, ou l'Europe. Il se juge
+     en juin comme le classement.
+     On lit la saison précédente dans la carrière et non dans `S.bilan`, qui est remis à
+     null juste avant cet appel. */
+  S.objectifPlus = null;
+  const prec = ((S.carriere && S.carriere.annees) || []).slice(-1)[0];
+  if (S.objectif === 1 && (S.division || 1) === 1 && prec && !prec.vire
+      && prec.pos === 1 && prec.div === 1 && prec.club === S.club.nom)
+    S.objectifPlus = (S.euro && S.euro.engage && Math.random() < .5) ? 'europe' : 'coupe';
 }
 /* CE QU'ON PAIE UN BANC. Mesuré avant de toucher à la formule, une carrière entière :
    un entraîneur gagnait **2 à 25 k€ par an**, et son compte finissait à 93 k€ après
@@ -714,7 +748,7 @@ function cEcrireMoment(m, min, o){
   m.be = m.evs.filter(e => e.type === 'but' && !e.nous).length;
   if (o.ligne) Object.entries(o.ligne).forEach(([k, v]) => cBougerLigne(k, v));
   if (o.liens) Object.entries(o.liens).forEach(([k, v]) => {
-    if (k === 'president') v < 0 ? cCoutPresident(-v, null) : (S.liens.president = clamp(S.liens.president + v));
+    if (k === 'president') v < 0 ? cCoutPresident(-v, null) : (S.liens.president = clamp(S.liens.president + cGainPresident(v)));
     else S.liens[k] = clamp((S.liens[k] || 50) + v); });
   if (o.fit) S.grp.fr = clamp(S.grp.fr + o.fit, 0, 100);
   if (o.jeuneUp){ const j = S.equipe.find(x => x.monte); if (j){ j.niv += o.jeuneUp * .35; bougerForme(j, 2); } }
@@ -730,8 +764,11 @@ function cChoisirMoment(i){
   /* La réussite dépend de **ton banc** et de l'entente de la ligne concernée : c'est
      l'effet de football de l'axe `banc`, et il se mesure. */
   const ent = o.ligneCle ? (S.lignes[o.ligneCle] - 50) * .004 : 0;
-  const p = clamp(o.p + (cAxe('banc') - 50) * C_BANC + ent + (S.tribune ? -.08 : 0), .1, .93);
+  const cle = `${def.id}/${i}`;
+  const usee = Math.min(C_LASSE_PMAX, C_LASSE_P * cFoisVu(cle));
+  const p = clamp(o.p + (cAxe('banc') - 50) * C_BANC + ent + (S.tribune ? -.08 : 0) - usee, .1, .93);
   const reussi = Math.random() < p;
+  cNoterOption(cle);
   const iss = reussi ? o.ok : o.ko;
   cEcrireMoment(m, vue.min, iss);
   m.faits.push({ min: vue.min, titre: vue.titre, choix: o.l, t: iss.t, ok: reussi });
@@ -902,6 +939,7 @@ function cApresVirage(){
   S.bilan = { pos: cPlace(), division: S.division || 1, nbClubs: S.ligue.equipes.length,
     objectif: S.objectif, atteint:false, descente:false, montee:false,
     v:S.stats.v, n:S.stats.n, dd:S.stats.d, bp:S.stats.bp, bc:S.stats.bc, decisions:S.stats.decisions };
+  cNoterSaison(S.bilan.pos, S.bilan.division, true);
   cOuvrirEte();
 }
 
@@ -1094,25 +1132,63 @@ function cOuvrirArrets(){
     options: a.options.map(o => ({ l:o.l, dits:o.dits })) };
   S.ecran = 'carret'; sauver(); rendre();
 }
+/* RIEN N'AMORTISSAIT LA RÉPÉTITION (le propriétaire, 13/10/2026, son journal à
+   l'appui : « Promettre qu'il jouera tout » à l'agent une douzaine de fois, « Le
+   lancer samedi » autant, « Protéger les joueurs » autant — et chaque fois le même
+   effet, donc un pilote automatique au bout de quelques saisons). La 1.0 avait
+   `MEETING_FATIGUE` pour exactement ça, et le 2.0 ne l'a jamais eu.
+   Un compteur **de carrière** — jamais de saison : c'est le piège du 02/10, où un
+   compteur remis à zéro chaque été avait multiplié le rendement d'une affaire par 1,6
+   deux fois par an pendant vingt ans — et deux effets, selon ce qu'on répète :
+   — un **arrêt** : ce qu'il rapporte s'use, ce qu'il coûte reste (l'asymétrie du 22/09) ;
+   — une **décision de match** : elle prend moins souvent, parce qu'ils l'ont déjà
+     entendue et que l'adversaire l'attend.
+   Les deux plafonnent à six passages : au-delà, répéter ne coûte plus rien de plus. */
+const C_LASSE = .33, C_LASSE_P = .03, C_LASSE_PMAX = .15, C_LASSE_DIT = 3;
+function cFoisVu(cle){ return (S.vuOptions || {})[cle] || 0; }
+function cNoterOption(cle){ S.vuOptions = S.vuOptions || {}; S.vuOptions[cle] = cFoisVu(cle) + 1; }
+/* Les deux premiers passages sont pleins — on a le droit d'avoir une manière de
+   faire — puis le rendement descend jusqu'à trois quarts au sixième et s'arrête là.
+   **Le calibrage vient d'une mesure, pas de l'estime** : à un plancher de la moitié,
+   un entraîneur qui prend toujours la même option se faisait remercier **sept fois
+   par carrière au lieu de 0,7**, parce que les gains de confiance du président
+   étaient divisés par deux quand ses coûts restaient pleins — une taxe, pas un
+   arbitrage. À trois quarts, répéter coûte sans retourner la saison. */
+function cLasse(cle){
+  const n = cFoisVu(cle);
+  return n < 2 ? 1 : 1 / (1 + C_LASSE * (Math.min(n, 6) - 1) / 5);
+}
+/* Et ça se dit, sinon ça n'existe pas : l'option porte sa ligne dès le troisième
+   passage, avant le clic. */
+function cDireLasse(cle){
+  const n = cFoisVu(cle);
+  return n < C_LASSE_DIT ? null : `Déjà pris ${n} fois — ça porte moins.`;
+}
 function cChoisirArret(i){
   const a = CARRETS.find(x => x.id === S.arret.id);
   const o = a.options[i] || a.options[0];
   const sujet = S.arret.sujet;
-  const suite = cAppliquer(o, sujet, S.arret.cible);
+  const cle = `${a.id}/${i}`;
+  const suite = cAppliquer(o, sujet, S.arret.cible, cle);
+  cNoterOption(cle);
   S.semaineArret = { titre: a.titre, choix: o.l, suite: suite || null };
   S.stats.decisions++;
   jrn('arret', `${a.titre} — « ${o.l} ».`);
   cLancerMatch();
 }
-function cAppliquer(o, sujet, cible){
+function cAppliquer(o, sujet, cible, cle){
   let suite = null;
-  if (o.liens) Object.entries(o.liens).forEach(([k, v]) => {
+  /* La lassitude ne touche que ce qui te rapporte : un coût répété reste un coût. */
+  const la = cle ? cLasse(cle) : 1;
+  const am = v => v > 0 ? v * la : v;
+  if (o.liens) Object.entries(o.liens).forEach(([k0, v0]) => {
+    const k = k0, v = am(v0);
     if (k === 'proches') bougerProches(v);
-    else if (k === 'president') v < 0 ? cCoutPresident(-v, null) : (S.liens.president = clamp(S.liens.president + v));
+    else if (k === 'president') v < 0 ? cCoutPresident(-v, null) : (S.liens.president = clamp(S.liens.president + cGainPresident(v)));
     else S.liens[k] = clamp((S.liens[k] || 50) + v); });
-  if (o.ligne) cBougerVestiaire(o.ligne);
-  if (o.axes) Object.entries(o.axes).forEach(([k, v]) => cBougerAxe(k, v));
-  if (o.fit) S.grp.fr = clamp(S.grp.fr + o.fit, 0, 100);
+  if (o.ligne) cBougerVestiaire(am(o.ligne));
+  if (o.axes) Object.entries(o.axes).forEach(([k, v]) => cBougerAxe(k, am(v)));
+  if (o.fit) S.grp.fr = clamp(S.grp.fr + am(o.fit), 0, 100);
   if (o.plan) S.grp.plan = (S.grp.plan || 0) + o.plan;
   if (o.risqueBut) S.grp.ouvert = o.risqueBut;
   const qui = sujet ? S.equipe.find(j => j.nom === sujet) : null;
@@ -1159,7 +1235,11 @@ function cFinSaison(){
   if (S.euro.gagnee) d += 10;
   if (div === 1 && pos > N - MONTEES) d -= 14;  // la descente
   if (div === 2 && pos <= MONTEES) d += 16;     // la montée
-  if (d < 0) cCoutPresident(-d, "la saison"); else S.liens.president = clamp(S.liens.president + d);
+  /* Ce qu'il avait demandé en plus, quand le classement ne pouvait plus monter. */
+  const plus = S.objectifPlus === 'coupe' ? S.coupe.gagnee
+    : S.objectifPlus === 'europe' ? S.euro.gagnee : null;
+  if (plus === false) d -= 9;
+  if (d < 0) cCoutPresident(-d, "la saison"); else S.liens.president = clamp(S.liens.president + cGainPresident(d));
   const desc = div === 1 && pos > N - MONTEES, mont = div === 2 && pos <= MONTEES;
   S.bilan = {
     pos, division: div, nbClubs: N, objectif: S.objectif, atteint,
@@ -1168,9 +1248,25 @@ function cFinSaison(){
     decisions: S.stats.decisions,
     grand: cGrandSoir(), oubli: cSoirOublie(),
     vestiaire: cQuiVeutQuoi(),
+    plus: S.objectifPlus ? { quoi: S.objectifPlus, ok: !!plus } : null,
     phrase: cPhrasePresident(atteint, pos, desc, mont),
     ambition: cJugerAmbition(pos, desc, mont),
   };
+  cNoterSaison(pos, div, false);
+  jrn('saison', `${S.club.nom} finit ${pos}ᵉ de ${nomDivision()} (objectif ${S.objectif}ᵉ). ${S.stats.v}V ${S.stats.n}N ${S.stats.d}D.`);
+  S.saisonsClub++;
+  S.ecran = 'cbilan'; sauver(); rendre();
+}
+/* UNE SAISON OÙ L'ON EST REMERCIÉ EST UNE SAISON DE SA CARRIÈRE (le propriétaire,
+   13/10/2026 : son bilan annonçait **13 saisons et 3 clubs** pour quinze saisons dans
+   cinq clubs — Dunkerque et Levante, les deux où il s'est fait virer, n'étaient nulle
+   part, ni dans les clubs, ni dans la liste saison par saison). La cause :
+   `cApresVirage()` incrémentait un compteur de renvois et sautait droit à l'été, sans
+   jamais passer par l'enregistrement. Les deux seules saisons dures de sa carrière ne
+   laissaient donc aucune trace, ce qui est l'inverse exact de ce que le mode est censé
+   faire — « une carrière doit laisser une trace » est la phrase d'ouverture du projet.
+   **Les trophées, eux, ne se comptent pas** : on n'était plus là en mai. */
+function cNoterSaison(pos, div, vire){
   S.carriere = S.carriere || { saisons:0, clubs:[], annees:[], titres:0, coupes:0, europes:0, montees:0, virages:0 };
   const c = S.carriere;
   c.saisons++;
@@ -1178,15 +1274,15 @@ function cFinSaison(){
   /* Les pays traversés : le bilan de carrière les relit. */
   c.pays = c.pays || [];
   if (!c.pays.includes(S.pays || 'FR')) c.pays.push(S.pays || 'FR');
-  if (pos === 1 && div === 1) c.titres++;
-  if (mont) c.montees++;
-  if (S.coupe.gagnee) c.coupes++;
-  if (S.euro.gagnee) c.europes++;
+  if (!vire){
+    if (pos === 1 && div === 1) c.titres++;
+    if (div === 2 && pos <= MONTEES) c.montees++;
+    if (S.coupe.gagnee) c.coupes++;
+    if (S.euro.gagnee) c.europes++;
+  }
   c.annees.push({ annee: S.annee, club: S.club.nom, pays: S.pays || 'FR', pos, div, objectif: S.objectif,
-    v: S.stats.v, n: S.stats.n, d: S.stats.d, coupe: S.coupe.gagnee, euro: S.euro.gagnee });
-  jrn('saison', `${S.club.nom} finit ${pos}ᵉ de ${nomDivision()} (objectif ${S.objectif}ᵉ). ${S.stats.v}V ${S.stats.n}N ${S.stats.d}D.`);
-  S.saisonsClub++;
-  S.ecran = 'cbilan'; sauver(); rendre();
+    v: S.stats.v, n: S.stats.n, d: S.stats.d,
+    coupe: !vire && S.coupe.gagnee, euro: !vire && S.euro.gagnee, vire: !!vire });
 }
 function cGrandSoir(){
   const l = S.journal.filter(x => x.annee === S.annee && x.type === 'match');
@@ -1564,17 +1660,28 @@ function cDemarrerSaison(){
      mais l'argent rentre. */
   const partis = mv.filter(x => x.de === S.club.nom);
   const brut = partis.reduce((a, x) => a + cValeur(x.niv, x.age) * .9, 0);
-  S.venduPart = cPartVente();
-  S.venduAuto = Math.round(brut * S.venduPart * 1000) / 1000;
-  S.venduBrut = Math.round(brut * 1000) / 1000;
-  if (S.venduAuto) jrn('mercato', partis.length === 1
-    ? `Un départ que tu n'as pas décidé : ${sous(S.venduAuto)} pour le mercato.`
-    : `${partis.length} départs que tu n'as pas décidés : ${sous(S.venduAuto)} pour le mercato.`);
   cLireEffectif(true);
   S.mercatoVu = mv;
   S.annee++;
   const e = monClub();
   S.club = { nom: S.club.nom, force: e ? e.force : S.club.force };
+  /* ET ELLE A UN PLAFOND (le propriétaire, 13/10/2026 : son journal annonce 181 puis
+     201 M€ pour deux départs, c'est-à-dire **plus que tout le reste de son budget
+     réuni** — et il en garde 94 % parce que président et direction sont à 100). La
+     valeur d'un joueur est convexe, donc deux départs d'un grand club financent cinq
+     recrues, et c'est ce qui fabrique les 10-0. Un club encaisse tout mais n'en remet
+     pas tout sur la table : au-delà de `C_PLAF_VENTE` fois ce que le club met d'ordinaire,
+     le reste va aux salaires et à la dette. Le plafond se lit **après** la mise à jour
+     de `S.club`, pour qu'il soit celui du club où l'on entraîne cette année. */
+  S.venduPart = cPartVente();
+  const plafVente = Math.round(cPlafondBase() * .40 * C_PLAF_VENTE * 1000) / 1000;
+  const credit = Math.round(brut * S.venduPart * 1000) / 1000;
+  S.venduAuto = Math.min(credit, plafVente);
+  S.venduPlaf = credit > plafVente;
+  S.venduBrut = Math.round(brut * 1000) / 1000;
+  if (S.venduAuto) jrn('mercato', partis.length === 1
+    ? `Un départ que tu n'as pas décidé : ${sous(S.venduAuto)} pour le mercato.`
+    : `${partis.length} départs que tu n'as pas décidés : ${sous(S.venduAuto)} pour le mercato.`);
   S.grp = { fr: 100, plan: 0, athle: 0 };
   S.journee = 0; S.arrets = 0; S.semaine = null; S.seance = null; S.match = null;
   S.dernier = null; S.annexe = null; S.eqJour = null; S.vire = null;
@@ -1582,6 +1689,14 @@ function cDemarrerSaison(){
   S.prepaFaite = false; S.prepa = null; S.prepaSuite = '';
   S.stats = { j:0, v:0, n:0, d:0, bp:0, bc:0, decisions:0 };
   S.moi.an0 = { ...S.moi.base };
+  /* LE MÉTIER S'APPREND, DONC LE PLAFOND MONTE (le propriétaire, 13/10/2026 : à
+     cinquante-trois ans et treize saisons, ses quatre axes étaient collés à leur
+     plafond — jeu 74,6/78, réseau 77/77 — et l'acquis récent à zéro, donc choisir sa
+     semaine ne coûtait plus que des jambes et ne construisait plus rien). Le plafond
+     d'un **joueur** est son potentiel et ne monte jamais, c'est sa règle du 27/09 ; un
+     entraîneur n'est pas un joueur — il apprend, et une saison de plus élargit ce
+     qu'il peut devenir. Lentement et borné : treize saisons valent huit points. */
+  CAXES.forEach(a => S.moi.plafond[a] = Math.min(C_PLAFOND_VIEUX, S.moi.plafond[a] + C_EXP_PLAFOND));
   const podium = S.bilan && S.bilan.pos <= 3 && S.bilan.division === 1;
   const coupe = S.coupe && S.coupe.gagnee;
   S.euro = { engage: !!((S.division || 1) === 1 && (podium || coupe)), vivant:true, tour:0, pts:0, hist:[], gagnee:false };
@@ -2022,6 +2137,7 @@ function cMotPotentiel(x){
    budget).
    À 50-50 le club garde 20 %. Au mieux il ne garde que 6 %, au pire 38 % — et
    l'écart entre les deux vaut deux fois ce que vaut le facteur du budget de base. */
+const C_PLAF_VENTE = 1.3;
 function cPartVente(){
   return clamp(.80 + (S.liens.president - 50) * .003 + (S.liens.direction - 50) * .002, .62, .94);
 }
@@ -2030,12 +2146,13 @@ function cOuvrirMercato(hiver){
      `mercato()` ne tourne qu'à `cDemarrerSaison()`, donc l'hiver n'en a pas. */
   const vendu = hiver ? 0 : (S.venduAuto || 0);
   const venduBrut = hiver ? 0 : (S.venduBrut || 0), venduPart = S.venduPart || cPartVente();
+  const venduPlaf = hiver ? false : !!S.venduPlaf;
   /* Et il se consomme : l'écran du mercato rouvre une fenêtre quand il n'en trouve
      pas (une sauvegarde d'avant le lot du mercato), et sans cette remise à zéro il
      recréditerait l'indemnité de l'été passé. */
-  S.venduAuto = 0; S.venduBrut = 0;
+  S.venduAuto = 0; S.venduBrut = 0; S.venduPlaf = false;
   const b = Math.round((cBudget(hiver) + vendu) * 1000) / 1000;
-  S.marche = { hiver: !!hiver, budget: b, budget0: b, idx: 0, vendu, venduBrut, venduPart,
+  S.marche = { hiver: !!hiver, budget: b, budget0: b, idx: 0, vendu, venduBrut, venduPart, venduPlaf,
     deck: cCibles(b, hiver), in: [], out: [], fini: false };
   S.ecran = 'cmercato'; sauver(); rendre();
 }
@@ -2246,9 +2363,12 @@ function cDireCondition(){
 }
 function cDireObjectif(){
   const p = cPlace();
-  return p <= S.objectif ? `${p}ᵉ pour un objectif ${S.objectif}ᵉ — tu es dans les clous.`
+  const base = p <= S.objectif ? `${p}ᵉ pour un objectif ${S.objectif}ᵉ — tu es dans les clous.`
     : p <= S.objectif + 3 ? `${p}ᵉ pour un objectif ${S.objectif}ᵉ — ça se joue de peu.`
     : `${p}ᵉ pour un objectif ${S.objectif}ᵉ. Il faut remonter.`;
+  /* Et ce qu'il demande en plus, sinon on ne le découvrirait qu'au bilan. */
+  return base + (S.objectifPlus === 'coupe' ? ` Et il veut la coupe.`
+    : S.objectifPlus === 'europe' ? ` Et il veut l'Europe.` : '');
 }
 function cDireAxe(a){
   const v = cAxe(a);

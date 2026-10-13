@@ -3567,6 +3567,85 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     plus `rapportComplet` qui remplace `copierSauvegarde`). **Aucune migration** (`VERSION` reste
     à 15).
 
+- **TREIZE SAISONS LUES, SIX DÉFAUTS, « FAIT TOUT »** (le propriétaire, 13/10/2026, après m'avoir
+  envoyé le journal entier d'une carrière d'entraîneur·euse — Dunkerque, Levante, Middlesbrough,
+  Real Sociedad, Atlético, 7 titres, 2 Europes — puis : « quels sont les points d'amélioration ? »,
+  puis « fait tout »). Les six sont sortis de **sa partie**, pas d'une sonde, et c'est la première
+  fois : un journal de quinze saisons dit en une lecture ce qu'aucun banc d'essai ne cherchait.
+  1. **DEUX DE SES SAISONS AVAIENT ÉTÉ EFFACÉES.** Son bilan annonçait **13 saisons et 3 clubs**
+     pour quinze saisons dans cinq clubs : Dunkerque et Levante, les deux où il s'est fait virer,
+     n'étaient **nulle part** — ni dans les clubs, ni dans la liste saison par saison. La cause :
+     `cApresVirage()` incrémentait un compteur de renvois et sautait droit à l'été, sans jamais
+     passer par l'enregistrement de la saison. Les deux seules saisons dures d'une carrière ne
+     laissaient donc aucune trace, ce qui est l'inverse exact de la phrase d'ouverture du projet.
+     `cNoterSaison(pos, div, vire)` est la porte unique, appelée des deux côtés ; les **trophées ne
+     se comptent pas** sur une saison remerciée (on n'était plus là en mai) et le parcours le
+     marque (« objectif 13ᵉ · remercié en route »). Mesuré, 10 carrières : **264 saisons jouées
+     pour 235 notées et 17 clubs manquants → 263 pour 263, zéro club manquant, 48 saisons
+     remerciées sur 48 notées.**
+  2. **À PARTIR DE LA TROISIÈME SAISON, PLUS RIEN NE POUVAIT LUI ARRIVER.** Président **100**,
+     direction 100, presse 94, supporters 97 — et ses deux renvois tous les deux dans les deux
+     premières saisons. La porte est à 28 : onze saisons sans le moindre risque. La cause n'est pas
+     le coût d'une défaite mais l'empilement des gains — la fin de saison seule rend +20 à qui finit
+     premier avec une coupe, et `clamp` posait le reste à 100 chaque juin. `cGainPresident()` amortit
+     **les gains par ce qu'il te donne déjà**.
+     **ET SEULEMENT CEUX DE JUIN, et c'est la mesure qui l'a imposé** : ma première version amortissait
+     aussi le gain d'une victoire, et un **bon** entraîneur se faisait alors remercier **5,6 fois par
+     carrière au lieu de 0,7** — une porte à tambour, c'est-à-dire l'excès inverse. Le point fixe
+     d'une saison (1,7 par victoire contre un oubli de 3,5 %) posait déjà la confiance à 67 tout seul :
+     les 98 venaient de juin. Mesuré après : président **médiane 57 · 95ᵉ 75 · maximum 90** contre
+     58 / 89 / **98** — le plafond n'est plus atteignable, il reste toujours de quoi tomber.
+  3. **L'ARGENT DES DÉPARTS FORCÉS FABRIQUAIT LES 10-0.** Son journal annonce **181 puis 201 M€** pour
+     deux départs qu'il n'a pas décidés, c'est-à-dire plus que tout le reste de son budget réuni — et
+     il en garde **94 %** parce que président et direction sont à 100. La valeur d'un joueur est
+     convexe, donc deux départs d'un grand club financent cinq recrues : son Atlético valait **80 quand
+     le deuxième du championnat valait 71**, pour 129 buts à 34 et des 10-0. Sa règle du 05/10 (le club
+     garde sa part, et combien il t'en laisse dit ce qu'il pense de toi) **ne change pas** ; ce qui
+     entre dans l'enveloppe de transfert est **plafonné** à `C_PLAF_VENTE`=1,3 fois ce que le club met
+     d'ordinaire, le reste allant aux salaires et à la dette, et l'écran le dit. Mesuré : le plafond ne
+     mord que **5 % des fenêtres** — exactement les cas extrêmes, et le sien.
+  4. **LA SEMAINE NE CONSTRUISAIT PLUS RIEN.** À cinquante-trois ans, ses quatre axes étaient collés à
+     leur plafond (jeu 74,6/78, **réseau 77/77**) et l'acquis récent à zéro : choisir sa séance le lundi
+     ne coûtait plus que des jambes. Le plafond d'un **joueur** est son potentiel et ne monte jamais
+     (sa règle du 27/09) ; un entraîneur apprend, donc le sien grandit — `C_EXP_PLAFOND`=0,65 par
+     saison, borné à 90. Mesuré, fin de carrière : **axes collés au plafond 70 % → 25 %**, plafond
+     médian 69 → 87.
+  5. **LES OPTIONS NE SE SOUVENAIENT PAS DE LUI.** « Promettre qu'il jouera tout » à l'agent une
+     douzaine de fois, « Le lancer samedi » autant, « Protéger les joueurs » autant — et chaque fois
+     le même effet. La 1.0 avait `MEETING_FATIGUE` pour exactement ça et le 2.0 ne l'a jamais eu. Un
+     compteur **de carrière** (`S.vuOptions` — jamais de saison : c'est le piège du 02/10) et deux
+     effets selon ce qu'on répète : un **arrêt** voit ce qu'il rapporte s'user (les coûts restent
+     pleins, l'asymétrie du 22/09), une **décision de match** prend moins souvent (−3 points par
+     passage, borné à −15) parce qu'ils l'ont déjà entendue. Les deux premiers passages sont pleins,
+     le rendement descend aux trois quarts au sixième, et l'option **le dit avant le clic** (« Déjà
+     pris 3 fois — ça porte moins »).
+     **Le calibrage est venu d'une mesure, pas de l'estime** : à un plancher de la moitié, un
+     entraîneur qui prend toujours la même option se faisait remercier **sept fois par carrière**,
+     parce que ses gains de confiance étaient divisés par deux quand ses coûts restaient pleins — une
+     taxe, pas un arbitrage.
+     **Et l'effet mesuré est exactement celui qu'on veut** : un entraîneur qui **varie** ses réponses
+     est désormais **plus en sécurité qu'avant** (2,9 → **2,1 renvois** par carrière) et celui qui
+     répète toujours la même ne l'est plus (0,7 → 7,1). Répéter n'est plus la stratégie sûre.
+  6. **L'OBJECTIF ÉTAIT 1ᵉ ET ATTEINT SIX FOIS DE SUITE.** Un objectif qui ne bouge plus ne demande
+     plus rien. Quand on est premier et qu'on l'a tenu, le président ne peut plus demander mieux au
+     classement — alors il demande ailleurs, et c'est tout ce qui reste à gagner : **la coupe, ou
+     l'Europe** (`S.objectifPlus`). Ça se dit pendant la saison (« Et il veut la coupe. », dans la
+     fiche) et ça se juge en juin (−9 de confiance si elle ne vient pas, et le bilan le nomme).
+  - **Vérifié** : 20 carrières entières d'entraîneur·euse sur deux politiques, zéro erreur, **zéro
+    écran bloqué** ; les onze écrans du mode rendus sur une carrière entière (2 500 rendus), **zéro
+    `undefined` / `NaN` / `[object Object]`** ; les six textes nouveaux relus un par un, y compris les
+    trois branches de la demande en plus et la marque d'une saison remerciée ; **migration sur de
+    vraies sauvegardes de la version déployée** des deux modes, reprises à la 17ᵉ journée, **deux
+    saisons entières** jouées, 22 joueurs, zéro doublon ; **aucune migration** (`VERSION` reste à 15 :
+    une sauvegarde v15 n'a ni `vuOptions`, ni `objectifPlus`, ni `venduPlaf`, et les trois valent
+    « rien » ; les plafonds grandissent à partir de ce qu'ils valent).
+  - **Ce qui reste à décider, et c'est à lui** : (a) les 2,1 renvois par carrière d'un entraîneur qui
+    varie — c'est la tension qu'il demandait, mais le levier est `C_SEUIL_PORTE` s'il la trouve trop
+    dure ; (b) le plafond qui grandit rend l'entraîneur meilleur, donc son club aussi : à politique
+    égale les titres passent de 0,80 à 1,30 par carrière sur dix carrières, ce qui est **dans le bruit**
+    (l'écart-type sur les titres vaut presque leur moyenne, mesuré le 05/10) — à re-mesurer sur une
+    centaine de carrières si le championnat lui paraît trop facile.
+
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).
 - Tout l'état d'une carrière est dans l'objet global `state` (sérialisé dans localStorage). `state.pendingChoice` désigne l'écran courant ; `render()` dans `ui.js` dispatche.
