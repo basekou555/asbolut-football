@@ -328,6 +328,12 @@ function uneSaisonCoach(iOrig, cyc){
        méthode du 29/09 interdit. Le banc ne recrute pas : il ferme la fenêtre, pour
        mesurer la semaine et rien d'autre. */
     else if (e === 'cmercato') cFermerMercato();
+    /* LA TRÊVE COUPE AUSSI LA SAISON EN DEUX, à la même journée que le mercato
+       d'hiver. Sans cette branche le banc cassait à la 17ᵉ et annonçait « remercié »
+       sur les neuf lignes : la même sonde muette que ci-dessus. Il rentre chez lui,
+       comme le banc du joueur·euse — c'est **le même choix sur les neuf lignes**, donc
+       il ne biaise pas la comparaison des semaines, qui est la seule chose mesurée. */
+    else if (e === 'ctreve'){ if (!S.ctreve.fait) cChoisirTreve('chez'); else cFinirTreve(); }
     else break;   /* la porte : un coach démis ne finit pas sa saison */
   }
   const moy = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;

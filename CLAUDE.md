@@ -3646,6 +3646,108 @@ reste intacte à la racine. Les deux sont copiées par `vercel.json` et `.github
     (l'écart-type sur les titres vaut presque leur moyenne, mesuré le 05/10) — à re-mesurer sur une
     centaine de carrières si le championnat lui paraît trop facile.
 
+- **L'INTERSAISON DU COACH NE SERVAIT À RIEN, ET SES OFFRES NON PLUS** (le propriétaire,
+  18/10/2026, deux messages : « dans l'aspect entraîneur, il n'y avait rien du tout. Il n'y avait
+  pas de boutique, donc impossible de dépenser les sous que j'avais. Donc la trêve intersaison, ça
+  ne servait pas à grand-chose : il n'y avait que les trois options qui revenaient en boucle. Donc
+  c'était pas ouf. » puis « et pareil pour les offres de club. Il y a peu d'offres, elles sont pas
+  très très intéressantes, donc je sais pas, il y a un truc qui est mal réfléchi »). Les deux
+  reproches tiennent par le même bout, et CLAUDE.md le signalait depuis le 02/10 sans le traiter :
+  **en mode entraîneur·euse, tout ce qui n'est pas un samedi n'avait aucune conséquence.**
+  - **L'ARGENT NE TOUCHAIT RIEN.** Mesuré, douze parcours entiers : le compte finit à **267 M€ de
+    médiane** pour **quatre chantiers** à acheter, une fois par an, en juin. Le coach a donc
+    maintenant la même boutique que le joueur·euse, dans ses mots, et **chaque ligne branche une
+    mécanique qui existait déjà** — c'est la seule règle : quatre **petites choses** qui ne valent
+    que la saison (l'avion des déplacements → `cRecup()` ; les images de l'adversaire →
+    la réussite des situations de match ; les familles aux déplacements → les trois ententes ;
+    un éducateur de plus → le jeune qui monte), cinq pièces de **staff** qui suivent de club en
+    club (un recruteur → `cRelais()`, donc la table du mercato ; un préparateur physique →
+    récupération et blessures ; un analyste vidéo → les situations de match ; un attaché de presse
+    → `cAppel()`, donc le nombre d'offres en juin ; l'agent qui compte → `cCote()`), et les
+    chantiers, dont un nouveau : **racheter le club de tes débuts**, neuf ans de salaire, la chose
+    la plus chère du jeu.
+  - **CE QU'ON GARDE SE PAIE CHAQUE ANNÉE** (`C_ENTRETIEN` = 12 %, le réglage mesuré côté
+    joueur·euse le 02/10) : c'est ce qui fait de la boutique un arbitrage et non une liste de
+    courses. Mesuré, six parcours par politique : qui achète tout ce qu'il peut finit à **49 M€**
+    avec **un seul homme de staff encore là** (le recruteur, dans trois parcours sur six) mais
+    **six méthodes et trois maisons** construites ; qui ne dépense jamais finit à **204 M€** et
+    **ne laisse rien**. Les deux carrières ne se ressemblent pas, et c'est le test.
+  - **LA TRÊVE D'HIVER EXISTE** (`ctreve`, à la 17ᵉ journée, juste avant le mercato d'hiver qui
+    s'ouvre à la même journée). Quatre façons de passer quinze jours, un coût et un gain chacune,
+    aucune les deux : un stage au chaud (la condition du groupe, mais tu paies et personne n'a vu
+    sa famille), tout revoir au club (ton jeu et ton banc, mais ils n'ont pas coupé), rentrer chez
+    toi (les tiens et des jambes, rien de construit), prendre la route voir des matchs (**trois
+    dossiers de plus sur la table de janvier** et ton réseau, mais le groupe n'a rien gagné). Et
+    **la moitié du salaire est versée là** (`S.avance`), l'autre en juin : le total d'une saison
+    ne change pas d'un centime, mais la boutique d'hiver n'est plus structurellement pauvre —
+    c'était la correction mesurée côté joueur·euse le 02/10.
+  - **CINQ FAÇONS DE PASSER L'ÉTÉ AU LIEU DE TROIS**, les deux nouvelles sortant du métier et non
+    du compte : aller voir comment on travaille ailleurs (ton jeu, ton réseau, et six semaines de
+    moins chez toi) et en profiter (la presse et le stade, mais le vestiaire trouve que tu parles
+    beaucoup). Et **la même option deux étés de suite rend moins** (`cLasse`, l'usure posée le
+    13/10 sur les arrêts, appliquée ici parce que c'est exactement le reproche) : seuls les gains
+    s'usent, l'option le dit avant le clic.
+  - **L'ARGENT ET LE STAFF SE VOIENT PENDANT LA SAISON.** Les écrans hors football arrivaient en
+    juin puis disparaissaient : une section **En dehors du terrain** dans la fiche dit le compte,
+    ce que le staff coûte par an, ce que chacun change, et ce qu'on a bâti. Un achat invisible
+    neuf mois sur douze n'existe pas.
+  - **LES OFFRES : LE DÉFAUT ÉTAIT QU'IL N'Y AVAIT RIEN À ARBITRER.** Le salaire d'une offre était
+    une fonction **déterministe** de la force du club, donc deux propositions se rangeaient
+    toujours dans le même ordre sur les deux colonnes, et une fois au sommet aucune ne pouvait être
+    meilleure sur quoi que ce soit. Mesuré avant d'y toucher, 289 intersaisons sous contrat : la
+    meilleure offre payait **34 % de moins** que le poste en cours, médiane, et la cote médiane
+    valait **82** — collée à son plafond, quand le meilleur club du jeu vaut 73, donc le centre de
+    la fenêtre était sorti de l'échelle du monde (le défaut corrigé le 01/10 côté joueur·euse).
+    Trois corrections : la fenêtre se compare au **sommet du monde** quand on est au-dessus de lui ;
+    chaque offre porte une **envie** (ce que ce club-là est prêt à mettre), qui décide du salaire
+    (×0,82 à ×1,37) — la règle posée le 27/09 pour le joueur·euse, « un club moyen qui te veut
+    vraiment paie plus qu'un grand qui hésite » ; et **une promesse sur trois offres** :
+    carte blanche sur le mercato (la direction part à 68), trois ans et on ne te juge pas en
+    novembre (le président part à 72, contrat de trois ans), un groupe jeune à faire éclore (trois
+    places de moins à l'objectif, qui s'usent sur trois saisons), la ville t'attend (le stade part
+    à 64). Chacune repose une jauge qui existe, donc elle vaut exactement ce que cette jauge vaut.
+  - **ET CE QUE TU AS FAIT PÈSE, PAS SEULEMENT LÀ OÙ TU ES** : `cCote()` partait de la force du
+    club et ne gagnait que ±2 selon que l'objectif était atteint, donc un entraîneur qui finit
+    premier avec le douzième budget valait son club, et la fenêtre lui proposait indéfiniment des
+    clubs de son niveau. On lit l'écart entre la place promise et la place tenue.
+  - **MESURÉ, AVANT / APRÈS, MÊME POLITIQUE** (on reste sauf quand on est libre), **par position
+    dans le monde** — c'est la seule lecture qui dit quelque chose, puisqu'au sommet aucune offre
+    ne peut battre son club sur la force, et c'est du football :
+    | la meilleure offre paie, contre mon poste | avant | après |
+    |---|---|---|
+    | mon club dans les trois premiers du monde | **−18 %** (33 % mieux payées) | **−13 %** (39 %) |
+    | à mi-chemin (4 à 9 points du sommet) | +39 % (70 %) | **+64 %** (75 %) |
+    | loin du sommet (10 et plus) | +35 % (72 %) | **+77 %** (83 %) |
+    Et une offre sur trois porte une promesse, contre zéro (**39 %** mesuré). Le gain est donc
+    **modeste au sommet et large en dessous** : un entraîneur qui a déjà le meilleur club ne verra
+    jamais mieux, mais celui qui monte voit maintenant la différence. Le nombre d'offres ne bouge
+    presque pas (2,76 → 2,91 de moyenne, une seule offre 5 % → 7 % des étés) : ce n'était pas là
+    qu'était le défaut, et je ne prétends pas l'avoir corrigé.
+  - **L'ÉQUILIBRE DU MONDE NE BOUGE PAS, et c'était le vrai risque du lot** : à 16 parcours
+    entiers, **5,31 ±1,48 titres par parcours** contre 5,30 ±1,32 sur la version déployée, et la
+    force du dernier club 70 contre 71. (Ma première version de `cSurperf()` les avait fait tomber
+    à 3,00 ±1,41 avec 3,50 renvois au lieu de 2,60 : c'est elle, mesurée, qui a imposé le
+    recentrage décrit ci-dessus.) **Un écart que je ne maquille pas** : les renvois sont à 1,75
+    contre 2,60, mais les deux lignes n'ont ni le même échantillon (16 contre 10) ni la même
+    variance — je ne dis donc pas que le métier est devenu plus sûr.
+  - **Vérifié** : les sept invariants du tableau des notes à zéro écart sur 1 020 matchs (score =
+    film 0, notes = 11 titulaires + entrants 0, pastilles 0), les incohérences de minutes à zéro
+    sur 850 matchs ; douze parcours entiers d'entraîneur·euse avec **508 rendus des douze écrans,
+    zéro `undefined` / `NaN` / `[object Object]`**, les quatre trêves, les cinq options de vie et
+    les quatre promesses toutes tirées ; la fiche et la boutique rendues **tout possédé** (cinq
+    pièces de staff, quatre petites choses, deux chantiers) sans un rendu douteux, et les quatre
+    écrans d'offre relus un par un ; `tests/simulate.js` → `ERRORS: none` ; **aucune migration**
+    (`VERSION` reste à 15 : une sauvegarde v15 d'entraîneur·euse n'a ni `ctreve`, ni `treveFaite`,
+    ni `avance`, ni `vie.achats`, ni `vie.petites`, et les cinq valent « rien ») — vérifié sur une
+    vraie partie d'entraîneur·euse de la version déployée, reprise au mercato d'ouverture, **deux
+    saisons entières** jouées avec la trêve, la boutique et l'écran de vie, 22 joueurs, zéro
+    doublon, zéro erreur.
+  - **Un mort d'outillage fermé au passage** : le banc d'essai de l'entraîneur·euse
+    (`v2/labo.html`) cassait à la 17ᵉ journée sur le nouvel écran et aurait annoncé « remercié » sur
+    les neuf lignes — la sonde muette que la leçon de méthode du 29/09 interdit. Il rentre chez lui
+    à la trêve, **le même choix sur les neuf lignes**, donc il ne biaise pas la comparaison des
+    semaines, qui est la seule chose qu'il mesure.
+
 ## Fichiers
 - `index.html` charge dans l'ordre : `profile.js` (styles de jeu, nationalités), `players.js` (≈400 joueurs réels `[nom, poste, naissance, niveau, nationalité]`), `eras.js` (époques, clubs FR/Europe/monde avec force par décennie, entraîneurs réels), `content.js` (incidents, coups du sort, dilemmes, carrefours, roulettes, arnaques, présidents — vingt événements de vie et vingt dilemmes par mode), `core.js` (moteur partagé : joueurs, effectifs, marché, championnats, coupes, développement, badges, persistance), `match.js` (le match : familles de styles, approche, entraînement, fraîcheur, suspensions, compo automatique, moteur minute par minute avec buts, penaltys, cartons, blessures, remplacements, mi-temps, notes, récit), `coach.js` (carrière entraîneur·euse), `player.js` (carrière joueur·euse), `ui.js` (tous les écrans).
 - Tout l'état d'une carrière est dans l'objet global `state` (sérialisé dans localStorage). `state.pendingChoice` désigne l'écran courant ; `render()` dans `ui.js` dispatche.

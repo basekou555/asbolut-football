@@ -52,7 +52,7 @@ function rendre(){
     csemaine:ecranCSemaine, carret:ecranCArret, cmoment:ecranCMoment,
     cresultat:ecranCResultat, cbilan:ecranCBilan, cvire:ecranCVire,
     coffres:ecranCOffres, cmercato:ecranCMercato, cvie:ecranCVie,
-    cprepa:ecranCPrepa, ccarriere:ecranCCarriere }[S.ecran];
+    cprepa:ecranCPrepa, ctreve:ecranCTreve, ccarriere:ecranCCarriere }[S.ecran];
   el.innerHTML = (S.ecran === 'tirage' ? '' : S.mode === 'coach' ? cTopHTML() : topHTML())
     + (f ? f() : `<div class="card"><h2>Écran inconnu</h2><p class="sub">${esc(S.ecran)}</p></div>`);
   window.scrollTo(0, 0);
@@ -410,9 +410,16 @@ function rapportDetail(){
   }
   else if (S.ecran === 'offres' || S.ecran === 'coffres'){
     const o = S.mode === 'coach' ? cOffreCourante() : offreCourante();
-    if (o) l.push(`offre : ${o.nom} · force ${Math.round(o.force)} · D${o.div || 1}`
-      + ` · ${o.ans} an(s) · salaire ${o.salaire}`
-      + `${o.objectif ? ` · objectif ${o.objectif}ᵉ` : ''} · ${S.libre ? 'tu es libre' : 'ton club prolonge'}`);
+    /* `o.div` n'existe pas sur une offre d'entraîneur·euse (c'est `o.division`) : le
+       rapport annonçait donc « D1 » quelle que soit la division. */
+    if (o) l.push(`offre : ${o.nom} · force ${Math.round(o.force)} · D${o.div || o.division || 1}`
+      + ` · ${o.ans} an(s) · salaire ${o.salaire} (le tien ${S.salaire})`
+      + `${o.objectif ? ` · objectif ${o.objectif}ᵉ` : ''}`
+      + `${o.promesse ? ` · promesse ${o.promesse}` : ''}${o.envie != null ? ` · envie ${o.envie}` : ''}`
+      + ` · ${S.libre ? 'tu es libre' : 'ton club prolonge'}`);
+    if (S.mode === 'coach') l.push(`  en attente : ${(S.offres || []).length - (S.offreIdx || 0) - 1}`
+      + ` · cote ${Math.round(cCote())} · surperf ${Math.round(cSurperf() * 10) / 10}`
+      + ` · appel ${Math.round(cAppel() * 100) / 100}`);
   }
   else if (S.ecran === 'bilan' || S.ecran === 'cbilan'){
     const b = S.bilan || {};
@@ -452,17 +459,26 @@ function rapportDetail(){
     l.push(`  chantiers : ${((S.vie || {}).chantiers || []).map(x => x.id).join(', ') || 'rien'}`
       + ` · prix : ${CHANTIERS.map(c => `${c.id} ${coutChantier(c)}`).join(', ')}`);
   }
-  else if (S.ecran === 'vie' || S.ecran === 'cvie'){
+  else if (S.ecran === 'vie' || S.ecran === 'cvie' || S.ecran === 'ctreve'){
     const v = S.vie || {};
     const ch = S.mode === 'coach' ? CCHANTIERS : CHANTIERS;
     const dispo = S.mode === 'coach' ? cChantiersDispos() : chantiersDispos();
     l.push(`la vie : gagné ${v.gagne} cette saison${(v.primes || []).length ? ` (primes : ${v.primes.join(', ')})` : ''}`
       + ` · compte ${S.argent} · salaire ${S.salaire} (max ${v.salaireMax}) · proches ${Math.round(proches())}`);
     l.push(`  construit : ${(v.chantiers || []).map(x => x.id + (x.coule ? ' (coulé)' : '')).join(', ') || 'rien'}`);
-    if (S.mode !== 'coach') l.push(`  staff : ${(v.achats || []).join(', ') || 'rien'}`
-      + ` · entretien ${v.entretien || 0} · prix : ${BOUTIQUE.map(c => `${c.id} ${coutAchat(c)}`).join(', ')}`);
-    if (S.mode !== 'coach') l.push(`  cette saison : ${(v.petites || []).join(', ') || 'rien'}`
-      + ` · prix : ${PETITES.map(c => `${c.id} ${coutPetite(c)}`).join(', ')}`);
+    /* Les deux modes ont maintenant la même boutique, dans leurs mots : le rapport doit
+       donc décrire les deux, sinon un prix qui ment ne me parviendrait jamais. */
+    const bo = S.mode === 'coach' ? CBOUTIQUE : BOUTIQUE;
+    const pt = S.mode === 'coach' ? CPETITES : PETITES;
+    const cq = S.mode === 'coach' ? cCout : coutAchat;
+    const pq = S.mode === 'coach' ? cCout : coutPetite;
+    l.push(`  staff : ${(v.achats || []).join(', ') || 'rien'}`
+      + ` · entretien ${v.entretien || 0} · prix : ${bo.map(c => `${c.id} ${cq(c)}`).join(', ')}`);
+    l.push(`  cette saison : ${(v.petites || []).join(', ') || 'rien'}`
+      + ` · prix : ${pt.map(c => `${c.id} ${pq(c)}`).join(', ')}`);
+    if (S.ecran === 'ctreve') l.push(`  la trêve : avance ${S.avance || 0}`
+      + ` · choisi ${(S.ctreve || {}).fait ? (S.ctreve.fait.id + ' → « ' + S.ctreve.suite + ' »') : 'rien encore'}`
+      + ` · carnet ${S.bonusDossiers || 0} dossier(s) en plus`);
     l.push(`  possible : ${dispo.map(c => `${c.id} ${coutChantier(c)}`).join(', ') || 'rien'}`
       + ` · au catalogue : ${(ch || []).map(c => `${c.id} ${coutChantier(c)}`).join(', ')}`);
     if (v.fait) l.push(`  choisi : ${v.fait.id} → « ${v.suite} »`);
